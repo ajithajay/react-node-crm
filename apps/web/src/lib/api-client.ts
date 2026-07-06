@@ -27,6 +27,27 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 const get = <T>(path: string): Promise<T> => apiFetch<T>(path, { method: 'GET' });
 const post = <T>(path: string, body?: unknown): Promise<T> =>
   apiFetch<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined });
+const patch = <T>(path: string, body?: unknown): Promise<T> =>
+  apiFetch<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined });
+const del = <T>(path: string, body?: unknown): Promise<T> =>
+  apiFetch<T>(path, { method: 'DELETE', body: body !== undefined ? JSON.stringify(body) : undefined });
+
+/** Fetch without a Content-Type header — the browser sets the multipart boundary itself. */
+async function postForm<T>(path: string, form: FormData): Promise<T> {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
+    method: 'POST',
+    body: form,
+    headers,
+    credentials: 'include',
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, (data as { error?: string } | null)?.error ?? res.statusText);
+  return data as T;
+}
 
 export interface WorkspaceSummary {
   id: string;
@@ -99,6 +120,13 @@ export interface Me {
   avatarUrl: string | null;
   roleId: string | null;
   colorScheme: string;
+  twoFactorEnabled: boolean;
+}
+
+/** File URLs are stored host-relative (`/files/:id`) — resolve against the current API host. */
+export function resolveFileUrl(url: string | null): string | null {
+  if (!url) return null;
+  return `${getApiBaseUrl()}${url}`;
 }
 
 export interface CurrentWorkspace {
@@ -120,6 +148,29 @@ export interface Member {
 
 export const meApi = {
   get: () => get<Me>('/users/me'),
+
+  update: (firstName: string, lastName: string) => patch<{ ok: true }>('/users/me', { firstName, lastName }),
+
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.set('file', file);
+    return postForm<{ id: string; url: string }>('/users/me/avatar', form);
+  },
+
+  removeAvatar: () => del<{ ok: true }>('/users/me/avatar'),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    post<{ ok: true }>('/users/me/password', { currentPassword, newPassword }),
+
+  deleteAccount: (password: string) => del<{ ok: true }>('/users/me', { password }),
+};
+
+export const twoFactorApi = {
+  enroll: () => post<{ otpauthUrl: string; secret: string; qrCodeDataUrl: string }>('/auth/2fa/enroll'),
+
+  verifyEnroll: (code: string) => post<{ ok: true }>('/auth/2fa/enroll/verify', { code }),
+
+  deactivate: () => post<{ ok: true }>('/auth/2fa/deactivate'),
 };
 
 export const workspaceApi = {

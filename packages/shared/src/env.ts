@@ -30,6 +30,15 @@ export const serverEnvSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().default('Saasly CRM <no-reply@saasly.local>'),
+
+  // --- File storage (Phase 5a) ---
+  STORAGE_TYPE: z.enum(['local', 's3']).default('local'),
+  LOCAL_STORAGE_DIR: z.string().default('./.storage'),
+  S3_ENDPOINT: z.string().optional(),
+  S3_ACCESS_KEY: z.string().optional(),
+  S3_SECRET_KEY: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().default('us-east-1'),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

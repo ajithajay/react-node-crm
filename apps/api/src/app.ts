@@ -10,6 +10,7 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { userRouter } from './modules/user/user.routes.js';
 import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 import { memberRouter } from './modules/member/member.routes.js';
+import { fileRouter } from './modules/file/file.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -25,6 +26,7 @@ export function createApp(): Application {
   app.use('/users', userRouter);
   app.use('/workspace', workspaceRouter);
   app.use('/members', memberRouter);
+  app.use('/files', fileRouter);
 
   app.use(errorHandler);
 

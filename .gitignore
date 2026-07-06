@@ -27,3 +27,6 @@ logs/
 
 # docker volumes (local)
 docker/data/
+
+# local file storage driver (STORAGE_TYPE=local)
+apps/api/.storage/

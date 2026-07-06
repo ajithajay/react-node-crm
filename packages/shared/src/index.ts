@@ -19,3 +19,4 @@ export * from './auth/subdomain.js';
 export * from './auth/schemas.js';
 export * from './queue/queue-name.js';
 export * from './queue/email-job.js';
+export * from './user/schemas.js';

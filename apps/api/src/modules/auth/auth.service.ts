@@ -203,10 +203,13 @@ async function issueSessionTokens(
   return { accessToken, refreshToken };
 }
 
-async function requiresTwoFactorChallenge(userId: string): Promise<boolean> {
+/** Whether the user has a VERIFIED TOTP method (i.e. login always challenges them for a code). */
+export async function hasVerifiedTwoFactor(userId: string): Promise<boolean> {
   const method = await twoFactorRepo().findOneBy({ userId, status: TwoFactorMethodStatus.VERIFIED });
   return method !== null;
 }
+
+const requiresTwoFactorChallenge = hasVerifiedTwoFactor;
 
 export type LoginResult =
   | { requiresTwoFactor: true; challengeToken: string }

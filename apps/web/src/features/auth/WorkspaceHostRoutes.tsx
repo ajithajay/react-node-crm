@@ -6,6 +6,7 @@ import { ComingSoonPage } from '@/features/shell/pages/ComingSoonPage';
 import { SettingsLayout } from '@/features/settings/SettingsLayout';
 import { SettingsPlaceholderPage } from '@/features/settings/pages/SettingsPlaceholderPage';
 import { MembersPage } from '@/features/settings/pages/MembersPage';
+import { ProfilePage } from '@/features/settings/pages/ProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -42,7 +43,7 @@ export function WorkspaceHostRoutes() {
 
           <Route path="/settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="/settings/profile" replace />} />
-            <Route path="profile" element={<SettingsPlaceholderPage title="Profile" phase="Phase 5a" />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="experience" element={<SettingsPlaceholderPage title="Experience" phase="Phase 5b" />} />
             <Route path="general" element={<SettingsPlaceholderPage title="General" phase="Phase 5c" />} />
             <Route path="layout" element={<SettingsPlaceholderPage title="Layout" phase="Phase 5g" />} />
