@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { updateProfileRequestSchema, changePasswordRequestSchema, deleteAccountRequestSchema } from '@saasly/shared';
+import {
+  updateProfileRequestSchema,
+  updatePreferencesRequestSchema,
+  changePasswordRequestSchema,
+  deleteAccountRequestSchema,
+} from '@saasly/shared';
 import { authGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { validate } from '../../middleware/validate.js';
@@ -17,6 +22,13 @@ userRouter.patch(
   workspaceGuard,
   validate({ body: updateProfileRequestSchema }),
   userController.updateMe,
+);
+userRouter.patch(
+  '/me/preferences',
+  authGuard,
+  workspaceGuard,
+  validate({ body: updatePreferencesRequestSchema }),
+  userController.updatePreferences,
 );
 userRouter.post('/me/avatar', authGuard, workspaceGuard, upload.single('file'), userController.uploadAvatar);
 userRouter.delete('/me/avatar', authGuard, workspaceGuard, userController.removeAvatar);

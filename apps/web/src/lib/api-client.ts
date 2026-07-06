@@ -1,3 +1,4 @@
+import type { UpdatePreferencesRequest, UpdateWorkspaceRequest, AuditLogQuery } from '@saasly/shared';
 import { getAccessToken } from './auth-session.js';
 import { getApiBaseUrl } from './host.js';
 
@@ -119,7 +120,11 @@ export interface Me {
   lastName: string;
   avatarUrl: string | null;
   roleId: string | null;
-  colorScheme: string;
+  colorScheme: UpdatePreferencesRequest['colorScheme'];
+  timeZone: string;
+  dateFormat: UpdatePreferencesRequest['dateFormat'];
+  timeFormat: UpdatePreferencesRequest['timeFormat'];
+  numberFormat: UpdatePreferencesRequest['numberFormat'];
   twoFactorEnabled: boolean;
 }
 
@@ -134,6 +139,7 @@ export interface CurrentWorkspace {
   name: string;
   subdomain: string;
   logoUrl: string | null;
+  defaultRoleId: string | null;
 }
 
 export interface Member {
@@ -150,6 +156,9 @@ export const meApi = {
   get: () => get<Me>('/users/me'),
 
   update: (firstName: string, lastName: string) => patch<{ ok: true }>('/users/me', { firstName, lastName }),
+
+  updatePreferences: (input: UpdatePreferencesRequest) =>
+    patch<{ ok: true }>('/users/me/preferences', input),
 
   uploadAvatar: (file: File) => {
     const form = new FormData();
@@ -175,8 +184,57 @@ export const twoFactorApi = {
 
 export const workspaceApi = {
   getCurrent: () => get<CurrentWorkspace>('/workspace'),
+
+  update: (input: UpdateWorkspaceRequest) => patch<CurrentWorkspace>('/workspace', input),
+
+  uploadLogo: (file: File) => {
+    const form = new FormData();
+    form.set('file', file);
+    return postForm<{ logoUrl: string }>('/workspace/logo', form);
+  },
+
+  removeLogo: () => del<{ ok: true }>('/workspace/logo'),
+
+  setDefaultRole: (roleId: string) => patch<{ ok: true }>('/workspace/default-role', { roleId }),
 };
 
 export const memberApi = {
   list: () => get<Member[]>('/members'),
+};
+
+export interface Role {
+  id: string;
+  name: string;
+  label: string;
+  isEditable: boolean;
+}
+
+export const roleApi = {
+  list: () => get<Role[]>('/roles'),
+};
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  actorEmail: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  entries: AuditLogEntry[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export const auditLogApi = {
+  list: (query: Partial<AuditLogQuery> = {}) => {
+    const params = new URLSearchParams();
+    if (query.action) params.set('action', query.action);
+    if (query.page) params.set('page', String(query.page));
+    if (query.pageSize) params.set('pageSize', String(query.pageSize));
+    const qs = params.toString();
+    return get<AuditLogPage>(`/audit-logs${qs ? `?${qs}` : ''}`);
+  },
 };

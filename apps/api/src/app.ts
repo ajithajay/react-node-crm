@@ -11,6 +11,8 @@ import { userRouter } from './modules/user/user.routes.js';
 import { workspaceRouter } from './modules/workspace/workspace.routes.js';
 import { memberRouter } from './modules/member/member.routes.js';
 import { fileRouter } from './modules/file/file.routes.js';
+import { roleRouter } from './modules/role/role.routes.js';
+import { auditLogRouter } from './modules/audit-log/audit-log.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -27,6 +29,8 @@ export function createApp(): Application {
   app.use('/workspace', workspaceRouter);
   app.use('/members', memberRouter);
   app.use('/files', fileRouter);
+  app.use('/roles', roleRouter);
+  app.use('/audit-logs', auditLogRouter);
 
   app.use(errorHandler);
 

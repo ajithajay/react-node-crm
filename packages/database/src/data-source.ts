@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { CORE_ENTITIES } from './entities/index.js';
 import { InitialCoreSchema1700000000000 } from './migrations/1700000000000-InitialCoreSchema.js';
+import { AddNumberFormatToWorkspaceMembers1700000000001 } from './migrations/1700000000001-AddNumberFormatToWorkspaceMembers.js';
+import { AddAuditLogs1700000000002 } from './migrations/1700000000002-AddAuditLogs.js';
 
 /** Shared control-plane schema (identity, tenancy, metadata). Per-workspace schemas: see workspace-schema/. */
 export const CORE_SCHEMA = 'core';
@@ -16,7 +18,11 @@ export function createCoreDataSource(databaseUrl: string): DataSource {
     url: databaseUrl,
     schema: CORE_SCHEMA,
     entities: CORE_ENTITIES,
-    migrations: [InitialCoreSchema1700000000000],
+    migrations: [
+      InitialCoreSchema1700000000000,
+      AddNumberFormatToWorkspaceMembers1700000000001,
+      AddAuditLogs1700000000002,
+    ],
     migrationsTableName: '_migrations',
     synchronize: false,
     logging: false,

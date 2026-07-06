@@ -10,8 +10,10 @@ import { dataSource } from '../../lib/db.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { sendPasswordChangedEmail } from '../../lib/mailer.js';
 import { UnauthorizedError } from '../../lib/errors.js';
+import type { UpdatePreferencesRequest } from '@saasly/shared';
 import { hasVerifiedTwoFactor } from '../auth/auth.service.js';
 import { uploadFile, deleteFile, fileIdFromUrl } from '../file/file.service.js';
+import { record } from '../audit-log/audit-log.service.js';
 
 export interface MeResponse {
   id: string;
@@ -22,6 +24,10 @@ export interface MeResponse {
   avatarUrl: string | null;
   roleId: string | null;
   colorScheme: string;
+  timeZone: string;
+  dateFormat: string;
+  timeFormat: string;
+  numberFormat: string;
   twoFactorEnabled: boolean;
 }
 
@@ -42,6 +48,10 @@ export async function getMe(userId: string, workspaceId: string): Promise<MeResp
     avatarUrl: member?.avatarUrl ?? null,
     roleId: member?.roleId ?? null,
     colorScheme: member?.colorScheme ?? 'SYSTEM',
+    timeZone: member?.timeZone ?? 'UTC',
+    dateFormat: member?.dateFormat ?? 'MM/DD/YYYY',
+    timeFormat: member?.timeFormat ?? 'HH:mm',
+    numberFormat: member?.numberFormat ?? '1,000.00',
     twoFactorEnabled,
   };
 }
@@ -54,6 +64,20 @@ export async function updateProfile(
   const member = await memberRepo().findOneByOrFail({ userId, workspaceId });
   member.firstName = input.firstName;
   member.lastName = input.lastName;
+  await memberRepo().save(member);
+}
+
+export async function updatePreferences(
+  userId: string,
+  workspaceId: string,
+  input: UpdatePreferencesRequest,
+): Promise<void> {
+  const member = await memberRepo().findOneByOrFail({ userId, workspaceId });
+  member.colorScheme = input.colorScheme;
+  member.timeZone = input.timeZone;
+  member.dateFormat = input.dateFormat;
+  member.timeFormat = input.timeFormat;
+  member.numberFormat = input.numberFormat;
   await memberRepo().save(member);
 }
 
@@ -87,6 +111,7 @@ export async function removeAvatar(userId: string, workspaceId: string): Promise
 
 export async function changePassword(
   userId: string,
+  workspaceId: string,
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
@@ -103,6 +128,7 @@ export async function changePassword(
     .update({ userId, revokedAt: IsNull() }, { revokedAt: new Date() });
 
   await sendPasswordChangedEmail(user.email);
+  await record(workspaceId, userId, 'auth.password_changed');
 }
 
 export async function deleteAccount(userId: string, password: string): Promise<void> {

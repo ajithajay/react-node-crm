@@ -22,6 +22,7 @@ import { buildAppUrl, buildWorkspaceUrl } from '../../lib/urls.js';
 import { env } from '../../lib/config.js';
 import { AppError, ConflictError, NotFoundError, UnauthorizedError } from '../../lib/errors.js';
 import { sendVerifyEmail, sendPasswordResetEmail, sendPasswordChangedEmail } from '../../lib/mailer.js';
+import { record } from '../audit-log/audit-log.service.js';
 
 const userRepo = () => dataSource.getRepository(UserEntity);
 const workspaceRepo = () => dataSource.getRepository(WorkspaceEntity);
@@ -309,6 +310,7 @@ export async function exchangeLoginToken(token: string): Promise<SessionTokens> 
   const payload = verifyOrThrow<TokenPayload>(token, TokenType.LOGIN);
   if (!payload.workspaceId) throw new AppError('Malformed login token', 400);
   const { accessToken, refreshToken } = await issueSessionTokens(payload.sub, payload.workspaceId);
+  await record(payload.workspaceId, payload.sub, 'auth.login');
   return { accessToken, refreshToken, workspaceId: payload.workspaceId };
 }
 

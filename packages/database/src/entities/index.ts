@@ -22,6 +22,7 @@ import { ApiKeyEntity } from './api-key.entity.js';
 import { WebhookEntity } from './webhook.entity.js';
 import { RefreshTokenEntity, TwoFactorMethodEntity } from './auth-token.entity.js';
 import { FileEntity } from './file.entity.js';
+import { AuditLogEntity } from './audit-log.entity.js';
 
 export * from './user.entity.js';
 export * from './workspace.entity.js';
@@ -36,6 +37,7 @@ export * from './api-key.entity.js';
 export * from './webhook.entity.js';
 export * from './auth-token.entity.js';
 export * from './file.entity.js';
+export * from './audit-log.entity.js';
 
 /** Every core-schema entity, registered on the core DataSource. */
 export const CORE_ENTITIES = [
@@ -63,4 +65,5 @@ export const CORE_ENTITIES = [
   RefreshTokenEntity,
   TwoFactorMethodEntity,
   FileEntity,
+  AuditLogEntity,
 ];

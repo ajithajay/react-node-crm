@@ -15,6 +15,7 @@ import * as authService from './auth.service.js';
 import type { CreateWorkspaceWithTokenRequest, SelectWorkspaceWithTokenRequest } from './auth.validation.js';
 import { REFRESH_COOKIE_NAME, refreshCookieOptions } from '../../lib/cookies.js';
 import { UnauthorizedError } from '../../lib/errors.js';
+import { record } from '../audit-log/audit-log.service.js';
 
 function setRefreshCookie(res: Response, token: string): void {
   res.cookie(REFRESH_COOKIE_NAME, token, refreshCookieOptions());
@@ -143,10 +144,12 @@ export async function verify2FAEnrollment(
   res: Response,
 ): Promise<void> {
   await authService.verify2FAEnrollment(req.user!.id, req.body.code);
+  if (req.workspaceId) await record(req.workspaceId, req.user!.id, 'auth.two_factor_enabled');
   res.status(200).json({ ok: true });
 }
 
 export async function deactivate2FA(req: Request, res: Response): Promise<void> {
   await authService.deactivate2FA(req.user!.id);
+  if (req.workspaceId) await record(req.workspaceId, req.user!.id, 'auth.two_factor_disabled');
   res.status(200).json({ ok: true });
 }

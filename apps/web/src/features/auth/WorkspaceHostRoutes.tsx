@@ -7,6 +7,8 @@ import { SettingsLayout } from '@/features/settings/SettingsLayout';
 import { SettingsPlaceholderPage } from '@/features/settings/pages/SettingsPlaceholderPage';
 import { MembersPage } from '@/features/settings/pages/MembersPage';
 import { ProfilePage } from '@/features/settings/pages/ProfilePage';
+import { ExperiencePage } from '@/features/settings/pages/ExperiencePage';
+import { GeneralPage } from '@/features/settings/pages/GeneralPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -44,8 +46,8 @@ export function WorkspaceHostRoutes() {
           <Route path="/settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="/settings/profile" replace />} />
             <Route path="profile" element={<ProfilePage />} />
-            <Route path="experience" element={<SettingsPlaceholderPage title="Experience" phase="Phase 5b" />} />
-            <Route path="general" element={<SettingsPlaceholderPage title="General" phase="Phase 5c" />} />
+            <Route path="experience" element={<ExperiencePage />} />
+            <Route path="general" element={<GeneralPage />} />
             <Route path="layout" element={<SettingsPlaceholderPage title="Layout" phase="Phase 5g" />} />
             <Route path="members" element={<MembersPage />} />
             <Route path="roles" element={<SettingsPlaceholderPage title="Roles & Permissions" phase="Phase 5e" />} />

@@ -60,6 +60,9 @@ export class WorkspaceMemberEntity {
   @Column({ type: 'varchar', name: 'time_format', default: 'HH:mm' })
   timeFormat!: string;
 
+  @Column({ type: 'varchar', name: 'number_format', default: '1,000.00' })
+  numberFormat!: string;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

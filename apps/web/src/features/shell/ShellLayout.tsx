@@ -1,9 +1,15 @@
+import { useQuery } from '@tanstack/react-query';
 import { Outlet } from 'react-router';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+import { meApi } from '@/lib/api-client';
+import { useColorSchemeSync } from '@/lib/theme';
 import { AppSidebar } from './AppSidebar';
 
 export function ShellLayout() {
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: meApi.get });
+  useColorSchemeSync(me?.colorScheme);
+
   return (
     <SidebarProvider>
       <AppSidebar />

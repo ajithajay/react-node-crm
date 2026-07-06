@@ -1,5 +1,10 @@
 import type { Request, Response } from 'express';
-import type { UpdateProfileRequest, ChangePasswordRequest, DeleteAccountRequest } from '@saasly/shared';
+import type {
+  UpdateProfileRequest,
+  UpdatePreferencesRequest,
+  ChangePasswordRequest,
+  DeleteAccountRequest,
+} from '@saasly/shared';
 import { AppError } from '../../lib/errors.js';
 import * as userService from './user.service.js';
 
@@ -13,6 +18,14 @@ export async function updateMe(
   res: Response,
 ): Promise<void> {
   await userService.updateProfile(req.user!.id, req.workspaceId!, req.body);
+  res.status(200).json({ ok: true });
+}
+
+export async function updatePreferences(
+  req: Request<unknown, unknown, UpdatePreferencesRequest>,
+  res: Response,
+): Promise<void> {
+  await userService.updatePreferences(req.user!.id, req.workspaceId!, req.body);
   res.status(200).json({ ok: true });
 }
 
@@ -37,7 +50,7 @@ export async function changePassword(
   req: Request<unknown, unknown, ChangePasswordRequest>,
   res: Response,
 ): Promise<void> {
-  await userService.changePassword(req.user!.id, req.body.currentPassword, req.body.newPassword);
+  await userService.changePassword(req.user!.id, req.workspaceId!, req.body.currentPassword, req.body.newPassword);
   res.status(200).json({ ok: true });
 }
 
