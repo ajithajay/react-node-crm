@@ -1,0 +1,18 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Approve native install/build scripts (fetch platform binaries).
+allowBuilds:
+  argon2: true
+  esbuild: true
+  msgpackr-extract: true
+
+onlyBuiltDependencies:
+  - argon2
+  - esbuild
+  - msgpackr-extract
+
+# Dedupe ioredis so BullMQ and our direct dependency share one version/type.
+overrides:
+  ioredis: ^5.11.1

@@ -1,0 +1,64 @@
+name: saasly-crm
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saasly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saasly}
+      POSTGRES_DB: ${POSTGRES_DB:-saasly}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saasly} -d ${POSTGRES_DB:-saasly}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # SMTP sink + web UI to inspect outgoing email in dev
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"  # SMTP
+      - "${MAILPIT_UI_PORT:-8025}:8025"    # Web UI
+    volumes:
+      - ./data/mailpit:/data
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+
+  # S3-compatible object storage for logos / avatars / attachments
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"    # S3 API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001" # Console UI
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-saasly}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-saasly-secret}
+    volumes:
+      - ./data/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

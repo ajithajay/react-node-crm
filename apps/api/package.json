@@ -1,0 +1,43 @@
+{
+  "name": "@saasly/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@saasly/database": "workspace:*",
+    "@saasly/emails": "workspace:*",
+    "@saasly/shared": "workspace:*",
+    "argon2": "^0.44.0",
+    "bullmq": "^5.79.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "ioredis": "^5.11.1",
+    "jsonwebtoken": "^9.0.3",
+    "otplib": "^13.4.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "qrcode": "^1.5.4",
+    "typeorm": "^1.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@saasly/config": "workspace:*",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.1.0",
+    "@types/qrcode": "^1.5.6",
+    "tsx": "^4.23.0"
+  }
+}
