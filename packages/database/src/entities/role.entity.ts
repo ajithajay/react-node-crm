@@ -15,6 +15,10 @@ export class RoleEntity {
   @Column({ type: 'varchar' })
   label!: string;
 
+  /** lucide-react icon name shown next to the role, e.g. "User". */
+  @Column({ type: 'varchar', default: 'User' })
+  icon!: string;
+
   @Column({ type: 'varchar', nullable: true })
   description!: string | null;
 
@@ -71,17 +75,18 @@ export class ObjectPermissionEntity {
   @Column({ type: 'uuid', name: 'object_metadata_id' })
   objectMetadataId!: string;
 
-  @Column({ type: 'boolean', name: 'can_read', default: true })
-  canRead!: boolean;
+  /** null = inherit the role's blanket `canXAllObjectRecords` flag; true/false = explicit override. */
+  @Column({ type: 'boolean', name: 'can_read', nullable: true })
+  canRead!: boolean | null;
 
-  @Column({ type: 'boolean', name: 'can_update', default: true })
-  canUpdate!: boolean;
+  @Column({ type: 'boolean', name: 'can_update', nullable: true })
+  canUpdate!: boolean | null;
 
-  @Column({ type: 'boolean', name: 'can_soft_delete', default: true })
-  canSoftDelete!: boolean;
+  @Column({ type: 'boolean', name: 'can_soft_delete', nullable: true })
+  canSoftDelete!: boolean | null;
 
-  @Column({ type: 'boolean', name: 'can_destroy', default: false })
-  canDestroy!: boolean;
+  @Column({ type: 'boolean', name: 'can_destroy', nullable: true })
+  canDestroy!: boolean | null;
 }
 
 @Entity({ name: 'field_permissions' })
@@ -96,9 +101,10 @@ export class FieldPermissionEntity {
   @Column({ type: 'uuid', name: 'field_metadata_id' })
   fieldMetadataId!: string;
 
-  @Column({ type: 'boolean', name: 'can_read', default: true })
-  canRead!: boolean;
+  /** null = readable/editable by default; true is never persisted, only false (a restriction) or null. */
+  @Column({ type: 'boolean', name: 'can_read', nullable: true })
+  canRead!: boolean | null;
 
-  @Column({ type: 'boolean', name: 'can_update', default: true })
-  canUpdate!: boolean;
+  @Column({ type: 'boolean', name: 'can_update', nullable: true })
+  canUpdate!: boolean | null;
 }

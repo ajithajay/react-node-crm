@@ -29,6 +29,14 @@ export class ObjectMetadataEntity {
   @Column({ type: 'varchar', nullable: true })
   description!: string | null;
 
+  /** The field whose value is the record's display label/title (Twenty's "Record label"). */
+  @Column({ type: 'uuid', name: 'label_identifier_field_metadata_id', nullable: true })
+  labelIdentifierFieldMetadataId!: string | null;
+
+  /** The field used as the record's image/avatar (Twenty's "Record image"). */
+  @Column({ type: 'uuid', name: 'image_identifier_field_metadata_id', nullable: true })
+  imageIdentifierFieldMetadataId!: string | null;
+
   @Column({ type: 'boolean', name: 'is_custom', default: true })
   isCustom!: boolean;
 

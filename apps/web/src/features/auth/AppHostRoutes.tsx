@@ -6,6 +6,7 @@ import { CreateWorkspacePage } from './pages/CreateWorkspacePage';
 import { SelectWorkspacePage } from './pages/SelectWorkspacePage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
+import { AcceptInvitePage } from './pages/AcceptInvitePage';
 
 /** Routes mounted on the default/landing host (`app.<base>` or the bare base domain). */
 export function AppHostRoutes() {
@@ -18,6 +19,7 @@ export function AppHostRoutes() {
       <Route path="/select-workspace" element={<SelectWorkspacePage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/2fa" element={<TwoFactorChallengePage />} />
+      <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

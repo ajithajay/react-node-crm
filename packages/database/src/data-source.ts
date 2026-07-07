@@ -4,6 +4,8 @@ import { CORE_ENTITIES } from './entities/index.js';
 import { InitialCoreSchema1700000000000 } from './migrations/1700000000000-InitialCoreSchema.js';
 import { AddNumberFormatToWorkspaceMembers1700000000001 } from './migrations/1700000000001-AddNumberFormatToWorkspaceMembers.js';
 import { AddAuditLogs1700000000002 } from './migrations/1700000000002-AddAuditLogs.js';
+import { AddRoleToInvitations1700000000003 } from './migrations/1700000000003-AddRoleToInvitations.js';
+import { AddIconToRoles1700000000004 } from './migrations/1700000000004-AddIconToRoles.js';
 
 /** Shared control-plane schema (identity, tenancy, metadata). Per-workspace schemas: see workspace-schema/. */
 export const CORE_SCHEMA = 'core';
@@ -22,6 +24,8 @@ export function createCoreDataSource(databaseUrl: string): DataSource {
       InitialCoreSchema1700000000000,
       AddNumberFormatToWorkspaceMembers1700000000001,
       AddAuditLogs1700000000002,
+      AddRoleToInvitations1700000000003,
+      AddIconToRoles1700000000004,
     ],
     migrationsTableName: '_migrations',
     synchronize: false,

@@ -22,3 +22,6 @@ export * from './queue/email-job.js';
 export * from './user/schemas.js';
 export * from './workspace/schemas.js';
 export * from './audit-log/schemas.js';
+export * from './invitation/schemas.js';
+export * from './role/schemas.js';
+export * from './data-model/schemas.js';

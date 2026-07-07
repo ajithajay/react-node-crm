@@ -1,4 +1,21 @@
-import type { UpdatePreferencesRequest, UpdateWorkspaceRequest, AuditLogQuery } from '@saasly/shared';
+import type {
+  UpdatePreferencesRequest,
+  UpdateWorkspaceRequest,
+  AuditLogQuery,
+  CreateInvitationRequest,
+  CreateRoleRequest,
+  UpdateRoleRequest,
+  UpdateObjectPermissionRequest,
+  UpdateFieldPermissionRequest,
+  CreateObjectRequest,
+  UpdateObjectRequest,
+  CreateFieldRequest,
+  UpdateFieldRequest,
+  CreateRelationRequest,
+  CreateMorphRelationRequest,
+  CreateIndexRequest,
+  SetObjectIdentifiersRequest,
+} from '@saasly/shared';
 import { getAccessToken } from './auth-session.js';
 import { getApiBaseUrl } from './host.js';
 
@@ -32,6 +49,8 @@ const patch = <T>(path: string, body?: unknown): Promise<T> =>
   apiFetch<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined });
 const del = <T>(path: string, body?: unknown): Promise<T> =>
   apiFetch<T>(path, { method: 'DELETE', body: body !== undefined ? JSON.stringify(body) : undefined });
+const put = <T>(path: string, body?: unknown): Promise<T> =>
+  apiFetch<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined });
 
 /** Fetch without a Content-Type header — the browser sets the multipart boundary itself. */
 async function postForm<T>(path: string, form: FormData): Promise<T> {
@@ -200,17 +219,90 @@ export const workspaceApi = {
 
 export const memberApi = {
   list: () => get<Member[]>('/members'),
+
+  updateRole: (memberId: string, roleId: string) => patch<{ ok: true }>(`/members/${memberId}/role`, { roleId }),
 };
 
 export interface Role {
   id: string;
   name: string;
   label: string;
+  icon: string;
   isEditable: boolean;
+}
+
+export interface RoleDetail extends Role {
+  description: string | null;
+  canUpdateAllSettings: boolean;
+  canReadAllObjectRecords: boolean;
+  canUpdateAllObjectRecords: boolean;
+  canSoftDeleteAllObjectRecords: boolean;
+  canDestroyAllObjectRecords: boolean;
+  canAccessAllTools: boolean;
+  memberCount: number;
+}
+
+export interface ObjectPermission {
+  objectMetadataId: string;
+  objectLabel: string;
+  icon: string;
+  isCustom: boolean;
+  hasOverride: boolean;
+  canRead: boolean | null;
+  canUpdate: boolean | null;
+  canSoftDelete: boolean | null;
+  canDestroy: boolean | null;
+}
+
+export interface FieldPermission {
+  fieldMetadataId: string;
+  fieldLabel: string;
+  fieldType: string;
+  icon: string;
+  isRestrictable: boolean;
+  canRead: boolean | null;
+  canUpdate: boolean | null;
+}
+
+export interface RoleMember {
+  id: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export const roleApi = {
   list: () => get<Role[]>('/roles'),
+
+  get: (id: string) => get<RoleDetail>(`/roles/${id}`),
+
+  create: (input: CreateRoleRequest) => post<RoleDetail>('/roles', input),
+
+  update: (id: string, input: UpdateRoleRequest) => patch<RoleDetail>(`/roles/${id}`, input),
+
+  remove: (id: string) => del<{ ok: true }>(`/roles/${id}`),
+
+  getSettingsPermissions: (id: string) => get<string[]>(`/roles/${id}/settings-permissions`),
+
+  updateSettingsPermissions: (id: string, flags: string[]) =>
+    put<{ ok: true }>(`/roles/${id}/settings-permissions`, { flags }),
+
+  listObjectPermissions: (id: string) => get<ObjectPermission[]>(`/roles/${id}/object-permissions`),
+
+  updateObjectPermission: (id: string, objectMetadataId: string, input: UpdateObjectPermissionRequest) =>
+    put<{ ok: true }>(`/roles/${id}/object-permissions/${objectMetadataId}`, input),
+
+  removeObjectPermission: (id: string, objectMetadataId: string) =>
+    del<{ ok: true }>(`/roles/${id}/object-permissions/${objectMetadataId}`),
+
+  listFieldPermissions: (id: string, objectMetadataId: string) =>
+    get<FieldPermission[]>(`/roles/${id}/objects/${objectMetadataId}/field-permissions`),
+
+  updateFieldPermission: (id: string, fieldMetadataId: string, input: UpdateFieldPermissionRequest) =>
+    put<{ ok: true }>(`/roles/${id}/field-permissions/${fieldMetadataId}`, input),
+
+  listMembers: (id: string) => get<RoleMember[]>(`/roles/${id}/members`),
 };
 
 export interface AuditLogEntry {
@@ -237,4 +329,126 @@ export const auditLogApi = {
     const qs = params.toString();
     return get<AuditLogPage>(`/audit-logs${qs ? `?${qs}` : ''}`);
   },
+};
+
+export interface Invitation {
+  id: string;
+  email: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REVOKED';
+  roleId: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export const invitationApi = {
+  list: () => get<Invitation[]>('/members/invitations'),
+
+  create: (input: CreateInvitationRequest) => post<Invitation>('/members/invitations', input),
+
+  resend: (id: string) => post<{ ok: true }>(`/members/invitations/${id}/resend`),
+
+  revoke: (id: string) => del<{ ok: true }>(`/members/invitations/${id}`),
+};
+
+export interface InvitationPreview {
+  email: string;
+  workspaceName: string;
+  workspaceSubdomain: string;
+  hasAccount: boolean;
+}
+
+export const publicInvitationApi = {
+  preview: (token: string) => get<InvitationPreview>(`/invitations/${encodeURIComponent(token)}`),
+
+  accept: (token: string, password: string) =>
+    post<{ loginToken: string; redirectUrl: string }>(`/invitations/${encodeURIComponent(token)}/accept`, {
+      password,
+    }),
+};
+
+export interface DataModelObject {
+  id: string;
+  nameSingular: string;
+  namePlural: string;
+  labelSingular: string;
+  labelPlural: string;
+  icon: string;
+  description: string | null;
+  isCustom: boolean;
+  isSystem: boolean;
+  isActive: boolean;
+  labelIdentifierFieldMetadataId: string | null;
+  imageIdentifierFieldMetadataId: string | null;
+  fieldCount: number;
+}
+
+export interface DataModelField {
+  id: string;
+  name: string;
+  label: string;
+  type: string;
+  icon: string;
+  description: string | null;
+  isCustom: boolean;
+  isSystem: boolean;
+  isActive: boolean;
+  isNullable: boolean;
+  isUnique: boolean;
+  isRestrictable: boolean;
+  settings: Record<string, unknown> | null;
+  defaultValue: unknown;
+}
+
+export interface DataModelIndex {
+  id: string;
+  name: string;
+  isUnique: boolean;
+  columnNames: string[];
+}
+
+export interface DataModelObjectDetail {
+  object: DataModelObject;
+  fields: DataModelField[];
+  indexes: DataModelIndex[];
+}
+
+export const dataModelApi = {
+  listObjects: () => get<DataModelObject[]>('/data-model/objects'),
+
+  getObject: (id: string) => get<DataModelObjectDetail>(`/data-model/objects/${id}`),
+
+  createObject: (input: CreateObjectRequest) => post<DataModelObject>('/data-model/objects', input),
+
+  updateObject: (id: string, input: UpdateObjectRequest) => patch<DataModelObject>(`/data-model/objects/${id}`, input),
+
+  setObjectActive: (id: string, isActive: boolean) =>
+    patch<{ ok: true }>(`/data-model/objects/${id}/active`, { isActive }),
+
+  setObjectIdentifiers: (id: string, input: SetObjectIdentifiersRequest) =>
+    patch<DataModelObject>(`/data-model/objects/${id}/identifiers`, input),
+
+  deleteObject: (id: string) => del<{ ok: true }>(`/data-model/objects/${id}`),
+
+  createField: (objectId: string, input: CreateFieldRequest) =>
+    post<DataModelField>(`/data-model/objects/${objectId}/fields`, input),
+
+  updateField: (objectId: string, fieldId: string, input: UpdateFieldRequest) =>
+    patch<DataModelField>(`/data-model/objects/${objectId}/fields/${fieldId}`, input),
+
+  setFieldActive: (objectId: string, fieldId: string, isActive: boolean) =>
+    patch<{ ok: true }>(`/data-model/objects/${objectId}/fields/${fieldId}/active`, { isActive }),
+
+  deleteField: (objectId: string, fieldId: string) => del<{ ok: true }>(`/data-model/objects/${objectId}/fields/${fieldId}`),
+
+  createRelation: (objectId: string, input: CreateRelationRequest) =>
+    post<{ forward: DataModelField; reverse: DataModelField }>(`/data-model/objects/${objectId}/relations`, input),
+
+  createMorphRelation: (objectId: string, input: CreateMorphRelationRequest) =>
+    post<{ forward: DataModelField; reverses: DataModelField[] }>(`/data-model/objects/${objectId}/morph-relations`, input),
+
+  createIndex: (objectId: string, input: CreateIndexRequest) =>
+    post<DataModelIndex>(`/data-model/objects/${objectId}/indexes`, input),
+
+  deleteIndex: (objectId: string, indexId: string) =>
+    del<{ ok: true }>(`/data-model/objects/${objectId}/indexes/${indexId}`),
 };

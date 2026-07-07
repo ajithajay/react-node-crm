@@ -133,6 +133,8 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "label_plural" varchar NOT NULL,
         "icon" varchar,
         "description" varchar,
+        "label_identifier_field_metadata_id" uuid,
+        "image_identifier_field_metadata_id" uuid,
         "is_custom" boolean NOT NULL DEFAULT true,
         "is_active" boolean NOT NULL DEFAULT true,
         "is_system" boolean NOT NULL DEFAULT false,
@@ -158,6 +160,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "is_system" boolean NOT NULL DEFAULT false,
         "is_nullable" boolean NOT NULL DEFAULT true,
         "is_unique" boolean NOT NULL DEFAULT false,
+        "is_restrictable" boolean NOT NULL DEFAULT true,
         "default_value" jsonb,
         "settings" jsonb,
         "created_at" timestamptz NOT NULL DEFAULT now(),
@@ -171,10 +174,10 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "role_id" uuid NOT NULL REFERENCES "core"."roles"("id") ON DELETE CASCADE,
         "object_metadata_id" uuid NOT NULL REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
-        "can_read" boolean NOT NULL DEFAULT true,
-        "can_update" boolean NOT NULL DEFAULT true,
-        "can_soft_delete" boolean NOT NULL DEFAULT true,
-        "can_destroy" boolean NOT NULL DEFAULT false,
+        "can_read" boolean,
+        "can_update" boolean,
+        "can_soft_delete" boolean,
+        "can_destroy" boolean,
         UNIQUE ("role_id", "object_metadata_id")
       );
     `);
@@ -184,8 +187,8 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "role_id" uuid NOT NULL REFERENCES "core"."roles"("id") ON DELETE CASCADE,
         "field_metadata_id" uuid NOT NULL REFERENCES "core"."field_metadata"("id") ON DELETE CASCADE,
-        "can_read" boolean NOT NULL DEFAULT true,
-        "can_update" boolean NOT NULL DEFAULT true,
+        "can_read" boolean,
+        "can_update" boolean,
         UNIQUE ("role_id", "field_metadata_id")
       );
     `);

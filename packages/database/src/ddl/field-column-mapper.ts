@@ -152,6 +152,16 @@ export function mapFieldToColumns(
         ],
       };
 
+    case FieldMetadataType.ACTOR:
+      return {
+        columns: [
+          col('source', 'text', { nullable: true }),
+          col('workspace_member_id', 'uuid', { nullable: true }),
+          col('name', 'text', { nullable: true }),
+          col('context', 'jsonb', { nullable: true }),
+        ],
+      };
+
     case FieldMetadataType.RAW_JSON:
       return { columns: [col('', 'jsonb', { nullable: true })] };
 

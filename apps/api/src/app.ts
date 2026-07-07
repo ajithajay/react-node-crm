@@ -13,6 +13,8 @@ import { memberRouter } from './modules/member/member.routes.js';
 import { fileRouter } from './modules/file/file.routes.js';
 import { roleRouter } from './modules/role/role.routes.js';
 import { auditLogRouter } from './modules/audit-log/audit-log.routes.js';
+import { invitationAdminRouter, invitationPublicRouter } from './modules/invitation/invitation.routes.js';
+import { dataModelRouter } from './modules/data-model/data-model.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -31,6 +33,9 @@ export function createApp(): Application {
   app.use('/files', fileRouter);
   app.use('/roles', roleRouter);
   app.use('/audit-logs', auditLogRouter);
+  app.use('/members/invitations', invitationAdminRouter);
+  app.use('/invitations', invitationPublicRouter);
+  app.use('/data-model', dataModelRouter);
 
   app.use(errorHandler);
 

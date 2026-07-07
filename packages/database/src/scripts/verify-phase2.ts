@@ -70,7 +70,7 @@ async function main(): Promise<void> {
 
   console.log('\n2. Provision workspace (schema + standard objects/fields/views/roles)');
   const { objects, roles } = await provisionWorkspace(coreDataSource, workspace.id);
-  assert(objects.length === 5, `expected 5 standard objects, got ${objects.length}`);
+  assert(objects.length === 10, `expected 10 standard objects, got ${objects.length}`);
   assert(roles.length === 3, `expected 3 default roles, got ${roles.length}`);
   const refreshedWorkspace = await coreDataSource
     .getRepository(WorkspaceEntity)
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
     'workspace.databaseSchema should be set',
   );
   assert(refreshedWorkspace.defaultRoleId !== null, 'workspace.defaultRoleId should be set');
-  ok(`5 standard objects created: ${objects.map((o) => o.nameSingular).join(', ')}`);
+  ok(`${objects.length} standard objects created: ${objects.map((o) => o.nameSingular).join(', ')}`);
   ok(`3 default roles created: ${roles.map((r) => r.name).join(', ')}`);
   ok(`workspace schema: ${refreshedWorkspace.databaseSchema}`);
 

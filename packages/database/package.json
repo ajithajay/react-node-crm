@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "clean": "rm -rf dist .turbo *.tsbuildinfo",
-    "verify:phase2": "tsx src/scripts/verify-phase2.ts"
+    "verify:phase2": "tsx src/scripts/verify-phase2.ts",
+    "verify:datamodel": "tsx src/scripts/verify-datamodel.ts"
   },
   "dependencies": {
     "@saasly/shared": "workspace:*",

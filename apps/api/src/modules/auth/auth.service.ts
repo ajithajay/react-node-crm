@@ -12,7 +12,7 @@ import {
   TwoFactorMethodStatus,
   provisionWorkspace,
 } from '@saasly/database';
-import { TokenType, isReservedSubdomain, isValidSubdomainFormat } from '@saasly/shared';
+import { TokenType, StandardRoleName, isReservedSubdomain, isValidSubdomainFormat } from '@saasly/shared';
 import { dataSource } from '../../lib/db.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { signToken, verifyToken, type TokenPayload } from '../../lib/jwt.js';
@@ -161,12 +161,15 @@ export async function createWorkspace(
 
   const provisioned = await provisionWorkspace(dataSource, workspace.id);
 
+  // The creator becomes Admin — the workspace's defaultRoleId (Member) is for people invited later.
+  const adminRole = provisioned.roles.find((role) => role.name === StandardRoleName.ADMIN);
+
   await userWorkspaceRepo().save(userWorkspaceRepo().create({ userId, workspaceId: workspace.id }));
   await memberRepo().save(
     memberRepo().create({
       workspaceId: workspace.id,
       userId,
-      roleId: provisioned.workspace.defaultRoleId,
+      roleId: adminRole?.id ?? provisioned.workspace.defaultRoleId,
       firstName: user.firstName,
       lastName: user.lastName,
     }),
@@ -234,7 +237,10 @@ async function completeWorkspaceLogin(userId: string, workspaceId: string): Prom
   return { requiresTwoFactor: false, ...(await issueLoginRedirect(userId, workspaceId)) };
 }
 
-async function issueLoginRedirect(userId: string, workspaceId: string): Promise<{ loginToken: string; redirectUrl: string }> {
+export async function issueLoginRedirect(
+  userId: string,
+  workspaceId: string,
+): Promise<{ loginToken: string; redirectUrl: string }> {
   const workspace = await workspaceRepo().findOneByOrFail({ id: workspaceId });
   const loginToken = signToken({ sub: userId, type: TokenType.LOGIN, workspaceId });
   return {

@@ -21,6 +21,7 @@ export const FieldMetadataType = {
   FULL_NAME: 'FULL_NAME',
   ADDRESS: 'ADDRESS',
   RICH_TEXT: 'RICH_TEXT',
+  ACTOR: 'ACTOR',
   // Relation
   RELATION: 'RELATION',
   MORPH_RELATION: 'MORPH_RELATION',
@@ -40,6 +41,21 @@ export const COMPOSITE_FIELD_TYPES: ReadonlySet<FieldMetadataType> = new Set([
   FieldMetadataType.FULL_NAME,
   FieldMetadataType.ADDRESS,
   FieldMetadataType.RICH_TEXT,
+  FieldMetadataType.ACTOR,
+]);
+
+/**
+ * Field types that are system-managed only: never user-selectable in the "add field" picker,
+ * and (for ACTOR) only ever created as the created_by/updated_by audit fields.
+ */
+export const SYSTEM_ONLY_FIELD_TYPES: ReadonlySet<FieldMetadataType> = new Set([
+  FieldMetadataType.ACTOR,
+]);
+
+/** Field types eligible to be an object's record-label (title) identifier. */
+export const LABEL_IDENTIFIER_FIELD_TYPES: ReadonlySet<FieldMetadataType> = new Set([
+  FieldMetadataType.TEXT,
+  FieldMetadataType.FULL_NAME,
 ]);
 
 export const RelationType = {

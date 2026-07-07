@@ -44,6 +44,10 @@ export class FieldMetadataEntity {
   @Column({ type: 'boolean', name: 'is_unique', default: false })
   isUnique!: boolean;
 
+  /** False for a handful of always-on audit fields (created/updated/deleted at) — can't be permission-restricted. */
+  @Column({ type: 'boolean', name: 'is_restrictable', default: true })
+  isRestrictable!: boolean;
+
   @Column({ type: 'jsonb', name: 'default_value', nullable: true })
   defaultValue!: unknown;
 

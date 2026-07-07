@@ -94,6 +94,10 @@ export class InvitationEntity {
   @Column({ type: 'uuid', name: 'invited_by_id', nullable: true })
   invitedById!: string | null;
 
+  /** The role the invitee joins with. Null falls back to the workspace's default role. */
+  @Column({ type: 'uuid', name: 'role_id', nullable: true })
+  roleId!: string | null;
+
   @Column({ type: 'timestamptz', name: 'expires_at' })
   expiresAt!: Date;
 

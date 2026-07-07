@@ -1,6 +1,8 @@
 import { In } from 'typeorm';
-import { UserEntity, WorkspaceMemberEntity } from '@saasly/database';
+import { RoleEntity, UserEntity, WorkspaceMemberEntity } from '@saasly/database';
 import { dataSource } from '../../lib/db.js';
+import { ForbiddenError, NotFoundError } from '../../lib/errors.js';
+import { record } from '../audit-log/audit-log.service.js';
 
 export interface MemberResponse {
   id: string;
@@ -30,4 +32,30 @@ export async function listMembers(workspaceId: string): Promise<MemberResponse[]
     avatarUrl: member.avatarUrl,
     roleId: member.roleId,
   }));
+}
+
+export async function reassignRole(
+  workspaceId: string,
+  memberId: string,
+  actorUserId: string,
+  roleId: string,
+): Promise<void> {
+  const member = await dataSource.getRepository(WorkspaceMemberEntity).findOneBy({ id: memberId, workspaceId });
+  if (!member) throw new NotFoundError('Member not found');
+  if (member.userId === actorUserId) {
+    throw new ForbiddenError("You can't change your own role");
+  }
+
+  const role = await dataSource.getRepository(RoleEntity).findOneBy({ id: roleId, workspaceId });
+  if (!role) throw new NotFoundError('Role not found');
+
+  const previousRoleId = member.roleId;
+  member.roleId = roleId;
+  await dataSource.getRepository(WorkspaceMemberEntity).save(member);
+
+  await record(workspaceId, actorUserId, 'member.role_changed', {
+    memberId,
+    previousRoleId,
+    roleId,
+  });
 }

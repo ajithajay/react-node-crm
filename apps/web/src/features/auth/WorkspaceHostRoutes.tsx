@@ -9,6 +9,11 @@ import { MembersPage } from '@/features/settings/pages/MembersPage';
 import { ProfilePage } from '@/features/settings/pages/ProfilePage';
 import { ExperiencePage } from '@/features/settings/pages/ExperiencePage';
 import { GeneralPage } from '@/features/settings/pages/GeneralPage';
+import { RoleDetailPage } from '@/features/settings/pages/RoleDetailPage';
+import { RoleAddObjectPermissionPage } from '@/features/settings/pages/RoleAddObjectPermissionPage';
+import { RoleObjectPermissionPage } from '@/features/settings/pages/RoleObjectPermissionPage';
+import { DataModelListPage } from '@/features/settings/pages/data-model/DataModelListPage';
+import { ObjectDetailPage } from '@/features/settings/pages/data-model/ObjectDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -50,9 +55,13 @@ export function WorkspaceHostRoutes() {
             <Route path="general" element={<GeneralPage />} />
             <Route path="layout" element={<SettingsPlaceholderPage title="Layout" phase="Phase 5g" />} />
             <Route path="members" element={<MembersPage />} />
-            <Route path="roles" element={<SettingsPlaceholderPage title="Roles & Permissions" phase="Phase 5e" />} />
+            <Route path="roles" element={<Navigate to="/settings/members" replace />} />
+            <Route path="roles/:id/add-object-permission" element={<RoleAddObjectPermissionPage />} />
+            <Route path="roles/:id/object/:objectMetadataId" element={<RoleObjectPermissionPage />} />
+            <Route path="roles/:id" element={<RoleDetailPage />} />
             <Route path="api" element={<SettingsPlaceholderPage title="API & Webhooks" phase="Phase 5f" />} />
-            <Route path="objects" element={<SettingsPlaceholderPage title="Data Model" phase="Phase 5h" />} />
+            <Route path="objects" element={<DataModelListPage />} />
+            <Route path="objects/:id" element={<ObjectDetailPage />} />
           </Route>
         </Route>
       </Route>

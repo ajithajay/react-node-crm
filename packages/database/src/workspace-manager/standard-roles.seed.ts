@@ -3,6 +3,7 @@ import { StandardRoleName } from '@saasly/shared';
 export interface StandardRoleDef {
   name: string;
   label: string;
+  icon: string;
   isEditable: boolean;
   canUpdateAllSettings: boolean;
   canReadAllObjectRecords: boolean;
@@ -17,6 +18,7 @@ export const STANDARD_ROLES: StandardRoleDef[] = [
   {
     name: StandardRoleName.ADMIN,
     label: 'Admin',
+    icon: 'ShieldCheck',
     isEditable: false,
     canUpdateAllSettings: true,
     canReadAllObjectRecords: true,
@@ -28,6 +30,7 @@ export const STANDARD_ROLES: StandardRoleDef[] = [
   {
     name: StandardRoleName.MEMBER,
     label: 'Member',
+    icon: 'User',
     isEditable: true,
     canUpdateAllSettings: false,
     canReadAllObjectRecords: true,
@@ -39,6 +42,7 @@ export const STANDARD_ROLES: StandardRoleDef[] = [
   {
     name: StandardRoleName.GUEST,
     label: 'Guest',
+    icon: 'UserRoundCog',
     isEditable: true,
     canUpdateAllSettings: false,
     canReadAllObjectRecords: true,

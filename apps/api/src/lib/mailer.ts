@@ -3,6 +3,7 @@ import {
   VerifyEmailTemplate,
   PasswordResetTemplate,
   PasswordChangedTemplate,
+  InviteLinkTemplate,
 } from '@saasly/emails';
 import { enqueueEmail } from './queue.js';
 
@@ -19,4 +20,9 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 export async function sendPasswordChangedEmail(to: string): Promise<void> {
   const { html, text } = await renderEmail(PasswordChangedTemplate());
   await enqueueEmail({ to, subject: 'Your password was changed', html, text });
+}
+
+export async function sendInviteLinkEmail(to: string, inviteUrl: string, workspaceName: string): Promise<void> {
+  const { html, text } = await renderEmail(InviteLinkTemplate({ inviteUrl, workspaceName }));
+  await enqueueEmail({ to, subject: `You've been invited to ${workspaceName}`, html, text });
 }

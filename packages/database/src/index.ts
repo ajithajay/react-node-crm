@@ -13,6 +13,7 @@ export * from './entities/index.js';
 export * from './workspace-schema/schema-name.util.js';
 export * from './workspace-schema/workspace-schema.service.js';
 export * from './metadata/metadata.service.js';
+export * from './ddl/field-column-mapper.js';
 export * from './workspace-entity/entity-schema.factory.js';
 export * from './workspace-entity/workspace-datasource-cache.js';
 export * from './workspace-manager/standard-objects.seed.js';

@@ -12,6 +12,14 @@ const SYSTEM_COLUMNS: Record<string, EntitySchemaColumnOptions> = {
 };
 
 /**
+ * Field names already backed by SYSTEM_COLUMNS above — their metadata rows exist only for the
+ * settings/permission UI, so the factory must NOT re-map them (a duplicate physical column would
+ * make TypeORM emit the same column twice). `created_by`/`updated_by` are NOT here: they aren't in
+ * SYSTEM_COLUMNS, so their ACTOR sub-columns are mapped normally.
+ */
+const BASE_SYSTEM_FIELD_NAMES: ReadonlySet<string> = new Set(['id', 'position', 'created_at', 'updated_at', 'deleted_at']);
+
+/**
  * Build a TypeORM EntitySchema for one object, from its current field metadata. Schema-qualified
  * so generated SQL is fully qualified (`workspace_xxx.company`) — no `search_path` juggling.
  */
@@ -23,6 +31,7 @@ export function buildEntitySchema(
   const columns: Record<string, EntitySchemaColumnOptions> = { ...SYSTEM_COLUMNS };
 
   for (const field of fields) {
+    if (BASE_SYSTEM_FIELD_NAMES.has(field.name)) continue;
     Object.assign(columns, mapFieldToEntityColumns(field, object.namePlural));
   }
 

@@ -106,6 +106,14 @@ export function mapFieldToEntityColumns(
         ...col('markdown', { type: 'text', nullable: true }),
       };
 
+    case FieldMetadataType.ACTOR:
+      return {
+        ...col('source', { type: 'text', nullable: true }),
+        ...col('workspace_member_id', { type: 'uuid', nullable: true }),
+        ...col('name', { type: 'text', nullable: true }),
+        ...col('context', { type: 'jsonb', nullable: true }),
+      };
+
     case FieldMetadataType.RAW_JSON:
       return col('', { type: 'jsonb', nullable: true });
 
@@ -116,7 +124,9 @@ export function mapFieldToEntityColumns(
       return col('', { type: 'uuid', nullable, unique });
 
     case FieldMetadataType.RELATION:
-      return col('id', { type: 'uuid', nullable });
+      // Only the MANY_TO_ONE side owns a physical `<name>_id` column. The ONE_TO_MANY reverse side
+      // is virtual (no column) — emit nothing so the dynamic entity doesn't reference a missing column.
+      return settings?.relationType === 'ONE_TO_MANY' ? {} : col('id', { type: 'uuid', nullable });
 
     case FieldMetadataType.MORPH_RELATION:
       return {
