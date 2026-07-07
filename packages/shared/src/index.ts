@@ -25,3 +25,5 @@ export * from './audit-log/schemas.js';
 export * from './invitation/schemas.js';
 export * from './role/schemas.js';
 export * from './data-model/schemas.js';
+export * from './api-key/schemas.js';
+export * from './webhook/schemas.js';

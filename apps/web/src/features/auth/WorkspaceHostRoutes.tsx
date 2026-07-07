@@ -14,6 +14,8 @@ import { RoleAddObjectPermissionPage } from '@/features/settings/pages/RoleAddOb
 import { RoleObjectPermissionPage } from '@/features/settings/pages/RoleObjectPermissionPage';
 import { DataModelListPage } from '@/features/settings/pages/data-model/DataModelListPage';
 import { ObjectDetailPage } from '@/features/settings/pages/data-model/ObjectDetailPage';
+import { ApiSettingsPage } from '@/features/settings/pages/ApiSettingsPage';
+import { RestPlaygroundPage } from '@/features/settings/pages/RestPlaygroundPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -36,6 +38,9 @@ export function WorkspaceHostRoutes() {
       <Route path="/2fa" element={<TwoFactorChallengePage />} />
 
       <Route element={<ProtectedLayout />}>
+        {/* Full-screen — mounted outside ShellLayout/SettingsLayout so Scalar owns the viewport. */}
+        <Route path="/settings/playground/rest/:schema" element={<RestPlaygroundPage />} />
+
         <Route element={<ShellLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/companies" element={<ComingSoonPage title="Companies" phase="Phase 6" />} />
@@ -59,7 +64,7 @@ export function WorkspaceHostRoutes() {
             <Route path="roles/:id/add-object-permission" element={<RoleAddObjectPermissionPage />} />
             <Route path="roles/:id/object/:objectMetadataId" element={<RoleObjectPermissionPage />} />
             <Route path="roles/:id" element={<RoleDetailPage />} />
-            <Route path="api" element={<SettingsPlaceholderPage title="API & Webhooks" phase="Phase 5f" />} />
+            <Route path="api" element={<ApiSettingsPage />} />
             <Route path="objects" element={<DataModelListPage />} />
             <Route path="objects/:id" element={<ObjectDetailPage />} />
           </Route>

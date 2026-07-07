@@ -15,6 +15,9 @@ import type {
   CreateMorphRelationRequest,
   CreateIndexRequest,
   SetObjectIdentifiersRequest,
+  CreateApiKeyRequest,
+  CreateWebhookRequest,
+  UpdateWebhookRequest,
 } from '@saasly/shared';
 import { getAccessToken } from './auth-session.js';
 import { getApiBaseUrl } from './host.js';
@@ -451,4 +454,47 @@ export const dataModelApi = {
 
   deleteIndex: (objectId: string, indexId: string) =>
     del<{ ok: true }>(`/data-model/objects/${objectId}/indexes/${indexId}`),
+};
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  roleId: string | null;
+  isRevoked: boolean;
+  isExpired: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export const apiKeyApi = {
+  list: () => get<ApiKey[]>('/api-keys'),
+
+  create: (input: CreateApiKeyRequest) => post<{ apiKey: ApiKey; token: string }>('/api-keys', input),
+
+  revoke: (id: string) => del<{ ok: true }>(`/api-keys/${id}`),
+};
+
+export interface Webhook {
+  id: string;
+  targetUrl: string;
+  operations: string[];
+  secret: string | null;
+  description: string | null;
+  createdAt: string;
+}
+
+export const webhookApi = {
+  list: () => get<Webhook[]>('/webhooks'),
+
+  create: (input: CreateWebhookRequest) => post<Webhook>('/webhooks', input),
+
+  update: (id: string, input: UpdateWebhookRequest) => patch<Webhook>(`/webhooks/${id}`, input),
+
+  regenerateSecret: (id: string) => post<Webhook>(`/webhooks/${id}/regenerate-secret`),
+
+  remove: (id: string) => del<{ ok: true }>(`/webhooks/${id}`),
+};
+
+export const openApiApi = {
+  getSpec: (schema: 'core' | 'metadata') => get<Record<string, unknown>>(`/open-api/${schema}`),
 };

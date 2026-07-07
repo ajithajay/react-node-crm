@@ -31,5 +31,11 @@ export const AUDIT_LOG_ACTIONS = [
   'data_model.field_updated',
   'data_model.field_deleted',
   'data_model.relation_created',
+  'api_key.created',
+  'api_key.revoked',
+  'webhook.created',
+  'webhook.updated',
+  'webhook.deleted',
+  'webhook.secret_regenerated',
 ] as const;
 export type AuditLogAction = (typeof AUDIT_LOG_ACTIONS)[number];

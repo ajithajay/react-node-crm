@@ -15,6 +15,9 @@ import { roleRouter } from './modules/role/role.routes.js';
 import { auditLogRouter } from './modules/audit-log/audit-log.routes.js';
 import { invitationAdminRouter, invitationPublicRouter } from './modules/invitation/invitation.routes.js';
 import { dataModelRouter } from './modules/data-model/data-model.routes.js';
+import { apiKeyRouter } from './modules/api-key/api-key.routes.js';
+import { webhookRouter } from './modules/webhook/webhook.routes.js';
+import { openApiRouter } from './modules/open-api/open-api.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -36,6 +39,9 @@ export function createApp(): Application {
   app.use('/members/invitations', invitationAdminRouter);
   app.use('/invitations', invitationPublicRouter);
   app.use('/data-model', dataModelRouter);
+  app.use('/api-keys', apiKeyRouter);
+  app.use('/webhooks', webhookRouter);
+  app.use('/open-api', openApiRouter);
 
   app.use(errorHandler);
 

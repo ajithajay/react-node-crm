@@ -7,11 +7,13 @@ allowBuilds:
   argon2: true
   esbuild: true
   msgpackr-extract: true
+  vue-demi: true
 
 onlyBuiltDependencies:
   - argon2
   - esbuild
   - msgpackr-extract
+  - vue-demi
 
 # Dedupe ioredis so BullMQ and our direct dependency share one version/type.
 overrides:
