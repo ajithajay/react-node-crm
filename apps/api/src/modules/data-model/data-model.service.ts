@@ -341,6 +341,9 @@ export async function updateField(
   return toFieldSummary(updated);
 }
 
+/** Core fields that can never be deactivated (mirrors Twenty's fieldNamesThatCannotBeDeactivated). */
+const NON_DEACTIVATABLE_FIELD_NAMES = new Set(['created_at', 'updated_at', 'deleted_at', 'created_by']);
+
 export async function setFieldActive(
   workspaceId: string,
   fieldMetadataId: string,
@@ -349,11 +352,13 @@ export async function setFieldActive(
 ): Promise<void> {
   const field = await fieldRepo().findOneBy({ id: fieldMetadataId, workspaceId });
   if (!field) throw new NotFoundError('Field not found');
-  if (!field.isCustom) throw new ForbiddenError('Standard fields cannot be deactivated');
   if (!isActive) {
     const object = await objectRepo().findOneByOrFail({ id: field.objectMetadataId, workspaceId });
     if (object.labelIdentifierFieldMetadataId === fieldMetadataId) {
       throw new ConflictError('This field is the record label and cannot be deactivated');
+    }
+    if (NON_DEACTIVATABLE_FIELD_NAMES.has(field.name)) {
+      throw new ConflictError('This system field cannot be deactivated');
     }
   }
 

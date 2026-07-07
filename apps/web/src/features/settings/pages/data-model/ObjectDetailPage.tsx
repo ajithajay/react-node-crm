@@ -41,6 +41,9 @@ import { ApiError, type DataModelField, type DataModelObjectDetail, dataModelApi
 import { getIcon, ROLE_ICON_OPTIONS } from '@/lib/icons';
 import { FIELD_TYPE_ICON, FIELD_TYPE_LABEL, FieldFormDialog } from './field-config';
 
+/** System fields that can't be deactivated (mirrors the API guard + Twenty). Still editable. */
+const NON_DEACTIVATABLE_FIELD_NAMES = new Set(['created_at', 'updated_at', 'deleted_at', 'created_by']);
+
 function relationTypeOf(field: DataModelField): RelationType | null {
   if (field.type !== 'RELATION' && field.type !== 'MORPH_RELATION') return null;
   return (field.settings as { relationType?: RelationType } | null)?.relationType ?? null;
@@ -82,9 +85,11 @@ function FieldRow({
     onSuccess: invalidate,
   });
 
-  // Edit is offered for ordinary fields; relations and non-restrictable system audit fields aren't editable here.
-  const canEdit = !isRelation && field.isRestrictable;
-  const canToggleActive = field.isCustom && !isLabelIdentifier;
+  // Every field (standard, system, or custom) is editable — label, icon, and type settings like date
+  // format. Deactivate is allowed except for the record label and the locked core system fields.
+  // Delete drops the physical column, so it's custom-only.
+  const canEdit = !isRelation;
+  const canToggleActive = !isLabelIdentifier && !NON_DEACTIVATABLE_FIELD_NAMES.has(field.name);
   const canDelete = field.isCustom && !isLabelIdentifier;
   const hasMenu = canEdit || canToggleActive || canDelete;
 
@@ -149,12 +154,18 @@ function RelationRow({
   targetLabel: string | null;
 }) {
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
   const TypeIcon = field.icon && field.icon !== 'Circle' ? getIcon(field.icon) : (FIELD_TYPE_ICON[field.type] ?? getIcon('Circle'));
   const type = relationTypeOf(field) === RelationType.ONE_TO_MANY ? 'Has many' : field.type === 'MORPH_RELATION' ? 'Belongs to one (morph)' : 'Belongs to one';
 
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['data-model-object', objectId] });
+  const setActive = useMutation({
+    mutationFn: (isActive: boolean) => dataModelApi.setFieldActive(objectId, field.id, isActive),
+    onSuccess: invalidate,
+  });
   const remove = useMutation({
     mutationFn: () => dataModelApi.deleteField(objectId, field.id),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['data-model-object', objectId] }),
+    onSuccess: invalidate,
   });
 
   return (
@@ -169,11 +180,32 @@ function RelationRow({
       <TableCell>{field.isCustom ? 'Custom' : 'Standard'}</TableCell>
       <TableCell className="text-muted-foreground">{type}</TableCell>
       <TableCell className="w-10 text-right">
-        {field.isCustom && (
-          <Button type="button" variant="ghost" size="icon-sm" title="Delete relation" onClick={() => remove.mutate()}>
-            <Trash className="size-4" />
-          </Button>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button type="button" variant="ghost" size="icon-sm">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setEditing(true)}>
+              <Pencil className="size-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setActive.mutate(!field.isActive)}>
+              <Power className="size-4" /> {field.isActive ? 'Deactivate' : 'Activate'}
+            </DropdownMenuItem>
+            {field.isCustom && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => remove.mutate()}>
+                  <Trash className="size-4" /> Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <FieldFormDialog objectId={objectId} mode="edit" field={field} open={editing} onOpenChange={setEditing} />
       </TableCell>
     </TableRow>
   );
