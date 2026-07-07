@@ -4,7 +4,7 @@ import { ShellLayout } from '@/features/shell/ShellLayout';
 import { HomePage } from '@/features/shell/pages/HomePage';
 import { ComingSoonPage } from '@/features/shell/pages/ComingSoonPage';
 import { SettingsLayout } from '@/features/settings/SettingsLayout';
-import { SettingsPlaceholderPage } from '@/features/settings/pages/SettingsPlaceholderPage';
+import { LayoutPage } from '@/features/settings/pages/LayoutPage';
 import { MembersPage } from '@/features/settings/pages/MembersPage';
 import { ProfilePage } from '@/features/settings/pages/ProfilePage';
 import { ExperiencePage } from '@/features/settings/pages/ExperiencePage';
@@ -58,7 +58,7 @@ export function WorkspaceHostRoutes() {
             <Route path="profile" element={<ProfilePage />} />
             <Route path="experience" element={<ExperiencePage />} />
             <Route path="general" element={<GeneralPage />} />
-            <Route path="layout" element={<SettingsPlaceholderPage title="Layout" phase="Phase 5g" />} />
+            <Route path="layout" element={<LayoutPage />} />
             <Route path="members" element={<MembersPage />} />
             <Route path="roles" element={<Navigate to="/settings/members" replace />} />
             <Route path="roles/:id/add-object-permission" element={<RoleAddObjectPermissionPage />} />
