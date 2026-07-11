@@ -1,0 +1,245 @@
+import { ArrowDown, ArrowUp, ChevronDown, Filter as FilterIcon, Plus, Search, Settings2, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { DataModelField, ImportSummary, View, ViewFieldConfig } from '@/lib/api-client';
+import { CreateViewDialog, type CreateViewInput } from './CreateViewDialog';
+import { FilterBar, type FilterCondition } from './FilterBar';
+import { ImportCsvDialog } from './ImportCsvDialog';
+import { FILTERABLE_TYPES, friendlyFieldKey } from '../lib/field-values';
+
+const OPERAND_SUMMARY: Record<string, string> = {
+  IS: 'is',
+  IS_NOT: 'is not',
+  IS_EMPTY: 'is empty',
+  IS_NOT_EMPTY: 'is not empty',
+  CONTAINS: 'contains',
+  DOES_NOT_CONTAIN: 'does not contain',
+  LESS_THAN_OR_EQUAL: '≤',
+  GREATER_THAN_OR_EQUAL: '≥',
+  IS_BEFORE: 'before',
+  IS_AFTER: 'after',
+  IS_RELATIVE: '~',
+};
+
+function Chip({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
+  return (
+    <span className="inline-flex h-7 items-center gap-1.5 rounded-md border bg-muted/40 px-2 text-xs">
+      {children}
+      <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-foreground">
+        <X className="size-3" />
+      </button>
+    </span>
+  );
+}
+
+/**
+ * View picker + filter/sort bar, matching Twenty's ViewBar layout: a 39px row (view name + filter/sort
+ * icon buttons) above a chips row summarizing active filters/sort/search — each chip removable, a "+"
+ * opens the full editor in a popover rather than Twenty's per-condition inline dropdown (a reasonable
+ * simplification — see task-list.md).
+ */
+/** Fields eligible as table columns at all — excludes MORPH_RELATION and reverse (ONE_TO_MANY) RELATION,
+ * which have no table cell (see record-field-codec.ts) and are shown as relation widgets instead. */
+function isColumnField(field: DataModelField): boolean {
+  if (field.type === 'MORPH_RELATION') return false;
+  if (field.type === 'RELATION' && field.settings?.relationType === 'ONE_TO_MANY') return false;
+  return true;
+}
+
+export function RecordTableToolbar({
+  views,
+  activeViewId,
+  onSelectView,
+  fields,
+  viewFields,
+  onToggleFieldVisibility,
+  onCreateView,
+  onExport,
+  onImport,
+  search,
+  onSearchChange,
+  filters,
+  onFiltersChange,
+  sortField,
+  sortDirection,
+  onSortChange,
+}: {
+  views: View[];
+  activeViewId: string | undefined;
+  onSelectView: (id: string) => void;
+  fields: DataModelField[];
+  viewFields: ViewFieldConfig[];
+  onToggleFieldVisibility: (fieldMetadataId: string, isVisible: boolean) => void;
+  onCreateView: (input: CreateViewInput) => void;
+  onExport: () => void;
+  onImport: (file: File) => Promise<ImportSummary>;
+  search: string;
+  onSearchChange: (value: string) => void;
+  filters: FilterCondition[];
+  onFiltersChange: (filters: FilterCondition[]) => void;
+  sortField: string | undefined;
+  sortDirection: 'ASC' | 'DESC';
+  onSortChange: (field: string | undefined, direction: 'ASC' | 'DESC') => void;
+}) {
+  const fieldByKey = new Map(fields.map((f) => [friendlyFieldKey(f), f]));
+  const sortableFields = fields.filter((f) => FILTERABLE_TYPES.has(f.type));
+  const activeView = views.find((v) => v.id === activeViewId);
+  const columnFields = fields.filter(isColumnField);
+  const visibilityByFieldId = new Map(viewFields.map((f) => [f.fieldMetadataId, f.isVisible]));
+
+  return (
+    <div className="border-b">
+      <div className="flex h-9.75 items-center justify-between px-1">
+        <div className="flex items-center gap-1">
+          <Select value={activeViewId} onValueChange={(id) => id && onSelectView(id)}>
+            <SelectTrigger className="h-7 w-auto gap-1 border-0 px-1.5 text-sm font-medium shadow-none">
+              <SelectValue placeholder={activeView?.name ?? 'View'}>
+                <span className="inline-flex items-center gap-1">
+                  {activeView?.name}
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
+                </span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {views.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <CreateViewDialog fields={fields} onCreate={onCreateView} />
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" />}>
+              <FilterIcon className="size-3.5" /> Filter
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto min-w-96">
+              <FilterBar fields={fields} conditions={filters} onChange={onFiltersChange} />
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" />}>
+              {sortDirection === 'ASC' ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />} Sort
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 space-y-2">
+              <Select
+                value={sortField}
+                onValueChange={(v) => onSortChange(v || undefined, sortDirection)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sort by…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortableFields.map((f) => (
+                    <SelectItem key={f.id} value={friendlyFieldKey(f)}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1">
+                <Button
+                  variant={sortDirection === 'ASC' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => onSortChange(sortField, 'ASC')}
+                >
+                  Ascending
+                </Button>
+                <Button
+                  variant={sortDirection === 'DESC' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => onSortChange(sortField, 'DESC')}
+                >
+                  Descending
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" />}>
+              <Settings2 className="size-3.5" /> Options
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Fields</p>
+              <div className="max-h-80 space-y-1 overflow-y-auto">
+                {columnFields.map((field) => (
+                  <label key={field.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted">
+                    <Checkbox
+                      checked={visibilityByFieldId.get(field.id) ?? true}
+                      onCheckedChange={(c) => onToggleFieldVisibility(field.id, c === true)}
+                    />
+                    {field.label}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-2 space-y-0.5 border-t pt-2">
+                <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 text-xs" onClick={onExport}>
+                  Export CSV
+                </Button>
+                <ImportCsvDialog onImport={onImport} />
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      <div className="flex min-h-8 flex-wrap items-center gap-1.5 border-t px-1 py-1">
+        <Popover>
+          <PopoverTrigger render={<button type="button" className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted" />}>
+            <Search className="size-3.5" />
+            {search ? null : 'Search'}
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-56">
+            <Input autoFocus placeholder="Search…" value={search} onChange={(e) => onSearchChange(e.target.value)} />
+          </PopoverContent>
+        </Popover>
+        {search && <Chip onRemove={() => onSearchChange('')}>&quot;{search}&quot;</Chip>}
+
+        {filters.map((condition, index) => {
+          const field = fieldByKey.get(condition.field);
+          return (
+            <Chip
+              key={index}
+              onRemove={() => onFiltersChange(filters.filter((_, i) => i !== index))}
+            >
+              {field?.label ?? condition.field} {OPERAND_SUMMARY[condition.operand] ?? condition.operand}
+              {condition.value !== undefined && condition.value !== null ? ` ${String(condition.value)}` : ''}
+            </Chip>
+          );
+        })}
+
+        {sortField && (
+          <Chip onRemove={() => onSortChange(undefined, 'ASC')}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1"
+              onClick={() => onSortChange(sortField, sortDirection === 'ASC' ? 'DESC' : 'ASC')}
+            >
+              {fieldByKey.get(sortField)?.label ?? sortField}
+              {sortDirection === 'ASC' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+            </button>
+          </Chip>
+        )}
+
+        <Popover>
+          <PopoverTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" />}>
+            <Plus className="size-3.5" /> Add filter
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto min-w-96">
+            <FilterBar fields={fields} conditions={filters} onChange={onFiltersChange} />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
+}

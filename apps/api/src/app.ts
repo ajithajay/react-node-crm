@@ -18,6 +18,8 @@ import { dataModelRouter } from './modules/data-model/data-model.routes.js';
 import { apiKeyRouter } from './modules/api-key/api-key.routes.js';
 import { webhookRouter } from './modules/webhook/webhook.routes.js';
 import { openApiRouter } from './modules/open-api/open-api.routes.js';
+import { recordRouter } from './modules/record/record.routes.js';
+import { viewRouter } from './modules/view/view.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -42,6 +44,8 @@ export function createApp(): Application {
   app.use('/api-keys', apiKeyRouter);
   app.use('/webhooks', webhookRouter);
   app.use('/open-api', openApiRouter);
+  app.use('/rest', recordRouter);
+  app.use('/views', viewRouter);
 
   app.use(errorHandler);
 

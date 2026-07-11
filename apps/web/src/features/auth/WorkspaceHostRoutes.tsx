@@ -16,6 +16,7 @@ import { DataModelListPage } from '@/features/settings/pages/data-model/DataMode
 import { ObjectDetailPage } from '@/features/settings/pages/data-model/ObjectDetailPage';
 import { ApiSettingsPage } from '@/features/settings/pages/ApiSettingsPage';
 import { RestPlaygroundPage } from '@/features/settings/pages/RestPlaygroundPage';
+import { ObjectRecordsPage } from '@/features/objects/pages/ObjectRecordsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -43,11 +44,11 @@ export function WorkspaceHostRoutes() {
 
         <Route element={<ShellLayout />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/companies" element={<ComingSoonPage title="Companies" phase="Phase 6" />} />
-          <Route path="/people" element={<ComingSoonPage title="People" phase="Phase 6" />} />
-          <Route path="/opportunities" element={<ComingSoonPage title="Opportunities" phase="Phase 6" />} />
-          <Route path="/tasks" element={<ComingSoonPage title="Tasks" phase="Phase 6" />} />
-          <Route path="/notes" element={<ComingSoonPage title="Notes" phase="Phase 6" />} />
+          <Route path="/companies" element={<ObjectRecordsPage objectNamePlural="companies" />} />
+          <Route path="/people" element={<ObjectRecordsPage objectNamePlural="people" />} />
+          <Route path="/opportunities" element={<ObjectRecordsPage objectNamePlural="opportunities" />} />
+          <Route path="/tasks" element={<ObjectRecordsPage objectNamePlural="tasks" />} />
+          <Route path="/notes" element={<ObjectRecordsPage objectNamePlural="notes" />} />
           <Route path="/dashboards" element={<ComingSoonPage title="Dashboards" phase="Phase 7" />} />
           <Route path="/workflows" element={<ComingSoonPage title="Workflows" phase="Phase 8" />} />
           <Route path="/workflows/runs" element={<ComingSoonPage title="Workflow Runs" phase="Phase 8" />} />

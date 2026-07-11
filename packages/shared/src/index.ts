@@ -27,3 +27,6 @@ export * from './role/schemas.js';
 export * from './data-model/schemas.js';
 export * from './api-key/schemas.js';
 export * from './webhook/schemas.js';
+export * from './record/schemas.js';
+export * from './view/schemas.js';
+export * from './utils/naming.js';

@@ -55,6 +55,22 @@ const del = <T>(path: string, body?: unknown): Promise<T> =>
 const put = <T>(path: string, body?: unknown): Promise<T> =>
   apiFetch<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined });
 
+/** GET a file response (e.g. CSV export) as a Blob + its server-suggested filename. */
+async function getFile(path: string): Promise<{ blob: Blob; filename: string }> {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const res = await fetch(`${getApiBaseUrl()}${path}`, { headers, credentials: 'include' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, (data as { error?: string } | null)?.error ?? res.statusText);
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'export.csv';
+  return { blob: await res.blob(), filename };
+}
+
 /** Fetch without a Content-Type header — the browser sets the multipart boundary itself. */
 async function postForm<T>(path: string, form: FormData): Promise<T> {
   const headers = new Headers();
@@ -497,4 +513,143 @@ export const webhookApi = {
 
 export const openApiApi = {
   getSpec: (schema: 'core' | 'metadata') => get<Record<string, unknown>>(`/open-api/${schema}`),
+};
+
+// ---- Generic record CRUD (Phase 6) ----
+
+export interface RecordListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortField?: string;
+  sortDirection?: 'ASC' | 'DESC';
+  filter?: { field: string; operand: string; value?: unknown }[];
+}
+
+export interface RecordListResult {
+  records: Record<string, unknown>[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export const recordApi = {
+  list: (objectNamePlural: string, params: RecordListParams = {}) => {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', String(params.page));
+    if (params.pageSize) q.set('pageSize', String(params.pageSize));
+    if (params.search) q.set('search', params.search);
+    if (params.sortField) q.set('sortField', params.sortField);
+    if (params.sortDirection) q.set('sortDirection', params.sortDirection);
+    if (params.filter && params.filter.length > 0) q.set('filter', JSON.stringify(params.filter));
+    const qs = q.toString();
+    return get<RecordListResult>(`/rest/${objectNamePlural}${qs ? `?${qs}` : ''}`);
+  },
+
+  get: (objectNamePlural: string, id: string) => get<Record<string, unknown>>(`/rest/${objectNamePlural}/${id}`),
+
+  create: (objectNamePlural: string, body: Record<string, unknown>) =>
+    post<Record<string, unknown>>(`/rest/${objectNamePlural}`, body),
+
+  update: (objectNamePlural: string, id: string, body: Record<string, unknown>) =>
+    patch<Record<string, unknown>>(`/rest/${objectNamePlural}/${id}`, body),
+
+  remove: (objectNamePlural: string, id: string, hard = false) =>
+    del<{ ok: true }>(`/rest/${objectNamePlural}/${id}${hard ? '?hard=true' : ''}`),
+
+  exportCsv: (objectNamePlural: string, params: RecordListParams = {}) => {
+    const q = new URLSearchParams();
+    if (params.search) q.set('search', params.search);
+    if (params.sortField) q.set('sortField', params.sortField);
+    if (params.sortDirection) q.set('sortDirection', params.sortDirection);
+    if (params.filter && params.filter.length > 0) q.set('filter', JSON.stringify(params.filter));
+    const qs = q.toString();
+    return getFile(`/rest/${objectNamePlural}/export${qs ? `?${qs}` : ''}`);
+  },
+
+  importCsv: (objectNamePlural: string, file: File) => {
+    const form = new FormData();
+    form.set('file', file);
+    return postForm<ImportSummary>(`/rest/${objectNamePlural}/import`, form);
+  },
+};
+
+export interface ImportSummary {
+  created: number;
+  failed: number;
+  errors: { row: number; message: string }[];
+}
+
+// ---- Saved views (Phase 6) ----
+
+export interface View {
+  id: string;
+  objectMetadataId: string;
+  name: string;
+  type: 'TABLE' | 'KANBAN';
+  icon: string | null;
+  position: number;
+  isCompact: boolean;
+  kanbanFieldMetadataId: string | null;
+}
+
+export interface ViewFieldConfig {
+  fieldMetadataId: string;
+  position: number;
+  isVisible: boolean;
+  size: number;
+}
+
+export interface ViewFilterConfig {
+  id: string;
+  fieldMetadataId: string;
+  operand: string;
+  value: unknown;
+  position: number;
+}
+
+export interface ViewSortConfig {
+  fieldMetadataId: string;
+  direction: 'ASC' | 'DESC';
+}
+
+export interface ViewGroupConfig {
+  fieldValue: string;
+  isVisible: boolean;
+  position: number;
+}
+
+export interface ViewDetail extends View {
+  fields: ViewFieldConfig[];
+  filters: ViewFilterConfig[];
+  sorts: ViewSortConfig[];
+  groups: ViewGroupConfig[];
+}
+
+export const viewApi = {
+  list: (objectMetadataId: string) => get<View[]>(`/views?objectMetadataId=${objectMetadataId}`),
+
+  get: (id: string) => get<ViewDetail>(`/views/${id}`),
+
+  create: (input: { objectMetadataId: string; name: string; type?: 'TABLE' | 'KANBAN'; icon?: string }) =>
+    post<View>('/views', input),
+
+  update: (
+    id: string,
+    input: Partial<{ name: string; icon: string | null; isCompact: boolean; kanbanFieldMetadataId: string | null; position: number }>,
+  ) => patch<View>(`/views/${id}`, input),
+
+  remove: (id: string) => del<{ ok: true }>(`/views/${id}`),
+
+  setFields: (id: string, fields: { fieldMetadataId: string; isVisible: boolean; size: number }[]) =>
+    put<ViewFieldConfig[]>(`/views/${id}/fields`, fields),
+
+  setFilters: (id: string, filters: { fieldMetadataId: string; operand: string; value?: unknown }[]) =>
+    put<ViewFilterConfig[]>(`/views/${id}/filters`, filters),
+
+  setSorts: (id: string, sorts: { fieldMetadataId: string; direction: 'ASC' | 'DESC' }[]) =>
+    put<ViewSortConfig[]>(`/views/${id}/sorts`, sorts),
+
+  setGroups: (id: string, groups: { fieldValue: string; isVisible: boolean }[]) =>
+    put<ViewGroupConfig[]>(`/views/${id}/groups`, groups),
 };
