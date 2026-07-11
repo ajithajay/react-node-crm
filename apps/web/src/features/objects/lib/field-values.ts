@@ -102,6 +102,11 @@ export function formatFieldValue(field: DataModelField, record: Record<string, u
     }
   }
 
+  if (field.type === FieldMetadataType.ACTOR) {
+    const v = value as Record<string, unknown>;
+    return (v.name as string | null) || '—';
+  }
+
   switch (field.type) {
     case FieldMetadataType.BOOLEAN:
       return value ? 'Yes' : 'No';

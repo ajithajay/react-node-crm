@@ -28,6 +28,10 @@ export type SetObjectIdentifiersRequest = z.infer<typeof setObjectIdentifiersReq
 export const setActiveRequestSchema = z.object({ isActive: z.boolean() });
 export type SetActiveRequest = z.infer<typeof setActiveRequestSchema>;
 
+/** Settings → Layout: hide/show a field on a record's Overview tab. */
+export const setFieldRecordPageVisibilityRequestSchema = z.object({ isVisible: z.boolean() });
+export type SetFieldRecordPageVisibilityRequest = z.infer<typeof setFieldRecordPageVisibilityRequestSchema>;
+
 /** RELATION/MORPH_RELATION go through the dedicated relation endpoints; ACTOR is system-managed. */
 const NON_RELATION_FIELD_TYPES = Object.values(FieldMetadataType).filter(
   (t) =>

@@ -11,7 +11,7 @@ import type { CreateViewInput } from '../components/CreateViewDialog';
 import type { FilterCondition } from '../components/FilterBar';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { RecordSheet } from '../components/RecordSheet';
-import { RecordTableCellEditable } from '../components/RecordTableCellEditable';
+import { RecordTableCellDisplay } from '../components/RecordTableCellDisplay';
 import { RecordTableToolbar } from '../components/RecordTableToolbar';
 import { friendlyFieldKey } from '../lib/field-values';
 import { FIELD_TYPE_ICON, TABLE_ROW_HEIGHT } from '../lib/table-tokens';
@@ -312,8 +312,13 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
             {records.map((record) => {
               const id = record.id as string;
               return (
-                <TableRow key={id} style={{ height: TABLE_ROW_HEIGHT }}>
-                  <TableCell className="sticky left-0 z-10 bg-background">
+                <TableRow
+                  key={id}
+                  style={{ height: TABLE_ROW_HEIGHT }}
+                  className="cursor-pointer"
+                  onClick={() => setEditRecord(record)}
+                >
+                  <TableCell className="sticky left-0 z-10 bg-background" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selected.has(id)}
                       onCheckedChange={(c) => toggleSelectRow(id, c === true)}
@@ -321,14 +326,10 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
                   </TableCell>
                   {columns.map((field) => (
                     <TableCell key={field.id} className="max-w-64 overflow-hidden">
-                      <RecordTableCellEditable
+                      <RecordTableCellDisplay
                         field={field}
                         record={record}
                         isLabelIdentifier={detail.object.labelIdentifierFieldMetadataId === field.id}
-                        onSave={(value) =>
-                          updateMutation.mutate({ id, body: { [friendlyFieldKey(field)]: value } })
-                        }
-                        onOpenDialog={() => setEditRecord(record)}
                       />
                     </TableCell>
                   ))}
@@ -368,6 +369,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
         }}
         mode="create"
         objectLabel={object.labelSingular}
+        objectNameSingular={object.nameSingular}
         fields={detail.fields}
         initialValues={createInitialValues}
         onSubmit={(body) => createMutation.mutateAsync(body)}
@@ -380,6 +382,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
           onOpenChange={(open) => !open && setEditRecord(null)}
           mode="edit"
           objectLabel={object.labelSingular}
+          objectNameSingular={object.nameSingular}
           fields={detail.fields}
           labelIdentifierField={labelIdentifierField}
           initialValues={editRecord}

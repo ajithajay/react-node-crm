@@ -89,7 +89,11 @@ export function decodeRecord(
       out[`${key}Id`] = col(row, `${field.name}_id`) ?? null;
       continue;
     }
-    if (field.type === FieldMetadataType.MORPH_RELATION) continue; // polymorphic target resolution deferred
+    if (field.type === FieldMetadataType.MORPH_RELATION) {
+      out[`${key}Type`] = col(row, `${field.name}_target_type`) ?? null;
+      out[`${key}Id`] = col(row, `${field.name}_target_id`) ?? null;
+      continue;
+    }
 
     const shape = COMPOSITE_SHAPE[field.type];
     if (shape) {
@@ -115,7 +119,8 @@ function assertWritable(field: FieldMetadataEntity, restrictedForWrite: Readonly
  * Encodes a friendly camelCase JSON body into entity property values ready for
  * `repository.create()`/`.save()`. Only keys present in `body` are touched (partial-update safe).
  * ACTOR fields are never client-writable (system-managed — see record.service.ts) and
- * MORPH_RELATION / reverse RELATION fields are read-only in this v1 (see task-list.md).
+ * reverse RELATION fields are read-only in this v1 (see task-list.md). MORPH_RELATION fields
+ * accept `${key}Type`/`${key}Id` (e.g. `targetType`/`targetId`) written together.
  */
 export function encodeRecordInput(
   fields: FieldMetadataEntity[],
@@ -126,9 +131,18 @@ export function encodeRecordInput(
 
   for (const field of fields) {
     if (SKIP_FIELD_NAMES.has(field.name) || field.type === FieldMetadataType.ACTOR) continue;
-    if (field.type === FieldMetadataType.MORPH_RELATION) continue;
 
     const key = toCamelCase(field.name);
+
+    if (field.type === FieldMetadataType.MORPH_RELATION) {
+      const typeKey = `${key}Type`;
+      const idKey = `${key}Id`;
+      if (!(typeKey in body) && !(idKey in body)) continue;
+      assertWritable(field, restrictedForWrite);
+      out[`${field.name}_target_type`] = body[typeKey] ?? null;
+      out[`${field.name}_target_id`] = body[idKey] ?? null;
+      continue;
+    }
 
     if (field.type === FieldMetadataType.RELATION) {
       if (field.settings?.relationType === 'ONE_TO_MANY') continue;

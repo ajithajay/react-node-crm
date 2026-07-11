@@ -6,6 +6,7 @@ import type {
   CreateObjectRequest,
   CreateRelationRequest,
   SetActiveRequest,
+  SetFieldRecordPageVisibilityRequest,
   SetObjectIdentifiersRequest,
   UpdateFieldRequest,
   UpdateObjectRequest,
@@ -73,6 +74,19 @@ export async function setFieldActive(
 ): Promise<void> {
   await dataModelService.setFieldActive(req.workspaceId!, req.params.fieldId, req.user!.id, req.body.isActive);
   res.status(200).json({ ok: true });
+}
+
+export async function setFieldRecordPageVisibility(
+  req: Request<{ id: string; fieldId: string }, unknown, SetFieldRecordPageVisibilityRequest>,
+  res: Response,
+): Promise<void> {
+  const result = await dataModelService.setFieldRecordPageVisibility(
+    req.workspaceId!,
+    req.params.fieldId,
+    req.user!.id,
+    req.body.isVisible,
+  );
+  res.status(200).json(result);
 }
 
 export async function deleteField(req: Request<{ id: string; fieldId: string }>, res: Response): Promise<void> {

@@ -23,6 +23,7 @@ import { env } from '../../lib/config.js';
 import { AppError, ConflictError, NotFoundError, UnauthorizedError } from '../../lib/errors.js';
 import { sendVerifyEmail, sendPasswordResetEmail, sendPasswordChangedEmail } from '../../lib/mailer.js';
 import { record } from '../audit-log/audit-log.service.js';
+import { syncWorkspaceMemberRecord } from '../../lib/workspace-member-sync.js';
 
 const userRepo = () => dataSource.getRepository(UserEntity);
 const workspaceRepo = () => dataSource.getRepository(WorkspaceEntity);
@@ -165,7 +166,7 @@ export async function createWorkspace(
   const adminRole = provisioned.roles.find((role) => role.name === StandardRoleName.ADMIN);
 
   await userWorkspaceRepo().save(userWorkspaceRepo().create({ userId, workspaceId: workspace.id }));
-  await memberRepo().save(
+  const member = await memberRepo().save(
     memberRepo().create({
       workspaceId: workspace.id,
       userId,
@@ -174,6 +175,7 @@ export async function createWorkspace(
       lastName: user.lastName,
     }),
   );
+  await syncWorkspaceMemberRecord(workspace.id, member);
 
   return issueLoginRedirect(userId, workspace.id);
 }

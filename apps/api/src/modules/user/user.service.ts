@@ -14,6 +14,7 @@ import type { UpdatePreferencesRequest } from '@saasly/shared';
 import { hasVerifiedTwoFactor } from '../auth/auth.service.js';
 import { uploadFile, deleteFile, fileIdFromUrl } from '../file/file.service.js';
 import { record } from '../audit-log/audit-log.service.js';
+import { syncWorkspaceMemberRecord } from '../../lib/workspace-member-sync.js';
 
 export interface MeResponse {
   id: string;
@@ -65,6 +66,7 @@ export async function updateProfile(
   member.firstName = input.firstName;
   member.lastName = input.lastName;
   await memberRepo().save(member);
+  await syncWorkspaceMemberRecord(workspaceId, member);
 }
 
 export async function updatePreferences(

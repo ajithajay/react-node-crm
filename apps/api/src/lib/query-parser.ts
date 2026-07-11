@@ -23,8 +23,9 @@ const COMPARABLE_TYPES: ReadonlySet<FieldMetadataType> = new Set([
 
 /**
  * Simple, single-column fields the parser can filter/sort/search on — composite types (CURRENCY,
- * EMAILS, ADDRESS, …), MORPH_RELATION, and the ONE_TO_MANY reverse side of RELATION are excluded
- * (querying their sub-fields needs more modeling; see task-list.md's Phase 6 follow-ups).
+ * EMAILS, ADDRESS, …) and the ONE_TO_MANY reverse side of RELATION are excluded (querying their
+ * sub-fields needs more modeling; see task-list.md's Phase 6 follow-ups). MORPH_RELATION exposes
+ * its `${key}Type`/`${key}Id` pair as two filterable pseudo-columns, matching the codec's shape.
  */
 export interface FilterableField {
   field: FieldMetadataEntity;
@@ -34,7 +35,12 @@ export interface FilterableField {
 export function buildFilterableFieldIndex(fields: FieldMetadataEntity[]): Map<string, FilterableField> {
   const index = new Map<string, FilterableField>();
   for (const field of fields) {
-    if (field.type === FieldMetadataType.MORPH_RELATION) continue;
+    if (field.type === FieldMetadataType.MORPH_RELATION) {
+      const key = toCamelCase(field.name);
+      index.set(`${key}Type`, { field, columnName: `${field.name}_target_type` });
+      index.set(`${key}Id`, { field, columnName: `${field.name}_target_id` });
+      continue;
+    }
 
     if (field.type === FieldMetadataType.RELATION) {
       if (field.settings?.relationType === 'ONE_TO_MANY') continue;

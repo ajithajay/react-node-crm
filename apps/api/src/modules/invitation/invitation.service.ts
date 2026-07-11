@@ -16,6 +16,7 @@ import { sendInviteLinkEmail } from '../../lib/mailer.js';
 import { AppError, ConflictError, NotFoundError, UnauthorizedError } from '../../lib/errors.js';
 import { record } from '../audit-log/audit-log.service.js';
 import { issueLoginRedirect } from '../auth/auth.service.js';
+import { syncWorkspaceMemberRecord } from '../../lib/workspace-member-sync.js';
 
 const invitationRepo = () => dataSource.getRepository(InvitationEntity);
 const userRepo = () => dataSource.getRepository(UserEntity);
@@ -177,7 +178,7 @@ async function joinWorkspaceViaInvitation(invitation: InvitationEntity, userId: 
       workspaceRepo().findOneByOrFail({ id: invitation.workspaceId }),
       userRepo().findOneByOrFail({ id: userId }),
     ]);
-    await memberRepo().save(
+    const member = await memberRepo().save(
       memberRepo().create({
         workspaceId: invitation.workspaceId,
         userId,
@@ -186,6 +187,7 @@ async function joinWorkspaceViaInvitation(invitation: InvitationEntity, userId: 
         lastName: user.lastName,
       }),
     );
+    await syncWorkspaceMemberRecord(invitation.workspaceId, member);
   }
 
   invitation.status = InvitationStatus.ACCEPTED;

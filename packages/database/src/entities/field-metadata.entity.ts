@@ -48,6 +48,10 @@ export class FieldMetadataEntity {
   @Column({ type: 'boolean', name: 'is_restrictable', default: true })
   isRestrictable!: boolean;
 
+  /** Settings → Layout (BRD §7.2): hides a field from a record's Overview tab without deactivating it. */
+  @Column({ type: 'boolean', name: 'is_visible_in_record_page', default: true })
+  isVisibleInRecordPage!: boolean;
+
   @Column({ type: 'jsonb', name: 'default_value', nullable: true })
   defaultValue!: unknown;
 

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { DataModelField } from '@/lib/api-client';
+import { RelationPickerInput } from '../components/RelationPickerInput';
 
 /** Field types not offered in the create/edit form — system-managed, polymorphic-target, or reverse-only. */
 const EXCLUDED_TYPES: ReadonlySet<string> = new Set([
@@ -140,13 +141,7 @@ export function FieldInput({
         />
       );
     case FieldMetadataType.RELATION:
-      return (
-        <Input
-          placeholder="Target record id (uuid)"
-          value={(value as string) ?? ''}
-          onChange={(e) => onChange(e.target.value || null)}
-        />
-      );
+      return <RelationPickerInput field={field} value={(value as string) ?? null} onChange={onChange} />;
     default:
       return <Input value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)} />;
   }

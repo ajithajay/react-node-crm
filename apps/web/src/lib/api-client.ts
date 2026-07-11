@@ -414,6 +414,7 @@ export interface DataModelField {
   isNullable: boolean;
   isUnique: boolean;
   isRestrictable: boolean;
+  isVisibleInRecordPage: boolean;
   settings: Record<string, unknown> | null;
   defaultValue: unknown;
 }
@@ -456,6 +457,9 @@ export const dataModelApi = {
 
   setFieldActive: (objectId: string, fieldId: string, isActive: boolean) =>
     patch<{ ok: true }>(`/data-model/objects/${objectId}/fields/${fieldId}/active`, { isActive }),
+
+  setFieldRecordPageVisibility: (objectId: string, fieldId: string, isVisible: boolean) =>
+    patch<DataModelField>(`/data-model/objects/${objectId}/fields/${fieldId}/record-page-visibility`, { isVisible }),
 
   deleteField: (objectId: string, fieldId: string) => del<{ ok: true }>(`/data-model/objects/${objectId}/fields/${fieldId}`),
 
@@ -579,6 +583,15 @@ export interface ImportSummary {
   failed: number;
   errors: { row: number; message: string }[];
 }
+
+/** Generic file upload backing the record Files tab's attachment records. */
+export const filesApi = {
+  upload: (file: File) => {
+    const form = new FormData();
+    form.set('file', file);
+    return postForm<{ id: string; url: string }>('/files/upload', form);
+  },
+};
 
 // ---- Saved views (Phase 6) ----
 

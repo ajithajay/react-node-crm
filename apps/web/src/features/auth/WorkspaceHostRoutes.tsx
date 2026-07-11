@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router';
+import { Navigate, Outlet, Route, Routes, useParams } from 'react-router';
 import { useAuthSession } from '@/lib/auth-session';
 import { ShellLayout } from '@/features/shell/ShellLayout';
 import { HomePage } from '@/features/shell/pages/HomePage';
@@ -20,6 +20,12 @@ import { ObjectRecordsPage } from '@/features/objects/pages/ObjectRecordsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
+
+/** Generic entry for any object not hardcoded above — reached via the sidebar's dynamic Custom Objects group. */
+function CustomObjectRoute() {
+  const { objectNamePlural } = useParams<{ objectNamePlural: string }>();
+  return <ObjectRecordsPage objectNamePlural={objectNamePlural!} />;
+}
 
 function ProtectedLayout() {
   const { status } = useAuthSession();
@@ -49,6 +55,7 @@ export function WorkspaceHostRoutes() {
           <Route path="/opportunities" element={<ObjectRecordsPage objectNamePlural="opportunities" />} />
           <Route path="/tasks" element={<ObjectRecordsPage objectNamePlural="tasks" />} />
           <Route path="/notes" element={<ObjectRecordsPage objectNamePlural="notes" />} />
+          <Route path="/objects/:objectNamePlural" element={<CustomObjectRoute />} />
           <Route path="/dashboards" element={<ComingSoonPage title="Dashboards" phase="Phase 7" />} />
           <Route path="/workflows" element={<ComingSoonPage title="Workflows" phase="Phase 8" />} />
           <Route path="/workflows/runs" element={<ComingSoonPage title="Workflow Runs" phase="Phase 8" />} />

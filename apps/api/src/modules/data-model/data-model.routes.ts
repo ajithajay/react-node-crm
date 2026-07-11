@@ -6,6 +6,7 @@ import {
   createObjectRequestSchema,
   createRelationRequestSchema,
   setActiveRequestSchema,
+  setFieldRecordPageVisibilityRequestSchema,
   setObjectIdentifiersRequestSchema,
   updateFieldRequestSchema,
   updateObjectRequestSchema,
@@ -80,6 +81,14 @@ dataModelRouter.patch(
   requireDataModelPermission,
   validate({ body: setActiveRequestSchema }),
   dataModelController.setFieldActive,
+);
+dataModelRouter.patch(
+  '/objects/:id/fields/:fieldId/record-page-visibility',
+  authGuard,
+  workspaceGuard,
+  requireDataModelPermission,
+  validate({ body: setFieldRecordPageVisibilityRequestSchema }),
+  dataModelController.setFieldRecordPageVisibility,
 );
 dataModelRouter.delete(
   '/objects/:id/fields/:fieldId',

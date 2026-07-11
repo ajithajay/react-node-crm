@@ -9,20 +9,27 @@ import { ApiError, type DataModelField } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { FieldInput, isEditableField } from '../lib/field-inputs';
 import { friendlyFieldKey } from '../lib/field-values';
+import { RecordAttachmentsWidget } from './RecordAttachmentsWidget';
 import { RecordChip } from './RecordChip';
+import { RecordJunctionWidget } from './RecordJunctionWidget';
 import { RecordRelationWidget } from './RecordRelationWidget';
+import { RecordTimelineWidget } from './RecordTimelineWidget';
 
 /**
  * Record detail (BRD §4: "tabbed layout of widgets — Fields, Timeline, Tasks, Notes, Files"),
  * presented as a right-side sheet rather than a centered modal, matching Twenty's "open in side
  * panel" record view. Used for both create (Overview tab only — the other tabs need a saved
  * record id) and edit (all tabs).
+ *
+ * Timeline/Notes/Tasks/Files are only meaningful for objects that are morph-relation targets
+ * (Company/Person/Opportunity) — detected generically via the presence of the matching
+ * `isMorphReverse` field on `fields`, rather than hardcoding object names.
  */
-const DETAIL_TABS = [
-  { key: 'timeline', label: 'Timeline' },
-  { key: 'notes', label: 'Notes' },
-  { key: 'tasks', label: 'Tasks' },
-  { key: 'files', label: 'Files' },
+const DETAIL_TAB_DEFS = [
+  { key: 'timeline', label: 'Timeline', reverseFieldName: 'timeline_activities' },
+  { key: 'notes', label: 'Notes', reverseFieldName: 'note_targets' },
+  { key: 'tasks', label: 'Tasks', reverseFieldName: 'task_targets' },
+  { key: 'files', label: 'Files', reverseFieldName: 'attachments' },
 ] as const;
 
 /** created_at/updated_at/deleted_at/created_by/updated_by — displayed read-only, never in the editable form. */
@@ -99,7 +106,7 @@ function OverviewTab({
   values: Record<string, unknown>;
   onChange: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
-  const editableFields = fields.filter(isEditableField);
+  const editableFields = fields.filter((f) => isEditableField(f) && f.isVisibleInRecordPage);
   const systemFields = fields.filter((f) => SYSTEM_FIELD_NAMES.has(f.name));
   const relationFields = fields.filter(
     (f) => f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY' && !f.settings?.isMorphReverse,
@@ -142,6 +149,7 @@ export function RecordSheet({
   onOpenChange,
   mode,
   objectLabel,
+  objectNameSingular,
   fields,
   labelIdentifierField,
   initialValues,
@@ -151,6 +159,7 @@ export function RecordSheet({
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'edit';
   objectLabel: string;
+  objectNameSingular: string;
   fields: DataModelField[];
   labelIdentifierField?: DataModelField;
   initialValues?: Record<string, unknown>;
@@ -164,6 +173,13 @@ export function RecordSheet({
     ? String(values[friendlyFieldKey(labelIdentifierField)] ?? '').trim()
     : '';
   const sourceRecordId = initialValues?.id as string | undefined;
+
+  const reverseFieldNames = new Set(
+    fields
+      .filter((f) => f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY' && f.settings?.isMorphReverse)
+      .map((f) => f.name),
+  );
+  const detailTabs = DETAIL_TAB_DEFS.filter((t) => reverseFieldNames.has(t.reverseFieldName));
 
   async function handleSubmit(): Promise<void> {
     setSubmitting(true);
@@ -194,11 +210,11 @@ export function RecordSheet({
           </SheetTitle>
         </SheetHeader>
 
-        {mode === 'edit' ? (
+        {mode === 'edit' && sourceRecordId ? (
           <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
             <TabsList className="mx-4">
               <TabsTrigger value="overview">Home</TabsTrigger>
-              {DETAIL_TABS.map((t) => (
+              {detailTabs.map((t) => (
                 <TabsTrigger key={t.key} value={t.key}>
                   {t.label}
                 </TabsTrigger>
@@ -214,12 +230,36 @@ export function RecordSheet({
                   onChange={setValues}
                 />
               </TabsContent>
-              {DETAIL_TABS.map((t) => (
+              {detailTabs.map((t) => (
                 <TabsContent key={t.key} value={t.key}>
-                  <p className="pt-6 text-sm text-muted-foreground">
-                    {t.label} isn&apos;t available yet — it needs polymorphic-relation queries that
-                    aren&apos;t built yet (see task-list.md's Phase 6 record-detail-page follow-up).
-                  </p>
+                  {t.key === 'timeline' && (
+                    <RecordTimelineWidget sourceObjectNameSingular={objectNameSingular} sourceRecordId={sourceRecordId} />
+                  )}
+                  {t.key === 'notes' && (
+                    <RecordJunctionWidget
+                      title="Notes"
+                      junctionObjectNamePlural="note_targets"
+                      itemObjectNamePlural="notes"
+                      itemForwardKey="noteId"
+                      itemLabelKey="title"
+                      sourceObjectNameSingular={objectNameSingular}
+                      sourceRecordId={sourceRecordId}
+                    />
+                  )}
+                  {t.key === 'tasks' && (
+                    <RecordJunctionWidget
+                      title="Tasks"
+                      junctionObjectNamePlural="task_targets"
+                      itemObjectNamePlural="tasks"
+                      itemForwardKey="taskId"
+                      itemLabelKey="title"
+                      sourceObjectNameSingular={objectNameSingular}
+                      sourceRecordId={sourceRecordId}
+                    />
+                  )}
+                  {t.key === 'files' && (
+                    <RecordAttachmentsWidget sourceObjectNameSingular={objectNameSingular} sourceRecordId={sourceRecordId} />
+                  )}
                 </TabsContent>
               ))}
             </div>

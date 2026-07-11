@@ -90,6 +90,7 @@ export interface FieldSummary {
   isNullable: boolean;
   isUnique: boolean;
   isRestrictable: boolean;
+  isVisibleInRecordPage: boolean;
   settings: Record<string, unknown> | null;
   defaultValue: unknown;
 }
@@ -133,6 +134,7 @@ function toFieldSummary(field: FieldMetadataEntity): FieldSummary {
     isNullable: field.isNullable,
     isUnique: field.isUnique,
     isRestrictable: field.isRestrictable,
+    isVisibleInRecordPage: field.isVisibleInRecordPage,
     settings: (field.settings as Record<string, unknown> | null) ?? null,
     defaultValue: field.defaultValue ?? null,
   };
@@ -364,6 +366,25 @@ export async function setFieldActive(
 
   await metadataService.setFieldActive(workspaceId, fieldMetadataId, isActive);
   await record(workspaceId, actorUserId, 'data_model.field_updated', { fieldMetadataId, isActive });
+}
+
+/**
+ * Settings → Layout (BRD §7.2): hides a field from a record's Overview tab without deactivating it
+ * or touching the physical schema — no DDL, no metadata-version bump, just a display flag.
+ */
+export async function setFieldRecordPageVisibility(
+  workspaceId: string,
+  fieldMetadataId: string,
+  actorUserId: string,
+  isVisible: boolean,
+): Promise<FieldSummary> {
+  const field = await fieldRepo().findOneBy({ id: fieldMetadataId, workspaceId });
+  if (!field) throw new NotFoundError('Field not found');
+
+  field.isVisibleInRecordPage = isVisible;
+  await fieldRepo().save(field);
+  await record(workspaceId, actorUserId, 'data_model.field_updated', { fieldMetadataId, isVisibleInRecordPage: isVisible });
+  return toFieldSummary(field);
 }
 
 export async function deleteField(workspaceId: string, fieldMetadataId: string, actorUserId: string): Promise<void> {
