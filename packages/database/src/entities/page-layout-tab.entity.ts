@@ -29,6 +29,10 @@ export class PageLayoutTabEntity {
   @Column({ type: 'boolean', name: 'is_visible', default: true })
   isVisible!: boolean;
 
+  /** The layout's default-to-focus tab (Twenty's "pin tab"). At most one per layout. */
+  @Column({ type: 'boolean', name: 'is_pinned', default: false })
+  isPinned!: boolean;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

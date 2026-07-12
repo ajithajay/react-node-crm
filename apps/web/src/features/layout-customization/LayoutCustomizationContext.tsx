@@ -126,11 +126,13 @@ export function LayoutCustomizationProvider({ children }: { children: React.Reac
             title: tab.title,
             icon: tab.icon,
             isVisible: tab.isVisible,
+            isPinned: tab.isPinned,
             widgets: tab.widgets.map((widget) => ({
               id: widget.id.startsWith('new-') ? undefined : widget.id,
               type: widget.type,
               title: widget.title,
               isVisible: widget.isVisible,
+              configuration: widget.configuration,
               groups:
                 widget.type === 'FIELDS'
                   ? widget.groups.map((g) => ({

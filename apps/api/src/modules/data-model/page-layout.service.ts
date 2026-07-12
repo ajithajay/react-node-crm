@@ -9,7 +9,12 @@ import {
   PageLayoutWidgetType,
   STANDARD_OBJECTS,
 } from '@saasly/database';
-import { FieldMetadataType, type PageLayoutDto, type SavePageLayoutRequest } from '@saasly/shared';
+import {
+  FieldMetadataType,
+  type PageLayoutDto,
+  type PageLayoutWidgetConfiguration,
+  type SavePageLayoutRequest,
+} from '@saasly/shared';
 import type { EntityManager } from 'typeorm';
 import { dataSource } from '../../lib/db.js';
 import { ConflictError, NotFoundError } from '../../lib/errors.js';
@@ -42,6 +47,11 @@ const ACTIVITY_WIDGETS: { type: PageLayoutWidgetType; title: string; icon: strin
   { type: PageLayoutWidgetType.FILES, title: 'Files', icon: 'Paperclip' },
 ];
 
+const DEFAULT_FIELDS_WIDGET_CONFIG: PageLayoutWidgetConfiguration = {
+  showMoreFieldsButton: false,
+  autoVisibleNewFields: true,
+};
+
 /** Fields that render inside the FIELDS widget's groups (scalar + forward relations; not reverse
  * relations, morph, files, actor or the base audit fields — those render elsewhere). */
 function isFieldsWidgetEligible(f: FieldMetadataEntity): boolean {
@@ -57,6 +67,39 @@ function isFieldsWidgetEligible(f: FieldMetadataEntity): boolean {
   // Only the forward (belongs-to-one) side of a relation is a field; the reverse list is a widget.
   if (f.type === FieldMetadataType.RELATION && f.settings?.relationType !== 'MANY_TO_ONE') return false;
   return true;
+}
+
+/** Default field-group computation, shared by full-layout synthesis and a single widget's reset. */
+function computeDefaultGroups(
+  object: ObjectMetadataEntity,
+  fields: FieldMetadataEntity[],
+): { label: string; fieldIds: string[] }[] {
+  const eligible = fields.filter(isFieldsWidgetEligible);
+  const fieldByName = new Map(fields.map((f) => [f.name, f]));
+  const seedDef = STANDARD_OBJECTS.find((d) => d.nameSingular === object.nameSingular);
+
+  const groups: { label: string; fieldIds: string[] }[] = [];
+  const covered = new Set<string>();
+  if (seedDef?.sections?.length) {
+    for (const section of seedDef.sections) {
+      const ids = section.fieldNames
+        .map((n) => fieldByName.get(n))
+        .filter((f): f is FieldMetadataEntity => !!f && isFieldsWidgetEligible(f))
+        .map((f) => {
+          covered.add(f.id);
+          return f.id;
+        });
+      if (ids.length) groups.push({ label: section.label, fieldIds: ids });
+    }
+  }
+  const leftover = eligible.filter((f) => !covered.has(f.id)).map((f) => f.id);
+  if (!groups.length && leftover.length) {
+    groups.push({ label: 'General', fieldIds: leftover });
+  } else if (leftover.length) {
+    groups.push({ label: 'Other', fieldIds: leftover });
+  }
+  if (!groups.length) groups.push({ label: 'General', fieldIds: [] });
+  return groups;
 }
 
 // ---- Read ----
@@ -121,6 +164,7 @@ async function loadLayout(workspaceId: string, layout: PageLayoutEntity): Promis
       icon: tab.icon,
       position: tab.position,
       isVisible: tab.isVisible,
+      isPinned: tab.isPinned,
       widgets: widgets
         .filter((w) => w.pageLayoutTabId === tab.id)
         .map((w) => ({
@@ -129,6 +173,7 @@ async function loadLayout(workspaceId: string, layout: PageLayoutEntity): Promis
           title: w.title,
           position: w.position,
           isVisible: w.isVisible,
+          configuration: (w.configuration as PageLayoutWidgetConfiguration) ?? {},
           groups:
             w.type === PageLayoutWidgetType.FIELDS
               ? (sectionsByWidget.get(w.id) ?? []).map((s) => ({
@@ -159,34 +204,7 @@ async function synthesizeDefaultLayout(
   object: ObjectMetadataEntity,
 ): Promise<PageLayoutEntity> {
   const fields = await fieldRepo().find({ where: { workspaceId, objectMetadataId: object.id } });
-  const eligible = fields.filter(isFieldsWidgetEligible);
-  const fieldByName = new Map(fields.map((f) => [f.name, f]));
-
-  // Default groups: reuse the object's standard seed sections when present, else one "General" group;
-  // any eligible field not covered lands in a trailing "Other" group.
-  const seedDef = STANDARD_OBJECTS.find((d) => d.nameSingular === object.nameSingular);
-  const groups: { label: string; fieldIds: string[] }[] = [];
-  const covered = new Set<string>();
-  if (seedDef?.sections?.length) {
-    for (const section of seedDef.sections) {
-      const ids = section.fieldNames
-        .map((n) => fieldByName.get(n))
-        .filter((f): f is FieldMetadataEntity => !!f && isFieldsWidgetEligible(f))
-        .map((f) => {
-          covered.add(f.id);
-          return f.id;
-        });
-      if (ids.length) groups.push({ label: section.label, fieldIds: ids });
-    }
-  }
-  const leftover = eligible.filter((f) => !covered.has(f.id)).map((f) => f.id);
-  if (!groups.length && leftover.length) {
-    groups.push({ label: 'General', fieldIds: leftover });
-  } else if (leftover.length) {
-    groups.push({ label: 'Other', fieldIds: leftover });
-  }
-  if (!groups.length) groups.push({ label: 'General', fieldIds: [] });
-
+  const groups = computeDefaultGroups(object, fields);
   const includeActivityTabs = !ACTIVITY_PLUMBING_SINGULARS.has(object.nameSingular);
 
   try {
@@ -209,6 +227,7 @@ async function synthesizeDefaultLayout(
           icon: 'LayoutList',
           position: 0,
           isVisible: true,
+          isPinned: true,
         }),
       );
       const fieldsWidget = await m.getRepository(PageLayoutWidgetEntity).save(
@@ -219,7 +238,7 @@ async function synthesizeDefaultLayout(
           title: 'Fields',
           position: 0,
           isVisible: true,
-          configuration: {},
+          configuration: DEFAULT_FIELDS_WIDGET_CONFIG,
         }),
       );
       // Drop any legacy sections then recreate under the widget.
@@ -249,6 +268,7 @@ async function synthesizeDefaultLayout(
               icon: w.icon,
               position: i + 1,
               isVisible: true,
+              isPinned: false,
             }),
           );
           await m.getRepository(PageLayoutWidgetEntity).save(
@@ -336,6 +356,7 @@ export async function savePageLayout(
           icon: tabInput.icon ?? null,
           position: ti,
           isVisible: tabInput.isVisible,
+          isPinned: tabInput.isPinned,
         }),
       );
       for (let wi = 0; wi < tabInput.widgets.length; wi++) {
@@ -348,7 +369,7 @@ export async function savePageLayout(
             title: widgetInput.title,
             position: wi,
             isVisible: widgetInput.isVisible,
-            configuration: {},
+            configuration: widgetInput.configuration ?? {},
           }),
         );
         if (widgetInput.type === PageLayoutWidgetType.FIELDS && widgetInput.groups) {
@@ -406,4 +427,115 @@ export async function resetPageLayout(
   await record(workspaceId, actorUserId, 'data_model.object_updated', { objectMetadataId, pageLayoutReset: true });
   const layout = await synthesizeDefaultLayout(workspaceId, object);
   return loadLayout(workspaceId, layout);
+}
+
+/** Reset a single widget to its default state — a FIELDS widget's groups are recomputed from the
+ * object's seed sections (same logic as a full layout reset, scoped to just this widget); any other
+ * widget just goes back to visible with an empty configuration. */
+export async function resetWidgetToDefault(
+  workspaceId: string,
+  objectMetadataId: string,
+  widgetId: string,
+  actorUserId: string,
+): Promise<PageLayoutDto> {
+  const [object, widget] = await Promise.all([
+    objectRepo().findOneBy({ id: objectMetadataId, workspaceId }),
+    widgetRepo().findOneBy({ id: widgetId, workspaceId }),
+  ]);
+  if (!object) throw new NotFoundError('Object not found');
+  if (!widget) throw new NotFoundError('Widget not found');
+
+  await dataSource.transaction(async (m) => {
+    if (widget.type === PageLayoutWidgetType.FIELDS) {
+      const fields = await m.getRepository(FieldMetadataEntity).find({ where: { workspaceId, objectMetadataId } });
+      const groups = computeDefaultGroups(object, fields);
+      await m.getRepository(PageLayoutSectionEntity).delete({ workspaceId, pageLayoutWidgetId: widgetId });
+      await m.getRepository(PageLayoutSectionEntity).save(
+        groups.map((g, position) =>
+          m.getRepository(PageLayoutSectionEntity).create({
+            workspaceId,
+            objectMetadataId,
+            pageLayoutWidgetId: widgetId,
+            label: g.label,
+            position,
+            isVisible: true,
+            fieldMetadataIds: g.fieldIds,
+          }),
+        ),
+      );
+      await m
+        .getRepository(FieldMetadataEntity)
+        .update({ workspaceId, objectMetadataId }, { isVisibleInRecordPage: true });
+      const widgetEntity = await m.getRepository(PageLayoutWidgetEntity).findOneByOrFail({ id: widgetId, workspaceId });
+      widgetEntity.isVisible = true;
+      widgetEntity.configuration = DEFAULT_FIELDS_WIDGET_CONFIG;
+      await m.getRepository(PageLayoutWidgetEntity).save(widgetEntity);
+    } else {
+      const widgetEntity = await m.getRepository(PageLayoutWidgetEntity).findOneByOrFail({ id: widgetId, workspaceId });
+      widgetEntity.isVisible = true;
+      widgetEntity.configuration = {};
+      await m.getRepository(PageLayoutWidgetEntity).save(widgetEntity);
+    }
+  });
+
+  await record(workspaceId, actorUserId, 'data_model.object_updated', { objectMetadataId, widgetReset: widgetId });
+  const layout = await layoutRepo().findOneByOrFail({ workspaceId, objectMetadataId, type: PageLayoutType.RECORD_PAGE });
+  return loadLayout(workspaceId, layout);
+}
+
+/** Called after a new scalar/forward-relation field is created on an object: auto-appends it to
+ * that object's FIELDS widget (visible or hidden per the widget's `autoVisibleNewFields` setting),
+ * so newly-added fields actually show up on the record page without a manual layout edit. A no-op
+ * if the object has no persisted layout yet — the next `getPageLayout` synthesizes one from the
+ * object's current (already-including-this-field) fields directly. */
+export async function appendFieldToDefaultFieldsWidget(
+  workspaceId: string,
+  objectMetadataId: string,
+  fieldId: string,
+): Promise<void> {
+  const layout = await layoutRepo().findOneBy({ workspaceId, objectMetadataId, type: PageLayoutType.RECORD_PAGE });
+  if (!layout) return;
+
+  const homeTab = await tabRepo().findOne({ where: { workspaceId, pageLayoutId: layout.id }, order: { position: 'ASC' } });
+  if (!homeTab) return;
+  const fieldsWidget = await widgetRepo().findOneBy({
+    workspaceId,
+    pageLayoutTabId: homeTab.id,
+    type: PageLayoutWidgetType.FIELDS,
+  });
+  if (!fieldsWidget) return;
+
+  const field = await fieldRepo().findOneBy({ id: fieldId, workspaceId });
+  if (!field || !isFieldsWidgetEligible(field)) return;
+
+  const config = (fieldsWidget.configuration as PageLayoutWidgetConfiguration) ?? {};
+  const visible = config.autoVisibleNewFields !== false;
+
+  const sections = await sectionRepo().find({
+    where: { workspaceId, pageLayoutWidgetId: fieldsWidget.id },
+    order: { position: 'ASC' },
+  });
+  const alreadyPlaced = sections.some((s) => (s.fieldMetadataIds ?? []).includes(fieldId));
+  if (alreadyPlaced) return;
+
+  if (sections.length > 0) {
+    const target = sections[0]!;
+    target.fieldMetadataIds = [...(target.fieldMetadataIds ?? []), fieldId];
+    await sectionRepo().save(target);
+  } else {
+    await sectionRepo().save(
+      sectionRepo().create({
+        workspaceId,
+        objectMetadataId,
+        pageLayoutWidgetId: fieldsWidget.id,
+        label: 'General',
+        position: 0,
+        isVisible: true,
+        fieldMetadataIds: [fieldId],
+      }),
+    );
+  }
+  if (!visible) {
+    await fieldRepo().update({ id: fieldId, workspaceId }, { isVisibleInRecordPage: false });
+  }
 }

@@ -22,6 +22,7 @@ import type {
 import { dataSource } from '../../lib/db.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors.js';
 import { record } from '../audit-log/audit-log.service.js';
+import { appendFieldToDefaultFieldsWidget } from './page-layout.service.js';
 
 const objectRepo = () => dataSource.getRepository(ObjectMetadataEntity);
 const fieldRepo = () => dataSource.getRepository(FieldMetadataEntity);
@@ -329,6 +330,7 @@ export async function createField(
     isSystem: false,
   });
 
+  await appendFieldToDefaultFieldsWidget(workspaceId, objectMetadataId, field.id);
   await record(workspaceId, actorUserId, 'data_model.field_created', { objectMetadataId, fieldMetadataId: field.id, name: field.name });
   return toFieldSummary(field);
 }
@@ -468,6 +470,10 @@ export async function createRelation(
     relationType: input.relationType,
   });
 
+  await Promise.all([
+    appendFieldToDefaultFieldsWidget(workspaceId, sourceObjectMetadataId, forward.id),
+    appendFieldToDefaultFieldsWidget(workspaceId, input.targetObjectMetadataId, reverse.id),
+  ]);
   await record(workspaceId, actorUserId, 'data_model.relation_created', {
     sourceObjectMetadataId,
     targetObjectMetadataId: input.targetObjectMetadataId,

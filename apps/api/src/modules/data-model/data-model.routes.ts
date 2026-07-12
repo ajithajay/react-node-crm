@@ -160,3 +160,10 @@ dataModelRouter.post(
   requireLayoutsPermission,
   dataModelController.resetPageLayout,
 );
+dataModelRouter.post(
+  '/objects/:id/page-layout/widgets/:widgetId/reset',
+  authGuard,
+  workspaceGuard,
+  requireLayoutsPermission,
+  dataModelController.resetPageLayoutWidget,
+);

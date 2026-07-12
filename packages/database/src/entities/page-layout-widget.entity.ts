@@ -8,6 +8,7 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Update
  */
 export const PageLayoutWidgetType = {
   FIELDS: 'FIELDS',
+  FIELD: 'FIELD',
   TIMELINE: 'TIMELINE',
   NOTES: 'NOTES',
   TASKS: 'TASKS',

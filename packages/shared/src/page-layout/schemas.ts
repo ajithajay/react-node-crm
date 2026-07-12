@@ -1,9 +1,28 @@
 import { z } from 'zod';
 
-/** Widget types on a record page (Twenty parity, reduced to our built surfaces). FIELDS renders the
- * object's field groups; the rest render the record's activity relations and carry no config. */
-export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'] as const;
+/** Widget types on a record page (Twenty parity, reduced to our built surfaces). FIELDS renders a
+ * group of the object's fields; FIELD renders a single field with a chosen display mode; the rest
+ * render the record's activity relations and carry no config. */
+export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'FIELD', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'] as const;
 export type PageLayoutWidgetType = (typeof PAGE_LAYOUT_WIDGET_TYPES)[number];
+
+/** How a single FIELD widget renders its value (Twenty's `FieldDisplayMode`, reduced set). */
+export const FIELD_DISPLAY_MODES = ['PLAIN', 'CARD', 'TABLE', 'CHIP_LIST'] as const;
+export type FieldDisplayMode = (typeof FIELD_DISPLAY_MODES)[number];
+
+/** Polymorphic per-widget-type settings, stored as the widget's `configuration` jsonb. */
+export const pageLayoutWidgetConfigurationSchema = z
+  .object({
+    // FIELDS widget (Twenty's FieldsConfigurationDto)
+    showMoreFieldsButton: z.boolean().optional(),
+    autoVisibleNewFields: z.boolean().optional(),
+    // FIELD widget (Twenty's FieldConfigurationDto)
+    fieldMetadataId: z.string().uuid().optional(),
+    displayMode: z.enum(FIELD_DISPLAY_MODES).optional(),
+  })
+  .partial()
+  .passthrough();
+export type PageLayoutWidgetConfiguration = z.infer<typeof pageLayoutWidgetConfigurationSchema>;
 
 // ---- Save request (nested replace, mirroring Twenty's updatePageLayoutWithTabsAndWidgets) ----
 
@@ -27,6 +46,7 @@ export const pageLayoutWidgetSchema = z.object({
   type: z.enum(PAGE_LAYOUT_WIDGET_TYPES),
   title: z.string().trim().min(1).max(100),
   isVisible: z.boolean().default(true),
+  configuration: pageLayoutWidgetConfigurationSchema.optional(),
   /** FIELDS widgets only. */
   groups: z.array(pageLayoutGroupSchema).optional(),
 });
@@ -36,6 +56,8 @@ export const pageLayoutTabSchema = z.object({
   title: z.string().trim().min(1).max(100),
   icon: z.string().trim().max(50).nullish(),
   isVisible: z.boolean().default(true),
+  /** The layout's default-to-focus tab (Twenty's "pin tab"). Only one tab should carry this. */
+  isPinned: z.boolean().default(false),
   widgets: z.array(pageLayoutWidgetSchema),
 });
 
@@ -69,6 +91,7 @@ export interface PageLayoutWidgetDto {
   title: string;
   position: number;
   isVisible: boolean;
+  configuration: PageLayoutWidgetConfiguration;
   /** Populated for FIELDS widgets; empty otherwise. */
   groups: PageLayoutGroupDto[];
 }
@@ -79,6 +102,7 @@ export interface PageLayoutTabDto {
   icon: string | null;
   position: number;
   isVisible: boolean;
+  isPinned: boolean;
   widgets: PageLayoutWidgetDto[];
 }
 

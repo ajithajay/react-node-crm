@@ -163,3 +163,16 @@ export async function resetPageLayout(req: Request<{ id: string }>, res: Respons
   const result = await pageLayoutService.resetPageLayout(req.workspaceId!, req.params.id, req.user!.id);
   res.status(200).json(result);
 }
+
+export async function resetPageLayoutWidget(
+  req: Request<{ id: string; widgetId: string }>,
+  res: Response,
+): Promise<void> {
+  const result = await pageLayoutService.resetWidgetToDefault(
+    req.workspaceId!,
+    req.params.id,
+    req.params.widgetId,
+    req.user!.id,
+  );
+  res.status(200).json(result);
+}

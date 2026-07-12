@@ -504,6 +504,9 @@ export const dataModelApi = {
     put<PageLayoutDto>(`/data-model/objects/${objectId}/page-layout`, input),
 
   resetPageLayout: (objectId: string) => post<PageLayoutDto>(`/data-model/objects/${objectId}/page-layout/reset`, {}),
+
+  resetPageLayoutWidget: (objectId: string, widgetId: string) =>
+    post<PageLayoutDto>(`/data-model/objects/${objectId}/page-layout/widgets/${widgetId}/reset`, {}),
 };
 
 export interface PageSection {
