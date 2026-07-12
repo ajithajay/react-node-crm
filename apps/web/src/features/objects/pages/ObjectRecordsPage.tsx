@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { Plus } from 'lucide-react';
@@ -14,6 +14,13 @@ import { RecordSheet } from '../components/RecordSheet';
 import { RecordTableCellDisplay } from '../components/RecordTableCellDisplay';
 import { RecordTableToolbar } from '../components/RecordTableToolbar';
 import { friendlyFieldKey } from '../lib/field-values';
+import {
+  conditionsToViewFilters,
+  localSortToViewSorts,
+  stateSignature,
+  viewFiltersToConditions,
+  viewSortToLocal,
+} from '../lib/view-mapping';
 import { FIELD_TYPE_ICON, TABLE_ROW_HEIGHT } from '../lib/table-tokens';
 
 const PAGE_SIZE = 25;
@@ -60,6 +67,33 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
   });
 
   const fieldsById = useMemo(() => new Map((detail?.fields ?? []).map((f) => [f.id, f])), [detail]);
+  const fieldByKey = useMemo(
+    () => new Map((detail?.fields ?? []).map((f) => [friendlyFieldKey(f), f])),
+    [detail],
+  );
+
+  // Load a view's persisted filters/sorts into local state when the active view changes (gap B1).
+  // Keyed on the loaded view id via a ref so a post-save refetch (same id) never clobbers state.
+  const loadedViewRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!viewDetail || fieldsById.size === 0) return;
+    if (loadedViewRef.current === viewDetail.id) return;
+    loadedViewRef.current = viewDetail.id;
+    setFilters(viewFiltersToConditions(viewDetail, fieldsById));
+    const sort = viewSortToLocal(viewDetail, fieldsById);
+    setSortField(sort.field);
+    setSortDirection(sort.direction);
+  }, [viewDetail, fieldsById]);
+
+  const isViewDirty = useMemo(() => {
+    if (!viewDetail || fieldsById.size === 0) return false;
+    const persisted = viewFiltersToConditions(viewDetail, fieldsById);
+    const persistedSort = viewSortToLocal(viewDetail, fieldsById);
+    return (
+      stateSignature(filters, sortField, sortDirection) !==
+      stateSignature(persisted, persistedSort.field, persistedSort.direction)
+    );
+  }, [viewDetail, fieldsById, filters, sortField, sortDirection]);
 
   const columns: DataModelField[] = useMemo(() => {
     if (!viewDetail) return [];
@@ -111,6 +145,82 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
     onSuccess: (view) => {
       void queryClient.invalidateQueries({ queryKey: ['views', object?.id] });
       setActiveViewId(view.id);
+    },
+  });
+
+  const invalidateViews = () => void queryClient.invalidateQueries({ queryKey: ['views', object?.id] });
+
+  // Persist the current in-memory filters/sorts onto the active view (gap B1).
+  const saveViewMutation = useMutation({
+    mutationFn: async () => {
+      await viewApi.setFilters(currentViewId!, conditionsToViewFilters(filters, fieldByKey));
+      await viewApi.setSorts(currentViewId!, localSortToViewSorts(sortField, sortDirection, fieldByKey));
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['view', currentViewId] }),
+  });
+
+  // "Save as new view": create a view carrying the current filters/sorts/columns, then switch to it.
+  const saveAsNewViewMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const view = await viewApi.create({ objectMetadataId: object!.id, name, type: activeView?.type ?? 'TABLE' });
+      await viewApi.setFilters(view.id, conditionsToViewFilters(filters, fieldByKey));
+      await viewApi.setSorts(view.id, localSortToViewSorts(sortField, sortDirection, fieldByKey));
+      if (viewDetail) {
+        await viewApi.setFields(
+          view.id,
+          viewDetail.fields.map((f) => ({ fieldMetadataId: f.fieldMetadataId, isVisible: f.isVisible, size: f.size })),
+        );
+      }
+      return view;
+    },
+    onSuccess: (view) => {
+      invalidateViews();
+      setActiveViewId(view.id);
+    },
+  });
+
+  const renameViewMutation = useMutation({
+    mutationFn: (name: string) => viewApi.update(currentViewId!, { name }),
+    onSuccess: () => {
+      invalidateViews();
+      void queryClient.invalidateQueries({ queryKey: ['view', currentViewId] });
+    },
+  });
+
+  const duplicateViewMutation = useMutation({
+    mutationFn: async () => {
+      const view = await viewApi.create({
+        objectMetadataId: object!.id,
+        name: `${activeView?.name ?? 'View'} copy`,
+        type: activeView?.type ?? 'TABLE',
+      });
+      if (activeView?.kanbanFieldMetadataId) {
+        await viewApi.update(view.id, { kanbanFieldMetadataId: activeView.kanbanFieldMetadataId });
+      }
+      if (viewDetail) {
+        await viewApi.setFields(
+          view.id,
+          viewDetail.fields.map((f) => ({ fieldMetadataId: f.fieldMetadataId, isVisible: f.isVisible, size: f.size })),
+        );
+        await viewApi.setFilters(
+          view.id,
+          viewDetail.filters.map((f) => ({ fieldMetadataId: f.fieldMetadataId, operand: f.operand, value: f.value })),
+        );
+        await viewApi.setSorts(view.id, viewDetail.sorts.map((s) => ({ fieldMetadataId: s.fieldMetadataId, direction: s.direction })));
+      }
+      return view;
+    },
+    onSuccess: (view) => {
+      invalidateViews();
+      setActiveViewId(view.id);
+    },
+  });
+
+  const deleteViewMutation = useMutation({
+    mutationFn: () => viewApi.remove(currentViewId!),
+    onSuccess: () => {
+      invalidateViews();
+      setActiveViewId(views?.find((v) => v.id !== currentViewId)?.id);
     },
   });
 
@@ -236,6 +346,13 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
             setSortField(field);
             setSortDirection(direction);
           }}
+          isViewDirty={isViewDirty}
+          onUpdateView={() => saveViewMutation.mutate()}
+          onSaveAsNewView={(name) => saveAsNewViewMutation.mutate(name)}
+          onRenameView={(name) => renameViewMutation.mutate(name)}
+          onDuplicateView={() => duplicateViewMutation.mutate()}
+          onDeleteView={() => deleteViewMutation.mutate()}
+          canDeleteView={(views?.length ?? 0) > 1}
         />
       )}
 
@@ -370,6 +487,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
         mode="create"
         objectLabel={object.labelSingular}
         objectNameSingular={object.nameSingular}
+        objectMetadataId={object.id}
         fields={detail.fields}
         initialValues={createInitialValues}
         onSubmit={(body) => createMutation.mutateAsync(body)}
@@ -383,6 +501,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
           mode="edit"
           objectLabel={object.labelSingular}
           objectNameSingular={object.nameSingular}
+          objectMetadataId={object.id}
           fields={detail.fields}
           labelIdentifierField={labelIdentifierField}
           initialValues={editRecord}

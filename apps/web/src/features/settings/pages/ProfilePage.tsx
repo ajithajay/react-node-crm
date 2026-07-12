@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ApiError, meApi, resolveFileUrl } from '@/lib/api-client';
+import { ApiError, meApi, resolveFileUrl, workspaceApi } from '@/lib/api-client';
 import { useAuthSession } from '@/lib/auth-session';
 import { TwoFactorCard } from './TwoFactorCard';
 
@@ -36,11 +36,13 @@ function AvatarSection({
   lastName,
   email,
   avatarUrl,
+  canEdit,
 }: {
   firstName: string;
   lastName: string;
   email: string;
   avatarUrl: string | null;
+  canEdit: boolean;
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,22 +77,33 @@ function AvatarSection({
               event.target.value = '';
             }}
           />
-          <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+          <Button type="button" variant="outline" size="sm" disabled={!canEdit} onClick={() => fileInputRef.current?.click()}>
             Upload
           </Button>
-          {avatarUrl && (
+          {avatarUrl && canEdit && (
             <Button type="button" variant="ghost" size="sm" onClick={() => remove.mutate()}>
               Remove
             </Button>
           )}
         </div>
+        {!canEdit && <p className="text-xs text-muted-foreground">Editing your picture is disabled by your workspace.</p>}
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
     </div>
   );
 }
 
-function NameForm({ firstName, lastName }: { firstName: string; lastName: string }) {
+function NameForm({
+  firstName,
+  lastName,
+  canEditFirstName,
+  canEditLastName,
+}: {
+  firstName: string;
+  lastName: string;
+  canEditFirstName: boolean;
+  canEditLastName: boolean;
+}) {
   const queryClient = useQueryClient();
   const form = useForm<UpdateProfileRequest>({
     resolver: zodResolver(updateProfileRequestSchema),
@@ -102,6 +115,8 @@ function NameForm({ firstName, lastName }: { firstName: string; lastName: string
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['me'] }),
   });
 
+  const nothingEditable = !canEditFirstName && !canEditLastName;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((values) => update.mutate(values))} className="flex items-end gap-3">
@@ -112,7 +127,7 @@ function NameForm({ firstName, lastName }: { firstName: string; lastName: string
             <FormItem>
               <FormLabel>First name</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} disabled={!canEditFirstName} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -125,13 +140,13 @@ function NameForm({ firstName, lastName }: { firstName: string; lastName: string
             <FormItem>
               <FormLabel>Last name</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} disabled={!canEditLastName} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={update.isPending || !form.formState.isDirty}>
+        <Button type="submit" disabled={update.isPending || !form.formState.isDirty || nothingEditable}>
           Save
         </Button>
       </form>
@@ -258,8 +273,11 @@ function DeleteAccountDialog() {
 
 export function ProfilePage() {
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: meApi.get });
+  const { data: workspace } = useQuery({ queryKey: ['workspace'], queryFn: workspaceApi.getCurrent });
 
   if (!me) return null;
+
+  const editable = workspace?.editableProfileFields ?? ['firstName', 'lastName', 'profilePicture'];
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -278,6 +296,7 @@ export function ProfilePage() {
             lastName={me.lastName}
             email={me.email}
             avatarUrl={me.avatarUrl}
+            canEdit={editable.includes('profilePicture')}
           />
         </CardContent>
       </Card>
@@ -287,7 +306,12 @@ export function ProfilePage() {
           <CardTitle>Name</CardTitle>
         </CardHeader>
         <CardContent>
-          <NameForm firstName={me.firstName} lastName={me.lastName} />
+          <NameForm
+            firstName={me.firstName}
+            lastName={me.lastName}
+            canEditFirstName={editable.includes('firstName')}
+            canEditLastName={editable.includes('lastName')}
+          />
         </CardContent>
       </Card>
 

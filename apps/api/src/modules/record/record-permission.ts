@@ -2,10 +2,16 @@ import {
   FieldPermissionEntity,
   ObjectPermissionEntity,
   RoleEntity,
+  WorkspaceEntity,
   WorkspaceMemberEntity,
 } from '@saasly/database';
 import { dataSource } from '../../lib/db.js';
 import { ForbiddenError, UnauthorizedError } from '../../lib/errors.js';
+
+/** Who is acting on a record request — a logged-in user (member) or an API key (role, no member). */
+export type Principal =
+  | { type: 'user'; userId: string }
+  | { type: 'apiKey'; apiKeyId: string; roleId: string | null; name: string };
 
 export type ObjectAction = 'read' | 'update' | 'softDelete' | 'destroy';
 
@@ -23,16 +29,29 @@ const OVERRIDE_FIELD_BY_ACTION: Record<ObjectAction, keyof ObjectPermissionEntit
   destroy: 'canDestroy',
 };
 
-/** The caller's resolved role + member row, reused across one request's permission checks and ACTOR stamping. */
+/** The caller's resolved role (+ member, for a user) — reused across a request's permission checks and ACTOR stamping. */
 export interface ActorRole {
   role: RoleEntity;
-  member: WorkspaceMemberEntity;
+  member?: WorkspaceMemberEntity;
+  apiKeyName?: string;
 }
 
-export async function resolveActorRole(userId: string, workspaceId: string): Promise<ActorRole> {
+export async function resolveActorRole(principal: Principal, workspaceId: string): Promise<ActorRole> {
+  if (principal.type === 'apiKey') {
+    // An API key's role is assigned directly; fall back to the workspace default role if unset.
+    let roleId = principal.roleId;
+    if (!roleId) {
+      const workspace = await dataSource.getRepository(WorkspaceEntity).findOneBy({ id: workspaceId });
+      roleId = workspace?.defaultRoleId ?? null;
+    }
+    const role = roleId ? await dataSource.getRepository(RoleEntity).findOneBy({ id: roleId, workspaceId }) : null;
+    if (!role) throw new UnauthorizedError('API key has no role');
+    return { role, apiKeyName: principal.name };
+  }
+
   const member = await dataSource
     .getRepository(WorkspaceMemberEntity)
-    .findOneBy({ userId, workspaceId });
+    .findOneBy({ userId: principal.userId, workspaceId });
   if (!member?.roleId) throw new UnauthorizedError('No workspace membership found');
 
   const role = await dataSource.getRepository(RoleEntity).findOneBy({ id: member.roleId });

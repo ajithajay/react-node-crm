@@ -175,7 +175,7 @@ export async function createWorkspace(
       lastName: user.lastName,
     }),
   );
-  await syncWorkspaceMemberRecord(workspace.id, member);
+  await syncWorkspaceMemberRecord(workspace.id, member, user.email);
 
   return issueLoginRedirect(userId, workspace.id);
 }

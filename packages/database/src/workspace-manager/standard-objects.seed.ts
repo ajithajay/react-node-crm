@@ -20,6 +20,9 @@ export interface StandardObjectDef {
   /** The scalar field whose value is the record's display label (record-label identifier). */
   labelField?: string;
   fields: StandardFieldDef[];
+  /** Default named record-page sections (Twenty parity), by field name. Optional — objects with
+   * none get a single implicit "General" section at render time. */
+  sections?: { label: string; fieldNames: string[] }[];
 }
 
 /** A regular (single-target) relation seeded between two standard objects. */
@@ -76,6 +79,11 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       { name: 'address', label: 'Address', type: FieldMetadataType.ADDRESS, icon: 'MapPin' },
       { name: 'linkedin', label: 'Linkedin', type: FieldMetadataType.LINKS, icon: 'Linkedin' },
       { name: 'annual_revenue', label: 'Annual Revenue', type: FieldMetadataType.CURRENCY, icon: 'DollarSign' },
+    ],
+    sections: [
+      { label: 'General', fieldNames: ['name', 'domain_name', 'linkedin'] },
+      { label: 'Business', fieldNames: ['annual_revenue'] },
+      { label: 'Contact', fieldNames: ['address'] },
     ],
   },
   {
@@ -174,6 +182,7 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
     labelField: 'name',
     fields: [
       { name: 'name', label: 'Name', type: FieldMetadataType.FULL_NAME, icon: 'User' },
+      { name: 'email', label: 'Email', type: FieldMetadataType.TEXT, icon: 'Mail' },
     ],
   },
   {

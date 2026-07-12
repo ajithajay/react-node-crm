@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
-import { ChevronRight, Plus, Search } from 'lucide-react';
+import { ChevronRight, Network, Plus, Search } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -174,6 +174,7 @@ function ObjectRow({ object }: { object: DataModelObject }) {
 }
 
 export function DataModelListPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects });
 
@@ -189,7 +190,12 @@ export function DataModelListPage() {
           <h1 className="text-lg font-medium">Data Model</h1>
           <p className="text-sm text-muted-foreground">Objects and fields that make up your workspace.</p>
         </div>
-        <CreateObjectDialog />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate('/settings/objects/visualize')}>
+            <Network className="size-4" /> Visualize
+          </Button>
+          <CreateObjectDialog />
+        </div>
       </div>
 
       <div className="relative max-w-sm">

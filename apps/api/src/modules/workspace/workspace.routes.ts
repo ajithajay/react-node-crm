@@ -38,3 +38,4 @@ workspaceRouter.patch(
   validate({ body: setDefaultRoleRequestSchema }),
   workspaceController.setDefaultRole,
 );
+workspaceRouter.delete('/', authGuard, workspaceGuard, requireWorkspacePermission, workspaceController.remove);

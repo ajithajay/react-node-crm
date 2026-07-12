@@ -41,6 +41,15 @@ export async function list(workspaceId: string, query: AuditLogQuery): Promise<A
     .take(query.pageSize);
 
   if (query.action) qb.andWhere('log.action = :action', { action: query.action });
+  if (query.actorUserId) qb.andWhere('log.actor_user_id = :actorUserId', { actorUserId: query.actorUserId });
+  if (query.search) qb.andWhere('log.action ILIKE :search', { search: `%${query.search}%` });
+  if (query.from) qb.andWhere('log.created_at >= :from', { from: new Date(query.from) });
+  if (query.to) {
+    // inclusive upper bound: treat a bare date as end-of-day
+    const to = new Date(query.to);
+    if (!Number.isNaN(to.getTime())) to.setHours(23, 59, 59, 999);
+    qb.andWhere('log.created_at <= :to', { to });
+  }
 
   const [logs, total] = await qb.getManyAndCount();
 

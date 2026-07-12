@@ -6,11 +6,14 @@ import { applyRecordListQuery } from '../../lib/query-parser.js';
 import { AppError, NotFoundError } from '../../lib/errors.js';
 import { decodeRecord, encodeRecordInput } from './record-field-codec.js';
 import { buildCsvColumns, csvToRecordBodies, recordsToCsv } from './record-csv.js';
+import { dispatchRecordWebhooks } from '../../lib/webhook-events.js';
+import { logger } from '../../lib/logger.js';
 import {
   assertObjectAccess,
   resolveActorRole,
   resolveFieldRestrictions,
   type ActorRole,
+  type Principal,
 } from './record-permission.js';
 
 const objectRepo = () => dataSource.getRepository(ObjectMetadataEntity);
@@ -40,12 +43,12 @@ async function getRepository(workspaceId: string, object: ObjectMetadataEntity) 
 
 export async function listRecords(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   query: RecordListQuery,
 ): Promise<RecordListResult> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, 'read');
 
   const fields = await resolveActiveFields(workspaceId, object.id);
@@ -70,12 +73,12 @@ export async function listRecords(
 
 export async function getRecord(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   id: string,
 ): Promise<Record<string, unknown>> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, 'read');
 
   const fields = await resolveActiveFields(workspaceId, object.id);
@@ -93,18 +96,70 @@ export async function getRecord(
 
 /** ACTOR columns for created_by/updated_by — system-stamped from the caller's workspace membership. */
 function actorStamp(actor: ActorRole): Record<string, unknown> {
-  const name = `${actor.member.firstName} ${actor.member.lastName}`.trim();
-  return { source: 'WORKSPACE_MEMBER', workspace_member_id: actor.member.id, name, context: null };
+  if (actor.member) {
+    const name = `${actor.member.firstName} ${actor.member.lastName}`.trim();
+    return { source: 'WORKSPACE_MEMBER', workspace_member_id: actor.member.id, name, context: null };
+  }
+  // API-key actor (no workspace member) — Twenty's ACTOR source 'API' (gap E3).
+  return { source: 'API', workspace_member_id: null, name: actor.apiKeyName ?? 'API Key', context: null };
+}
+
+/**
+ * Auto-logs a timeline activity for objects that are morph targets (have a `timeline_activities`
+ * reverse field — Company/Person/Opportunity) on create/update (gap E1). Best-effort: written
+ * directly into the workspace's `timeline_activity` table with the acting actor stamped.
+ */
+async function writeTimelineActivity(
+  workspaceId: string,
+  object: ObjectMetadataEntity,
+  recordId: string,
+  verb: string,
+  actor: ActorRole,
+): Promise<void> {
+  const timelineObject = await objectRepo().findOneBy({ workspaceId, nameSingular: 'timeline_activity', isActive: true });
+  if (!timelineObject) return;
+  const repo = await getRepository(workspaceId, timelineObject);
+  const row: Record<string, unknown> = {
+    name: verb,
+    happens_at: new Date(),
+    target_type: object.nameSingular,
+    target_id: recordId,
+  };
+  for (const [suffix, value] of Object.entries(actorStamp(actor))) {
+    row[`created_by_${suffix}`] = value;
+    row[`updated_by_${suffix}`] = value;
+  }
+  await repo.save(repo.create(row));
+}
+
+/** Post-mutation side effects: auto-timeline (create/update only) + webhook fan-out. Never throws. */
+async function afterRecordMutation(
+  workspaceId: string,
+  object: ObjectMetadataEntity,
+  fields: FieldMetadataEntity[],
+  recordId: string,
+  operation: 'created' | 'updated' | 'deleted',
+  actor: ActorRole,
+  record: Record<string, unknown>,
+): Promise<void> {
+  if (operation !== 'deleted' && fields.some((f) => f.name === 'timeline_activities')) {
+    try {
+      await writeTimelineActivity(workspaceId, object, recordId, `${operation === 'created' ? 'Created' : 'Updated'} ${object.labelSingular}`, actor);
+    } catch (err) {
+      logger.error({ err, objectId: object.id, recordId }, 'timeline activity write failed');
+    }
+  }
+  await dispatchRecordWebhooks(workspaceId, object.nameSingular, operation, record);
 }
 
 export async function createRecord(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, 'update');
 
   const fields = await resolveActiveFields(workspaceId, object.id);
@@ -122,18 +177,20 @@ export async function createRecord(
 
   const repository = await getRepository(workspaceId, object);
   const saved = await repository.save(repository.create(data));
-  return decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
+  const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
+  await afterRecordMutation(workspaceId, object, fields, decoded.id as string, 'created', actor, decoded);
+  return decoded;
 }
 
 export async function updateRecord(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   id: string,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, 'update');
 
   const fields = await resolveActiveFields(workspaceId, object.id);
@@ -151,18 +208,20 @@ export async function updateRecord(
   for (const [suffix, value] of Object.entries(stamp)) data[`updated_by_${suffix}`] = value;
 
   const saved = await repository.save(repository.merge(existing, data));
-  return decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
+  const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
+  await afterRecordMutation(workspaceId, object, fields, id, 'updated', actor, decoded);
+  return decoded;
 }
 
 export async function deleteRecord(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   id: string,
   hard: boolean,
 ): Promise<void> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, hard ? 'destroy' : 'softDelete');
 
   const repository = await getRepository(workspaceId, object);
@@ -171,6 +230,8 @@ export async function deleteRecord(
 
   if (hard) await repository.remove(existing);
   else await repository.softRemove(existing);
+
+  await dispatchRecordWebhooks(workspaceId, object.nameSingular, 'deleted', { id });
 }
 
 /**
@@ -186,12 +247,12 @@ const CSV_IMPORT_MAX_ROWS = 2000;
 
 export async function exportRecordsCsv(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   query: RecordListQuery,
 ): Promise<{ filename: string; csv: string }> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, 'read');
 
   const fields = await resolveActiveFields(workspaceId, object.id);
@@ -220,12 +281,12 @@ export interface ImportSummary {
 
 export async function importRecordsCsv(
   workspaceId: string,
-  userId: string,
+  principal: Principal,
   objectNamePlural: string,
   csvText: string,
 ): Promise<ImportSummary> {
   const object = await resolveObject(workspaceId, objectNamePlural);
-  const actor = await resolveActorRole(userId, workspaceId);
+  const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, 'update');
 
   const fields = await resolveActiveFields(workspaceId, object.id);

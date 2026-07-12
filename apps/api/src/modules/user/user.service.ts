@@ -1,6 +1,7 @@
 import { IsNull } from 'typeorm';
 import {
   UserEntity,
+  WorkspaceEntity,
   WorkspaceMemberEntity,
   UserWorkspaceEntity,
   RefreshTokenEntity,
@@ -9,7 +10,7 @@ import {
 import { dataSource } from '../../lib/db.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { sendPasswordChangedEmail } from '../../lib/mailer.js';
-import { UnauthorizedError } from '../../lib/errors.js';
+import { ForbiddenError, UnauthorizedError } from '../../lib/errors.js';
 import type { UpdatePreferencesRequest } from '@saasly/shared';
 import { hasVerifiedTwoFactor } from '../auth/auth.service.js';
 import { uploadFile, deleteFile, fileIdFromUrl } from '../file/file.service.js';
@@ -57,12 +58,25 @@ export async function getMe(userId: string, workspaceId: string): Promise<MeResp
   };
 }
 
+/** Server-side enforcement of the workspace's Editable Profile Fields setting (gap C2). */
+async function editableProfileFields(workspaceId: string): Promise<string[]> {
+  const workspace = await dataSource.getRepository(WorkspaceEntity).findOneByOrFail({ id: workspaceId });
+  return workspace.editableProfileFields ?? [];
+}
+
 export async function updateProfile(
   userId: string,
   workspaceId: string,
   input: { firstName: string; lastName: string },
 ): Promise<void> {
   const member = await memberRepo().findOneByOrFail({ userId, workspaceId });
+  const editable = await editableProfileFields(workspaceId);
+  if (input.firstName !== member.firstName && !editable.includes('firstName')) {
+    throw new ForbiddenError('Editing your first name is disabled by your workspace');
+  }
+  if (input.lastName !== member.lastName && !editable.includes('lastName')) {
+    throw new ForbiddenError('Editing your last name is disabled by your workspace');
+  }
   member.firstName = input.firstName;
   member.lastName = input.lastName;
   await memberRepo().save(member);
@@ -91,6 +105,9 @@ export async function uploadAvatar(
   mimeType: string,
 ): Promise<{ avatarUrl: string }> {
   const member = await memberRepo().findOneByOrFail({ userId, workspaceId });
+  if (!(await editableProfileFields(workspaceId)).includes('profilePicture')) {
+    throw new ForbiddenError('Editing your profile picture is disabled by your workspace');
+  }
   const previousFileId = fileIdFromUrl(member.avatarUrl);
 
   const uploaded = await uploadFile(workspaceId, buffer, originalName, mimeType, 'avatars');

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dataModelApi, workspaceApi } from '@/lib/api-client';
 import { getIcon } from '@/lib/icons';
+import { FavoritesNav } from './FavoritesNav';
 import { NAV_ITEMS, WORKFLOWS_NAV } from './nav-items';
 import { WorkspaceMenu } from './WorkspaceMenu';
 
@@ -70,6 +71,8 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <FavoritesNav />
 
         {customObjects.length > 0 && (
           <SidebarGroup>

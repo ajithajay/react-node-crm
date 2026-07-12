@@ -8,6 +8,7 @@ import {
   setActiveRequestSchema,
   setFieldRecordPageVisibilityRequestSchema,
   setObjectIdentifiersRequestSchema,
+  setSectionsRequestSchema,
   updateFieldRequestSchema,
   updateObjectRequestSchema,
   PermissionFlagType,
@@ -129,4 +130,13 @@ dataModelRouter.delete(
   workspaceGuard,
   requireDataModelPermission,
   dataModelController.deleteIndex,
+);
+dataModelRouter.get('/objects/:id/sections', authGuard, workspaceGuard, dataModelController.listSections);
+dataModelRouter.put(
+  '/objects/:id/sections',
+  authGuard,
+  workspaceGuard,
+  requireDataModelPermission,
+  validate({ body: setSectionsRequestSchema }),
+  dataModelController.setSections,
 );

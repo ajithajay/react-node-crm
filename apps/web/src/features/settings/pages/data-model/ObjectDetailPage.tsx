@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
@@ -211,10 +212,20 @@ function RelationRow({
   );
 }
 
+/** Utility objects whose relations Twenty hides from the Data Model Relations table unless Advanced. */
+const UTILITY_OBJECT_PLURALS: ReadonlySet<string> = new Set([
+  'workspace_members',
+  'attachments',
+  'note_targets',
+  'task_targets',
+  'timeline_activities',
+]);
+
 function FieldsTab({ detail }: { detail: DataModelObjectDetail }) {
   const objectId = detail.object.id;
   const [fieldSearch, setFieldSearch] = useState('');
   const [relationSearch, setRelationSearch] = useState('');
+  const [advanced, setAdvanced] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects });
 
@@ -225,12 +236,23 @@ function FieldsTab({ detail }: { detail: DataModelObjectDetail }) {
     return target?.labelPlural ?? null;
   };
 
+  // Twenty hides relations that are morph reverses or point at a system/utility object, unless
+  // Advanced mode is on (gap: Data Model relations).
+  const isSystemRelation = (field: DataModelField): boolean => {
+    const settings = field.settings as { isMorphReverse?: boolean; relationTargetObjectMetadataId?: string; morphTargetObjectMetadataIds?: string[] } | null;
+    if (settings?.isMorphReverse) return true;
+    const targetId = settings?.relationTargetObjectMetadataId ?? settings?.morphTargetObjectMetadataIds?.[0];
+    const target = objects?.find((o) => o.id === targetId);
+    return target ? UTILITY_OBJECT_PLURALS.has(target.namePlural) : false;
+  };
+
   const isRelation = (f: DataModelField) => f.type === 'RELATION' || f.type === 'MORPH_RELATION';
   const relQuery = relationSearch.trim().toLowerCase();
   const fieldQuery = fieldSearch.trim().toLowerCase();
 
   const relations = detail.fields
     .filter((f) => f.isActive && isRelation(f))
+    .filter((f) => advanced || !isSystemRelation(f))
     .filter((f) => relQuery === '' || f.label.toLowerCase().includes(relQuery) || (targetLabelFor(f) ?? '').toLowerCase().includes(relQuery));
   const plainFields = detail.fields
     .filter((f) => f.isActive && !isRelation(f))
@@ -241,6 +263,13 @@ function FieldsTab({ detail }: { detail: DataModelObjectDetail }) {
     <div className="space-y-10">
       {/* Relations section */}
       <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Relations</h2>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Switch checked={advanced} onCheckedChange={setAdvanced} />
+            Advanced
+          </label>
+        </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search a relation…" value={relationSearch} onChange={(e) => setRelationSearch(e.target.value)} />
@@ -348,7 +377,6 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [relationType, setRelationType] = useState<RelationType>(RelationType.MANY_TO_ONE);
-  const [isMorph, setIsMorph] = useState(false);
   const [targetIds, setTargetIds] = useState<string[]>([]);
   const [forwardLabel, setForwardLabel] = useState('');
   const [reverseLabel, setReverseLabel] = useState('');
@@ -358,10 +386,12 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
   const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects, enabled: open });
 
   const selectedTargets = (objects ?? []).filter((o) => targetIds.includes(o.id));
+  // Twenty's model: the *number of destinations* decides the type — one target = a plain relation,
+  // more than one = a polymorphic (morph) relation. No separate "polymorphic" checkbox (gap C4).
+  const isMorph = targetIds.length > 1;
 
   function reset(): void {
     setRelationType(RelationType.MANY_TO_ONE);
-    setIsMorph(false);
     setTargetIds([]);
     setForwardLabel('');
     setReverseLabel('');
@@ -369,9 +399,20 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
     setError(null);
   }
 
+  function toggleTarget(target: { id: string; labelSingular: string; labelPlural: string }): void {
+    setTargetIds((prev) => {
+      if (prev.includes(target.id)) return prev.filter((id) => id !== target.id);
+      return [...prev, target.id];
+    });
+    // Seed labels from the first pick (kept editable).
+    setForwardLabel((prev) => prev || target.labelSingular);
+    setReverseLabel((prev) => prev || target.labelPlural);
+  }
+
   const create = useMutation({
     mutationFn: async (): Promise<void> => {
       if (isMorph) {
+        // A morph relation is always "belongs to one of" the selected objects in our engine.
         await dataModelApi.createMorphRelation(objectId, {
           targetObjectMetadataIds: targetIds,
           forwardLabel,
@@ -421,33 +462,29 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
           <DialogDescription>Links this object to another one.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={isMorph}
-              onCheckedChange={(c) => {
-                setIsMorph(c === true);
-                setTargetIds([]);
-              }}
-            />
-            Polymorphic (can point to multiple object types)
-          </label>
-
-          {!isMorph && (
-            <div className="space-y-2">
-              <Label>Relation type</Label>
-              <Select value={relationType} onValueChange={(v) => v && setRelationType(v as RelationType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={RelationType.MANY_TO_ONE}>Belongs to one</SelectItem>
-                  <SelectItem value={RelationType.ONE_TO_MANY}>Has many</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Relation type</Label>
+            <Select
+              value={isMorph ? RelationType.MANY_TO_ONE : relationType}
+              onValueChange={(v) => v && setRelationType(v as RelationType)}
+              disabled={isMorph}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={RelationType.MANY_TO_ONE}>Belongs to one</SelectItem>
+                <SelectItem value={RelationType.ONE_TO_MANY}>Has many</SelectItem>
+              </SelectContent>
+            </Select>
+            {isMorph && (
+              <p className="text-xs text-muted-foreground">
+                Polymorphic: this object belongs to one of the selected objects.
+              </p>
+            )}
+          </div>
 
           <div className="space-y-2">
-            <Label>{isMorph ? 'Related objects' : 'Related object'}</Label>
-            {isMorph && selectedTargets.length > 0 && (
+            <Label>Related objects</Label>
+            {selectedTargets.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {selectedTargets.map((t) => (
                   <Badge key={t.id} variant="secondary" className="gap-1">
@@ -463,12 +500,7 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
               <PopoverTrigger
                 render={
                   <Button type="button" variant="outline" className="w-full justify-start">
-                    <Search className="size-4" />{' '}
-                    {isMorph
-                      ? 'Add object types…'
-                      : selectedTargets[0]
-                        ? selectedTargets[0].labelPlural
-                        : 'Search an object…'}
+                    <Search className="size-4" /> Add an object…
                   </Button>
                 }
               />
@@ -482,17 +514,9 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
                         <CommandItem
                           key={object.id}
                           value={object.labelPlural}
-                          onSelect={() => {
-                            if (isMorph) {
-                              setTargetIds((prev) => (prev.includes(object.id) ? prev : [...prev, object.id]));
-                            } else {
-                              setTargetIds([object.id]);
-                              setReverseLabel((prev) => prev || object.labelPlural);
-                              setForwardLabel((prev) => prev || object.labelSingular);
-                              setSearchOpen(false);
-                            }
-                          }}
+                          onSelect={() => toggleTarget(object)}
                         >
+                          <Checkbox checked={targetIds.includes(object.id)} className="mr-2" />
                           {object.labelPlural}
                         </CommandItem>
                       ))}
@@ -501,6 +525,9 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
                 </Command>
               </PopoverContent>
             </Popover>
+            <p className="text-xs text-muted-foreground">
+              Pick one object for a simple relation, or multiple to make it polymorphic.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -891,14 +918,120 @@ function SettingsTab({ detail }: { detail: DataModelObjectDetail }) {
   );
 }
 
-function LayoutTab() {
+/** Record-page section editor (Twenty parity): create named sections and assign fields to them (gap F2). */
+function LayoutTab({ detail }: { detail: DataModelObjectDetail }) {
+  const queryClient = useQueryClient();
+  const objectId = detail.object.id;
+  const { data: serverSections } = useQuery({
+    queryKey: ['object-sections', objectId],
+    queryFn: () => dataModelApi.getSections(objectId),
+  });
+
+  const [sections, setSections] = useState<{ label: string; fieldMetadataIds: string[] }[] | null>(null);
+  const current = sections ?? (serverSections ?? []).map((s) => ({ label: s.label, fieldMetadataIds: s.fieldMetadataIds }));
+
+  // Fields eligible to place on the record page: active scalar fields (exclude relations + system audit).
+  const eligibleFields = detail.fields.filter(
+    (f) => f.isActive && f.type !== 'RELATION' && f.type !== 'MORPH_RELATION' && f.isRestrictable,
+  );
+  const fieldById = new Map(eligibleFields.map((f) => [f.id, f]));
+  const assigned = new Set(current.flatMap((s) => s.fieldMetadataIds));
+  const unassigned = eligibleFields.filter((f) => !assigned.has(f.id));
+
+  const save = useMutation({
+    mutationFn: () => dataModelApi.setSections(objectId, current.filter((s) => s.label.trim())),
+    onSuccess: () => {
+      setSections(null);
+      void queryClient.invalidateQueries({ queryKey: ['object-sections', objectId] });
+    },
+  });
+
+  function update(next: { label: string; fieldMetadataIds: string[] }[]): void {
+    setSections(next);
+  }
+
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardHeader>
+        <CardTitle>Record page sections</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Record-page layout customization will be available once record pages themselves are built (Phase 6+) — there's
-          nothing to lay out yet.
+          Group fields into named sections (e.g. General / Business / Contact) shown on the record page. Unassigned
+          fields appear in a trailing “Other” section.
         </p>
+
+        {current.map((section, index) => (
+          <div key={index} className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Input
+                value={section.label}
+                onChange={(e) => update(current.map((s, i) => (i === index ? { ...s, label: e.target.value } : s)))}
+                className="max-w-xs"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-muted-foreground hover:text-destructive"
+                onClick={() => update(current.filter((_, i) => i !== index))}
+              >
+                <X className="size-4" /> Remove
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {section.fieldMetadataIds.map((fid) => (
+                <Badge key={fid} variant="secondary" className="gap-1">
+                  {fieldById.get(fid)?.label ?? fid}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update(
+                        current.map((s, i) =>
+                          i === index ? { ...s, fieldMetadataIds: s.fieldMetadataIds.filter((x) => x !== fid) } : s,
+                        ),
+                      )
+                    }
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              ))}
+              {unassigned.length > 0 && (
+                <Select
+                  value=""
+                  onValueChange={(fid) =>
+                    fid &&
+                    update(current.map((s, i) => (i === index ? { ...s, fieldMetadataIds: [...s.fieldMetadataIds, fid] } : s)))
+                  }
+                >
+                  <SelectTrigger className="h-7 w-40 text-xs">
+                    <SelectValue placeholder="+ Add field" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unassigned.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+        ))}
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => update([...current, { label: 'New section', fieldMetadataIds: [] }])}
+          >
+            <Plus className="size-4" /> Add section
+          </Button>
+          <Button size="sm" disabled={!sections || save.isPending} onClick={() => save.mutate()}>
+            Save layout
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -937,7 +1070,7 @@ export function ObjectDetailPage() {
           <SettingsTab detail={detail} />
         </TabsContent>
         <TabsContent value="layout">
-          <LayoutTab />
+          <LayoutTab detail={detail} />
         </TabsContent>
       </Tabs>
     </div>

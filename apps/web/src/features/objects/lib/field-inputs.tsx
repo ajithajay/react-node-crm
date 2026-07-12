@@ -3,9 +3,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import type { DataModelField } from '@/lib/api-client';
 import { RelationPickerInput } from '../components/RelationPickerInput';
+import { RichTextEditor } from '../components/RichTextEditor';
 
 /** Field types not offered in the create/edit form — system-managed, polymorphic-target, or reverse-only. */
 const EXCLUDED_TYPES: ReadonlySet<string> = new Set([
@@ -135,9 +135,9 @@ export function FieldInput({
       );
     case FieldMetadataType.RICH_TEXT:
       return (
-        <Textarea
-          value={(obj.markdown as string) ?? ''}
-          onChange={(e) => onChange({ ...obj, markdown: e.target.value || null })}
+        <RichTextEditor
+          value={obj as { blocknote?: unknown; markdown?: string | null }}
+          onChange={(v) => onChange(v)}
         />
       );
     case FieldMetadataType.RELATION:

@@ -13,6 +13,7 @@ import { RoleDetailPage } from '@/features/settings/pages/RoleDetailPage';
 import { RoleAddObjectPermissionPage } from '@/features/settings/pages/RoleAddObjectPermissionPage';
 import { RoleObjectPermissionPage } from '@/features/settings/pages/RoleObjectPermissionPage';
 import { DataModelListPage } from '@/features/settings/pages/data-model/DataModelListPage';
+import { DataModelVisualizePage } from '@/features/settings/pages/data-model/DataModelVisualizePage';
 import { ObjectDetailPage } from '@/features/settings/pages/data-model/ObjectDetailPage';
 import { ApiSettingsPage } from '@/features/settings/pages/ApiSettingsPage';
 import { RestPlaygroundPage } from '@/features/settings/pages/RestPlaygroundPage';
@@ -74,6 +75,7 @@ export function WorkspaceHostRoutes() {
             <Route path="roles/:id" element={<RoleDetailPage />} />
             <Route path="api" element={<ApiSettingsPage />} />
             <Route path="objects" element={<DataModelListPage />} />
+            <Route path="objects/visualize" element={<DataModelVisualizePage />} />
             <Route path="objects/:id" element={<ObjectDetailPage />} />
           </Route>
         </Route>

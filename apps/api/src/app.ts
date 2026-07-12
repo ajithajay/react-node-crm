@@ -20,6 +20,7 @@ import { webhookRouter } from './modules/webhook/webhook.routes.js';
 import { openApiRouter } from './modules/open-api/open-api.routes.js';
 import { recordRouter } from './modules/record/record.routes.js';
 import { viewRouter } from './modules/view/view.routes.js';
+import { navigationRouter } from './modules/navigation/navigation.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -46,6 +47,7 @@ export function createApp(): Application {
   app.use('/open-api', openApiRouter);
   app.use('/rest', recordRouter);
   app.use('/views', viewRouter);
+  app.use('/navigation', navigationRouter);
 
   app.use(errorHandler);
 

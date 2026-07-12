@@ -3,6 +3,7 @@ import { FieldMetadataType } from '@saasly/shared';
 import type { DataModelField } from '@/lib/api-client';
 import { formatFieldValue, getFieldValue, selectColor, selectLabel } from '../lib/field-values';
 import { RecordChip } from './RecordChip';
+import { RecordRelationCell } from './RecordRelationCell';
 import { Tag } from './Tag';
 
 /**
@@ -51,6 +52,10 @@ export function RecordTableCellDisplay({
         ))}
       </span>
     );
+  }
+
+  if (field.type === FieldMetadataType.RELATION && field.settings?.relationType !== 'ONE_TO_MANY') {
+    return <RecordRelationCell field={field} id={String(value)} />;
   }
 
   return <span className="truncate">{formatFieldValue(field, record)}</span>;

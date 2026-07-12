@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { PermissionFlagType, recordListQuerySchema } from '@saasly/shared';
-import { authGuard } from '../../middleware/auth-guard.js';
+import { authGuard, restAuthGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { permissionGuard } from '../../middleware/permission-guard.js';
 import { validate } from '../../middleware/validate.js';
@@ -39,12 +39,12 @@ recordRouter.post(
 
 recordRouter.get(
   '/:objectNamePlural',
-  authGuard,
+  restAuthGuard,
   workspaceGuard,
   validate({ query: recordListQuerySchema }),
   recordController.index,
 );
-recordRouter.get('/:objectNamePlural/:id', authGuard, workspaceGuard, recordController.show);
-recordRouter.post('/:objectNamePlural', authGuard, workspaceGuard, recordController.create);
-recordRouter.patch('/:objectNamePlural/:id', authGuard, workspaceGuard, recordController.update);
-recordRouter.delete('/:objectNamePlural/:id', authGuard, workspaceGuard, recordController.destroy);
+recordRouter.get('/:objectNamePlural/:id', restAuthGuard, workspaceGuard, recordController.show);
+recordRouter.post('/:objectNamePlural', restAuthGuard, workspaceGuard, recordController.create);
+recordRouter.patch('/:objectNamePlural/:id', restAuthGuard, workspaceGuard, recordController.update);
+recordRouter.delete('/:objectNamePlural/:id', restAuthGuard, workspaceGuard, recordController.destroy);

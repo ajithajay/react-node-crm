@@ -40,3 +40,8 @@ export async function setDefaultRole(
   await workspaceService.setDefaultRole(req.workspaceId!, req.user!.id, req.body.roleId);
   res.status(200).json({ ok: true });
 }
+
+export async function remove(req: Request, res: Response): Promise<void> {
+  await workspaceService.deleteWorkspace(req.workspaceId!, req.user!.id);
+  res.status(200).json({ ok: true });
+}

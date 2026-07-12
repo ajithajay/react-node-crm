@@ -102,3 +102,12 @@ export const createIndexRequestSchema = z.object({
   isUnique: z.boolean().default(false),
 });
 export type CreateIndexRequest = z.infer<typeof createIndexRequestSchema>;
+
+/** Record-page field sections (Twenty parity) — bulk-replace, ordered by array position. */
+export const setSectionsRequestSchema = z.array(
+  z.object({
+    label: z.string().trim().min(1).max(100),
+    fieldMetadataIds: z.array(z.string().uuid()),
+  }),
+);
+export type SetSectionsRequest = z.infer<typeof setSectionsRequestSchema>;

@@ -45,6 +45,14 @@ export class WorkspaceEntity {
   @Column({ type: 'boolean', name: 'is_two_factor_authentication_enforced', default: false })
   isTwoFactorAuthenticationEnforced!: boolean;
 
+  /** Which profile fields a member may edit on their own profile (Twenty's Editable Profile Fields). */
+  @Column({
+    type: 'jsonb',
+    name: 'editable_profile_fields',
+    default: () => `'["firstName","lastName","profilePicture"]'`,
+  })
+  editableProfileFields!: string[];
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

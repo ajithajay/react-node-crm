@@ -187,7 +187,7 @@ async function joinWorkspaceViaInvitation(invitation: InvitationEntity, userId: 
         lastName: user.lastName,
       }),
     );
-    await syncWorkspaceMemberRecord(invitation.workspaceId, member);
+    await syncWorkspaceMemberRecord(invitation.workspaceId, member, user.email);
   }
 
   invitation.status = InvitationStatus.ACCEPTED;

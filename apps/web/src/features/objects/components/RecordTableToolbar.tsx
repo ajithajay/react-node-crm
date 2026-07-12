@@ -1,6 +1,21 @@
-import { ArrowDown, ArrowUp, ChevronDown, Filter as FilterIcon, Plus, Search, Settings2, X } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, Filter as FilterIcon, Lock, MoreHorizontal, Pencil, Plus, Save, Search, Settings2, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,6 +24,50 @@ import { CreateViewDialog, type CreateViewInput } from './CreateViewDialog';
 import { FilterBar, type FilterCondition } from './FilterBar';
 import { ImportCsvDialog } from './ImportCsvDialog';
 import { FILTERABLE_TYPES, friendlyFieldKey } from '../lib/field-values';
+
+/** Small controlled dialog collecting a single "name" (reused for rename + save-as-new-view). */
+function NamePromptDialog({
+  open,
+  onOpenChange,
+  title,
+  initialValue,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  initialValue: string;
+  onSubmit: (name: string) => void;
+}) {
+  const [name, setName] = useState(initialValue);
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (o) setName(initialValue);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" />
+        <DialogFooter>
+          <Button
+            disabled={!name.trim()}
+            onClick={() => {
+              onSubmit(name.trim());
+              onOpenChange(false);
+            }}
+          >
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const OPERAND_SUMMARY: Record<string, string> = {
   IS: 'is',
@@ -66,6 +125,13 @@ export function RecordTableToolbar({
   sortField,
   sortDirection,
   onSortChange,
+  isViewDirty,
+  onUpdateView,
+  onSaveAsNewView,
+  onRenameView,
+  onDuplicateView,
+  onDeleteView,
+  canDeleteView,
 }: {
   views: View[];
   activeViewId: string | undefined;
@@ -83,12 +149,21 @@ export function RecordTableToolbar({
   sortField: string | undefined;
   sortDirection: 'ASC' | 'DESC';
   onSortChange: (field: string | undefined, direction: 'ASC' | 'DESC') => void;
+  isViewDirty: boolean;
+  onUpdateView: () => void;
+  onSaveAsNewView: (name: string) => void;
+  onRenameView: (name: string) => void;
+  onDuplicateView: () => void;
+  onDeleteView: () => void;
+  canDeleteView: boolean;
 }) {
   const fieldByKey = new Map(fields.map((f) => [friendlyFieldKey(f), f]));
   const sortableFields = fields.filter((f) => FILTERABLE_TYPES.has(f.type));
   const activeView = views.find((v) => v.id === activeViewId);
   const columnFields = fields.filter(isColumnField);
   const visibilityByFieldId = new Map(viewFields.map((f) => [f.fieldMetadataId, f.isVisible]));
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [saveAsOpen, setSaveAsOpen] = useState(false);
 
   return (
     <div className="border-b">
@@ -111,7 +186,68 @@ export function RecordTableToolbar({
               ))}
             </SelectContent>
           </Select>
+
+          {/* View management: rename / duplicate / delete (gap B3). The default "All <Object>" view
+              is locked from rename/delete (gap G2). */}
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="size-6 p-0" />}>
+              {activeView?.isDefault ? (
+                <Lock className="size-3.5 text-muted-foreground" />
+              ) : (
+                <MoreHorizontal className="size-3.5 text-muted-foreground" />
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem disabled={activeView?.isDefault} onClick={() => setRenameOpen(true)}>
+                <Pencil className="size-3.5" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicateView}>
+                <Copy className="size-3.5" /> Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDeleteView || activeView?.isDefault}
+                onClick={onDeleteView}
+              >
+                <Trash2 className="size-3.5" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <CreateViewDialog fields={fields} onCreate={onCreateView} />
+
+          {/* "Update view" appears only when local filters/sorts differ from the saved view (gap B1). */}
+          {isViewDirty && (
+            <div className="ml-1 flex items-center">
+              <Button size="sm" className="h-7 gap-1 rounded-r-none px-2 text-xs" onClick={onUpdateView}>
+                <Save className="size-3.5" /> Update view
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button size="sm" className="h-7 rounded-l-none border-l border-primary-foreground/20 px-1" />}>
+                  <ChevronDown className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSaveAsOpen(true)}>Save as new view</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
+          <NamePromptDialog
+            open={renameOpen}
+            onOpenChange={setRenameOpen}
+            title="Rename view"
+            initialValue={activeView?.name ?? ''}
+            onSubmit={onRenameView}
+          />
+          <NamePromptDialog
+            open={saveAsOpen}
+            onOpenChange={setSaveAsOpen}
+            title="Save as new view"
+            initialValue={`${activeView?.name ?? 'View'} copy`}
+            onSubmit={onSaveAsNewView}
+          />
         </div>
 
         <div className="flex items-center gap-1">

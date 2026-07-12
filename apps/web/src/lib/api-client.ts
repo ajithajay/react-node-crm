@@ -176,8 +176,10 @@ export interface CurrentWorkspace {
   id: string;
   name: string;
   subdomain: string;
+  customDomain: string | null;
   logoUrl: string | null;
   defaultRoleId: string | null;
+  editableProfileFields: string[];
 }
 
 export interface Member {
@@ -234,6 +236,8 @@ export const workspaceApi = {
   removeLogo: () => del<{ ok: true }>('/workspace/logo'),
 
   setDefaultRole: (roleId: string) => patch<{ ok: true }>('/workspace/default-role', { roleId }),
+
+  remove: () => del<{ ok: true }>('/workspace'),
 };
 
 export const memberApi = {
@@ -343,6 +347,10 @@ export const auditLogApi = {
   list: (query: Partial<AuditLogQuery> = {}) => {
     const params = new URLSearchParams();
     if (query.action) params.set('action', query.action);
+    if (query.actorUserId) params.set('actorUserId', query.actorUserId);
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.search) params.set('search', query.search);
     if (query.page) params.set('page', String(query.page));
     if (query.pageSize) params.set('pageSize', String(query.pageSize));
     const qs = params.toString();
@@ -474,6 +482,46 @@ export const dataModelApi = {
 
   deleteIndex: (objectId: string, indexId: string) =>
     del<{ ok: true }>(`/data-model/objects/${objectId}/indexes/${indexId}`),
+
+  getSections: (objectId: string) => get<PageSection[]>(`/data-model/objects/${objectId}/sections`),
+
+  setSections: (objectId: string, sections: { label: string; fieldMetadataIds: string[] }[]) =>
+    put<PageSection[]>(`/data-model/objects/${objectId}/sections`, sections),
+};
+
+export interface PageSection {
+  id: string;
+  label: string;
+  position: number;
+  fieldMetadataIds: string[];
+}
+
+export interface NavigationMenuItem {
+  id: string;
+  type: 'FOLDER' | 'OBJECT' | 'VIEW' | 'LINK';
+  label: string;
+  icon: string | null;
+  position: number;
+  folderId: string | null;
+  targetObjectMetadataId: string | null;
+  viewId: string | null;
+  link: string | null;
+}
+
+export const navigationApi = {
+  list: () => get<NavigationMenuItem[]>('/navigation'),
+  create: (input: {
+    type: 'FOLDER' | 'OBJECT' | 'VIEW' | 'LINK';
+    label: string;
+    icon?: string | null;
+    folderId?: string | null;
+    targetObjectMetadataId?: string | null;
+    viewId?: string | null;
+    link?: string | null;
+  }) => post<NavigationMenuItem>('/navigation', input),
+  update: (id: string, input: { label?: string; icon?: string | null; folderId?: string | null; position?: number }) =>
+    patch<NavigationMenuItem>(`/navigation/${id}`, input),
+  remove: (id: string) => del<{ ok: true }>(`/navigation/${id}`),
 };
 
 export interface ApiKey {
@@ -591,7 +639,16 @@ export const filesApi = {
     form.set('file', file);
     return postForm<{ id: string; url: string }>('/files/upload', form);
   },
+
+  remove: (id: string) => del<{ ok: true }>(`/files/${id}`),
 };
+
+/** Extracts the file id from a stored `/files/:id` path (attachments persist a host-relative path). */
+export function fileIdFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = /\/files\/([^/?#]+)/.exec(url);
+  return match?.[1] ?? null;
+}
 
 // ---- Saved views (Phase 6) ----
 
@@ -603,6 +660,7 @@ export interface View {
   icon: string | null;
   position: number;
   isCompact: boolean;
+  isDefault: boolean;
   kanbanFieldMetadataId: string | null;
 }
 

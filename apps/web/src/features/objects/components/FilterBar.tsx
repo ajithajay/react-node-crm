@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DataModelField } from '@/lib/api-client';
 import { FILTERABLE_TYPES, friendlyFieldKey, operandsForType } from '../lib/field-values';
+import { RelationPickerInput } from './RelationPickerInput';
 
 export interface FilterCondition {
   field: string; // friendly key, matches record-list query's `field`
@@ -37,6 +38,20 @@ function ValueInput({
   onChange: (value: unknown) => void;
 }) {
   if (!field || NO_VALUE_OPERANDS.has(condition.operand)) return null;
+
+  if (field.type === FieldMetadataType.RELATION) {
+    // Pick a real target record (stores its id) instead of hand-typing a UUID — the backend
+    // filters the `<field>Id` FK column by equality, so id-selection works end-to-end (gap B2).
+    return (
+      <div className="w-56">
+        <RelationPickerInput
+          field={field}
+          value={(condition.value as string) ?? null}
+          onChange={(v) => onChange(v)}
+        />
+      </div>
+    );
+  }
 
   if (field.type === FieldMetadataType.BOOLEAN) {
     return (

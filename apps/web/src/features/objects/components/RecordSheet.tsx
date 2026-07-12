@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ApiError, type DataModelField } from '@/lib/api-client';
+import { ApiError, type DataModelField, dataModelApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { FieldInput, isEditableField } from '../lib/field-inputs';
 import { friendlyFieldKey } from '../lib/field-values';
@@ -31,6 +32,15 @@ const DETAIL_TAB_DEFS = [
   { key: 'tasks', label: 'Tasks', reverseFieldName: 'task_targets' },
   { key: 'files', label: 'Files', reverseFieldName: 'attachments' },
 ] as const;
+
+/** The morph junction/activity objects themselves — they back the tabs, so they don't get the tabs. */
+const ACTIVITY_PLUMBING_OBJECTS: ReadonlySet<string> = new Set([
+  'note_target',
+  'task_target',
+  'timeline_activity',
+  'attachment',
+  'workspace_member',
+]);
 
 /** created_at/updated_at/deleted_at/created_by/updated_by — displayed read-only, never in the editable form. */
 const SYSTEM_FIELD_NAMES: ReadonlySet<string> = new Set([
@@ -95,12 +105,14 @@ function SystemFieldRow({ field, record }: { field: DataModelField; record: Reco
 
 function OverviewTab({
   fields,
+  objectMetadataId,
   record,
   sourceRecordId,
   values,
   onChange,
 }: {
   fields: DataModelField[];
+  objectMetadataId: string | undefined;
   record: Record<string, unknown> | null;
   sourceRecordId: string | undefined;
   values: Record<string, unknown>;
@@ -112,21 +124,50 @@ function OverviewTab({
     (f) => f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY' && !f.settings?.isMorphReverse,
   );
 
+  // Named record-page sections (Twenty parity — e.g. Company's General/Business/Contact). Falls back
+  // to a single "Fields" section when the object has none configured (gap D1/D2).
+  const { data: sections } = useQuery({
+    queryKey: ['object-sections', objectMetadataId],
+    queryFn: () => dataModelApi.getSections(objectMetadataId!),
+    enabled: !!objectMetadataId,
+  });
+
+  const editableById = new Map(editableFields.map((f) => [f.id, f]));
+  let groups: { label: string; fields: DataModelField[] }[];
+  if (sections && sections.length > 0) {
+    const used = new Set<string>();
+    groups = sections
+      .map((s) => {
+        const secFields = s.fieldMetadataIds
+          .map((id) => editableById.get(id))
+          .filter((f): f is DataModelField => !!f);
+        secFields.forEach((f) => used.add(f.id));
+        return { label: s.label, fields: secFields };
+      })
+      .filter((g) => g.fields.length > 0);
+    const leftovers = editableFields.filter((f) => !used.has(f.id));
+    if (leftovers.length) groups.push({ label: 'Other', fields: leftovers });
+  } else {
+    groups = [{ label: 'Fields', fields: editableFields }];
+  }
+
   return (
     <div className="space-y-4 py-4">
-      <FieldSection title="Fields">
-        {editableFields.map((field) => {
-          const key = friendlyFieldKey(field);
-          return (
-            <FieldRow
-              key={field.id}
-              field={field}
-              value={values[key]}
-              onChange={(v) => onChange((prev) => ({ ...prev, [key]: v }))}
-            />
-          );
-        })}
-      </FieldSection>
+      {groups.map((group) => (
+        <FieldSection key={group.label} title={group.label}>
+          {group.fields.map((field) => {
+            const key = friendlyFieldKey(field);
+            return (
+              <FieldRow
+                key={field.id}
+                field={field}
+                value={values[key]}
+                onChange={(v) => onChange((prev) => ({ ...prev, [key]: v }))}
+              />
+            );
+          })}
+        </FieldSection>
+      ))}
 
       {record && systemFields.length > 0 && (
         <FieldSection title="System" defaultOpen={false}>
@@ -150,6 +191,7 @@ export function RecordSheet({
   mode,
   objectLabel,
   objectNameSingular,
+  objectMetadataId,
   fields,
   labelIdentifierField,
   initialValues,
@@ -160,6 +202,7 @@ export function RecordSheet({
   mode: 'create' | 'edit';
   objectLabel: string;
   objectNameSingular: string;
+  objectMetadataId?: string;
   fields: DataModelField[];
   labelIdentifierField?: DataModelField;
   initialValues?: Record<string, unknown>;
@@ -174,12 +217,12 @@ export function RecordSheet({
     : '';
   const sourceRecordId = initialValues?.id as string | undefined;
 
-  const reverseFieldNames = new Set(
-    fields
-      .filter((f) => f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY' && f.settings?.isMorphReverse)
-      .map((f) => f.name),
-  );
-  const detailTabs = DETAIL_TAB_DEFS.filter((t) => reverseFieldNames.has(t.reverseFieldName));
+  // Every real object gets Timeline/Notes/Tasks/Files (Twenty parity — its generic record layout
+  // hardcodes these tabs). The junction/activity widgets query the *global* note_targets/task_targets/
+  // attachments/timeline_activities objects by targetType/targetId, so they work for any object
+  // (incl. custom) without that object carrying a reverse field. Only the activity/junction plumbing
+  // objects themselves are excluded (they're never opened as user-facing records).
+  const detailTabs = ACTIVITY_PLUMBING_OBJECTS.has(objectNameSingular) ? [] : DETAIL_TAB_DEFS;
 
   async function handleSubmit(): Promise<void> {
     setSubmitting(true);
@@ -224,6 +267,7 @@ export function RecordSheet({
               <TabsContent value="overview">
                 <OverviewTab
                   fields={fields}
+                  objectMetadataId={objectMetadataId}
                   record={initialValues ?? null}
                   sourceRecordId={sourceRecordId}
                   values={values}
@@ -268,6 +312,7 @@ export function RecordSheet({
           <div className="flex-1 overflow-y-auto px-4">
             <OverviewTab
               fields={fields}
+              objectMetadataId={objectMetadataId}
               record={null}
               sourceRecordId={undefined}
               values={values}

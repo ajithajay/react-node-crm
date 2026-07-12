@@ -27,6 +27,10 @@ export class ViewEntity {
   @Column({ type: 'boolean', name: 'is_compact', default: false })
   isCompact!: boolean;
 
+  /** The auto-created "All <Object>" index view — locked from rename/delete (Twenty's ViewKey.INDEX). */
+  @Column({ type: 'boolean', name: 'is_default', default: false })
+  isDefault!: boolean;
+
   @Column({ type: 'uuid', name: 'kanban_field_metadata_id', nullable: true })
   kanbanFieldMetadataId!: string | null;
 

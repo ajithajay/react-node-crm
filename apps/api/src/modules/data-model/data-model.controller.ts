@@ -133,3 +133,13 @@ export async function deleteIndex(
   await dataModelService.deleteIndex(req.workspaceId!, req.params.indexId, req.user!.id);
   res.status(200).json({ ok: true });
 }
+
+export async function listSections(req: Request<{ id: string }>, res: Response): Promise<void> {
+  const result = await dataModelService.listSections(req.workspaceId!, req.params.id);
+  res.status(200).json(result);
+}
+
+export async function setSections(req: Request<{ id: string }>, res: Response): Promise<void> {
+  const result = await dataModelService.setSections(req.workspaceId!, req.params.id, req.user!.id, req.body);
+  res.status(200).json(result);
+}

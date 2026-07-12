@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { type DataModelField, dataModelApi, recordApi } from '@/lib/api-client';
-import { formatFieldValue } from '../lib/field-values';
+import { resolveRecordLabel } from '../lib/field-values';
 import { RecordChip } from './RecordChip';
 
 /**
@@ -51,9 +51,7 @@ export function RelationPickerInput({
   });
 
   function displayName(record: Record<string, unknown>): string {
-    if (!labelField) return String(record.id);
-    const formatted = formatFieldValue(labelField, record);
-    return formatted === '—' ? String(record.id) : formatted;
+    return resolveRecordLabel(record, labelField, targetDetail?.fields, targetObject?.labelSingular);
   }
 
   if (!targetObject) return null;

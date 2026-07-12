@@ -23,6 +23,8 @@ import { WebhookEntity } from './webhook.entity.js';
 import { RefreshTokenEntity, TwoFactorMethodEntity } from './auth-token.entity.js';
 import { FileEntity } from './file.entity.js';
 import { AuditLogEntity } from './audit-log.entity.js';
+import { PageLayoutSectionEntity } from './page-layout-section.entity.js';
+import { NavigationMenuItemEntity } from './navigation-menu-item.entity.js';
 
 export * from './user.entity.js';
 export * from './workspace.entity.js';
@@ -38,6 +40,8 @@ export * from './webhook.entity.js';
 export * from './auth-token.entity.js';
 export * from './file.entity.js';
 export * from './audit-log.entity.js';
+export * from './page-layout-section.entity.js';
+export * from './navigation-menu-item.entity.js';
 
 /** Every core-schema entity, registered on the core DataSource. */
 export const CORE_ENTITIES = [
@@ -66,4 +70,6 @@ export const CORE_ENTITIES = [
   TwoFactorMethodEntity,
   FileEntity,
   AuditLogEntity,
+  PageLayoutSectionEntity,
+  NavigationMenuItemEntity,
 ];

@@ -4,6 +4,8 @@ import {
   IndexMetadataEntity,
   mapFieldToColumns,
   ObjectMetadataEntity,
+  PageLayoutSectionEntity,
+  ViewEntity,
   WorkspaceEntity,
 } from '@saasly/database';
 import type {
@@ -13,6 +15,7 @@ import type {
   CreateObjectRequest,
   CreateRelationRequest,
   SetObjectIdentifiersRequest,
+  SetSectionsRequest,
   UpdateFieldRequest,
   UpdateObjectRequest,
 } from '@saasly/shared';
@@ -23,6 +26,7 @@ import { record } from '../audit-log/audit-log.service.js';
 const objectRepo = () => dataSource.getRepository(ObjectMetadataEntity);
 const fieldRepo = () => dataSource.getRepository(FieldMetadataEntity);
 const indexRepo = () => dataSource.getRepository(IndexMetadataEntity);
+const sectionRepo = () => dataSource.getRepository(PageLayoutSectionEntity);
 const metadataService = createMetadataService(dataSource);
 
 /** The primary physical column backing a field (first column of its mapping), used for indexes. */
@@ -210,6 +214,19 @@ export async function createObject(
     objectMetadataId: object.id,
     tableName: object.namePlural,
   });
+
+  // Auto-create the locked "All <Object>" default index view (Twenty parity) — also makes the new
+  // object's records page usable immediately (it resolves the object's first view).
+  await dataSource.getRepository(ViewEntity).save(
+    dataSource.getRepository(ViewEntity).create({
+      workspaceId,
+      objectMetadataId: object.id,
+      name: `All ${object.labelPlural}`,
+      type: 'TABLE',
+      position: 0,
+      isDefault: true,
+    }),
+  );
 
   await record(workspaceId, actorUserId, 'data_model.object_created', { objectMetadataId: object.id, name: object.nameSingular });
   const refreshed = await objectRepo().findOneByOrFail({ id: object.id });
@@ -589,4 +606,56 @@ export async function deleteIndex(
 
   await metadataService.deleteIndex({ workspaceId, schemaName: workspace.databaseSchema!, indexMetadataId });
   await record(workspaceId, actorUserId, 'data_model.field_updated', { indexDeleted: index.name });
+}
+
+// ---- Record-page field sections (page layout) ----
+
+export interface SectionSummary {
+  id: string;
+  label: string;
+  position: number;
+  fieldMetadataIds: string[];
+}
+
+export async function listSections(workspaceId: string, objectMetadataId: string): Promise<SectionSummary[]> {
+  const sections = await sectionRepo().find({
+    where: { workspaceId, objectMetadataId },
+    order: { position: 'ASC' },
+  });
+  return sections.map((s) => ({
+    id: s.id,
+    label: s.label,
+    position: s.position,
+    fieldMetadataIds: s.fieldMetadataIds ?? [],
+  }));
+}
+
+/** Bulk-replace an object's sections (delete-then-insert), matching how the layout editor saves. */
+export async function setSections(
+  workspaceId: string,
+  objectMetadataId: string,
+  actorUserId: string,
+  sections: SetSectionsRequest,
+): Promise<SectionSummary[]> {
+  const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });
+  if (!object) throw new NotFoundError('Object not found');
+
+  await dataSource.transaction(async (manager) => {
+    const repo = manager.getRepository(PageLayoutSectionEntity);
+    await repo.delete({ workspaceId, objectMetadataId });
+    await repo.save(
+      sections.map((section, position) =>
+        repo.create({
+          workspaceId,
+          objectMetadataId,
+          label: section.label,
+          position,
+          fieldMetadataIds: section.fieldMetadataIds,
+        }),
+      ),
+    );
+  });
+
+  await record(workspaceId, actorUserId, 'data_model.object_updated', { sectionsUpdated: sections.length });
+  return listSections(workspaceId, objectMetadataId);
 }

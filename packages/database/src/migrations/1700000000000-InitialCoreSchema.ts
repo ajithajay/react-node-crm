@@ -35,6 +35,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "activation_status" varchar NOT NULL DEFAULT 'PENDING_CREATION',
         "default_role_id" uuid,
         "is_two_factor_authentication_enforced" boolean NOT NULL DEFAULT false,
+        "editable_profile_fields" jsonb NOT NULL DEFAULT '["firstName","lastName","profilePicture"]',
         "created_at" timestamptz NOT NULL DEFAULT now(),
         "updated_at" timestamptz NOT NULL DEFAULT now()
       );
@@ -215,6 +216,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "icon" varchar,
         "position" int NOT NULL DEFAULT 0,
         "is_compact" boolean NOT NULL DEFAULT false,
+        "is_default" boolean NOT NULL DEFAULT false,
         "kanban_field_metadata_id" uuid,
         "created_at" timestamptz NOT NULL DEFAULT now(),
         "updated_at" timestamptz NOT NULL DEFAULT now()
@@ -337,10 +339,45 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
     `);
+
+    await queryRunner.query(`
+      CREATE TABLE "core"."page_layout_sections" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "object_metadata_id" uuid NOT NULL REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
+        "label" varchar NOT NULL,
+        "position" int NOT NULL DEFAULT 0,
+        "field_metadata_ids" jsonb NOT NULL DEFAULT '[]',
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_page_layout_sections_object" ON "core"."page_layout_sections" ("workspace_id", "object_metadata_id");
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE "core"."navigation_menu_items" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "workspace_member_id" uuid NOT NULL REFERENCES "core"."workspace_members"("id") ON DELETE CASCADE,
+        "type" varchar NOT NULL,
+        "label" varchar NOT NULL,
+        "icon" varchar,
+        "position" double precision NOT NULL DEFAULT 0,
+        "folder_id" uuid REFERENCES "core"."navigation_menu_items"("id") ON DELETE CASCADE,
+        "target_object_metadata_id" uuid REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
+        "view_id" uuid,
+        "link" varchar,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_navigation_menu_items_member" ON "core"."navigation_menu_items" ("workspace_id", "workspace_member_id");
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const tables = [
+      'navigation_menu_items',
+      'page_layout_sections',
       'files',
       'two_factor_methods',
       'refresh_tokens',

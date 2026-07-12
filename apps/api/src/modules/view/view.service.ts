@@ -38,6 +38,7 @@ export interface ViewSummary {
   icon: string | null;
   position: number;
   isCompact: boolean;
+  isDefault: boolean;
   kanbanFieldMetadataId: string | null;
 }
 
@@ -50,6 +51,7 @@ function toSummary(view: ViewEntity): ViewSummary {
     icon: view.icon,
     position: view.position,
     isCompact: view.isCompact,
+    isDefault: view.isDefault,
     kanbanFieldMetadataId: view.kanbanFieldMetadataId,
   };
 }
@@ -201,6 +203,12 @@ export async function updateView(
     await assertFieldsBelongToObject(workspaceId, view.objectMetadataId, [input.kanbanFieldMetadataId]);
   }
 
+  // The default "All <Object>" view is locked from renaming (Twenty's ViewKey.INDEX). Filters/sorts/
+  // fields/compact/group-by can still be changed — only its name/deletion are protected.
+  if (view.isDefault && input.name !== undefined && input.name !== view.name) {
+    throw new ConflictError('The default view cannot be renamed');
+  }
+
   if (input.name !== undefined) view.name = input.name;
   if (input.icon !== undefined) view.icon = input.icon;
   if (input.isCompact !== undefined) view.isCompact = input.isCompact;
@@ -213,6 +221,7 @@ export async function updateView(
 
 export async function deleteView(workspaceId: string, viewId: string): Promise<void> {
   const view = await requireView(workspaceId, viewId);
+  if (view.isDefault) throw new ConflictError('The default view cannot be deleted');
   await viewRepo().remove(view);
 }
 

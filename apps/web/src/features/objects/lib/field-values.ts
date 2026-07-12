@@ -56,6 +56,30 @@ export function friendlyFieldKey(field: Pick<DataModelField, 'name' | 'type'>): 
   return field.type === FieldMetadataType.RELATION ? `${key}Id` : key;
 }
 
+/**
+ * A record's human display label, resolving through the composite-aware `formatFieldValue` and
+ * degrading gracefully — label field → an email field → `Unnamed <object>` — but never to a raw
+ * UUID (gap A2). Shared by the relation picker and the table's relation cell so the fallback logic
+ * stays in one place.
+ */
+export function resolveRecordLabel(
+  record: Record<string, unknown>,
+  labelField: DataModelField | undefined,
+  fields: DataModelField[] | undefined,
+  objectLabelSingular: string | undefined,
+): string {
+  if (labelField) {
+    const formatted = formatFieldValue(labelField, record);
+    if (formatted !== '—') return formatted;
+  }
+  const emailField = fields?.find((f) => f.type === FieldMetadataType.EMAILS || f.name === 'email');
+  if (emailField) {
+    const email = formatFieldValue(emailField, record);
+    if (email !== '—') return email;
+  }
+  return `Unnamed ${objectLabelSingular ?? 'record'}`;
+}
+
 export function selectLabel(field: DataModelField, value: unknown): string {
   const options = (field.settings?.options as SelectOption[] | undefined) ?? [];
   return options.find((o) => o.value === value)?.label ?? String(value);

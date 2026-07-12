@@ -1,13 +1,22 @@
 import type { Request, Response } from 'express';
 import type { RecordListQuery } from '@saasly/shared';
 import { AppError } from '../../lib/errors.js';
+import type { Principal } from './record-permission.js';
 import * as recordService from './record.service.js';
+
+/** The acting principal — an API key when present (gap E3), otherwise the logged-in user. */
+function principalOf(req: Request): Principal {
+  if (req.apiKey) {
+    return { type: 'apiKey', apiKeyId: req.apiKey.id, roleId: req.apiKey.roleId, name: req.apiKey.name };
+  }
+  return { type: 'user', userId: req.user!.id };
+}
 
 export async function index(req: Request<{ objectNamePlural: string }>, res: Response): Promise<void> {
   // validate() has already replaced req.query with the parsed+coerced RecordListQuery at runtime.
   const result = await recordService.listRecords(
     req.workspaceId!,
-    req.user!.id,
+    principalOf(req),
     req.params.objectNamePlural,
     req.query as unknown as RecordListQuery,
   );
@@ -18,7 +27,7 @@ export async function show(
   req: Request<{ objectNamePlural: string; id: string }>,
   res: Response,
 ): Promise<void> {
-  const result = await recordService.getRecord(req.workspaceId!, req.user!.id, req.params.objectNamePlural, req.params.id);
+  const result = await recordService.getRecord(req.workspaceId!, principalOf(req), req.params.objectNamePlural, req.params.id);
   res.status(200).json(result);
 }
 
@@ -26,7 +35,7 @@ export async function create(
   req: Request<{ objectNamePlural: string }, unknown, Record<string, unknown>>,
   res: Response,
 ): Promise<void> {
-  const result = await recordService.createRecord(req.workspaceId!, req.user!.id, req.params.objectNamePlural, req.body);
+  const result = await recordService.createRecord(req.workspaceId!, principalOf(req), req.params.objectNamePlural, req.body);
   res.status(201).json(result);
 }
 
@@ -36,7 +45,7 @@ export async function update(
 ): Promise<void> {
   const result = await recordService.updateRecord(
     req.workspaceId!,
-    req.user!.id,
+    principalOf(req),
     req.params.objectNamePlural,
     req.params.id,
     req.body,
@@ -47,7 +56,7 @@ export async function update(
 export async function destroy(req: Request<{ objectNamePlural: string; id: string }>, res: Response): Promise<void> {
   await recordService.deleteRecord(
     req.workspaceId!,
-    req.user!.id,
+    principalOf(req),
     req.params.objectNamePlural,
     req.params.id,
     req.query.hard === 'true',
@@ -59,7 +68,7 @@ export async function exportCsv(req: Request<{ objectNamePlural: string }>, res:
   // validate() has already replaced req.query with the parsed+coerced RecordListQuery at runtime.
   const { filename, csv } = await recordService.exportRecordsCsv(
     req.workspaceId!,
-    req.user!.id,
+    principalOf(req),
     req.params.objectNamePlural,
     req.query as unknown as RecordListQuery,
   );
@@ -70,7 +79,7 @@ export async function importCsv(req: Request<{ objectNamePlural: string }>, res:
   if (!req.file) throw new AppError('No file uploaded', 400);
   const summary = await recordService.importRecordsCsv(
     req.workspaceId!,
-    req.user!.id,
+    principalOf(req),
     req.params.objectNamePlural,
     req.file.buffer.toString('utf-8'),
   );
