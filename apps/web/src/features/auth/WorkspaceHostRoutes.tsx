@@ -18,6 +18,7 @@ import { ObjectDetailPage } from '@/features/settings/pages/data-model/ObjectDet
 import { ApiSettingsPage } from '@/features/settings/pages/ApiSettingsPage';
 import { RestPlaygroundPage } from '@/features/settings/pages/RestPlaygroundPage';
 import { ObjectRecordsPage } from '@/features/objects/pages/ObjectRecordsPage';
+import { RecordDetailPage } from '@/features/objects/pages/RecordDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -57,6 +58,7 @@ export function WorkspaceHostRoutes() {
           <Route path="/tasks" element={<ObjectRecordsPage objectNamePlural="tasks" />} />
           <Route path="/notes" element={<ObjectRecordsPage objectNamePlural="notes" />} />
           <Route path="/objects/:objectNamePlural" element={<CustomObjectRoute />} />
+          <Route path="/objects/:objectNamePlural/:recordId" element={<RecordDetailPage />} />
           <Route path="/dashboards" element={<ComingSoonPage title="Dashboards" phase="Phase 7" />} />
           <Route path="/workflows" element={<ComingSoonPage title="Workflows" phase="Phase 8" />} />
           <Route path="/workflows/runs" element={<ComingSoonPage title="Workflow Runs" phase="Phase 8" />} />

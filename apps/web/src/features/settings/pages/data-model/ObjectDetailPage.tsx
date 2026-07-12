@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 import { z } from 'zod';
-import { ArrowLeftRight, MoreHorizontal, Pencil, Plus, Power, Search, Trash, X } from 'lucide-react';
+import { ArrowLeftRight, ChevronRight, MoreHorizontal, Pencil, Plus, Power, Search, Trash, X } from 'lucide-react';
 import { RelationOnDeleteAction, RelationType } from '@saasly/shared';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { IconPicker } from '@/components/IconPicker';
-import { ApiError, type DataModelField, type DataModelObjectDetail, dataModelApi } from '@/lib/api-client';
+import { ApiError, type DataModelField, type DataModelObjectDetail, dataModelApi, recordApi } from '@/lib/api-client';
 import { getIcon, ROLE_ICON_OPTIONS } from '@/lib/icons';
 import { FIELD_TYPE_ICON, FIELD_TYPE_LABEL, FieldFormDialog } from './field-config';
 
@@ -918,122 +918,65 @@ function SettingsTab({ detail }: { detail: DataModelObjectDetail }) {
   );
 }
 
-/** Record-page section editor (Twenty parity): create named sections and assign fields to them (gap F2). */
+/**
+ * Object Layout tab (Twenty parity): launches the full record-page layout customizer (edit mode)
+ * on a real record of this object, and a "Reset to default" action. Field-group editing itself
+ * (rename/add/delete groups, per-field visibility) happens inside that customizer, not here.
+ */
 function LayoutTab({ detail }: { detail: DataModelObjectDetail }) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const objectId = detail.object.id;
-  const { data: serverSections } = useQuery({
-    queryKey: ['object-sections', objectId],
-    queryFn: () => dataModelApi.getSections(objectId),
-  });
+  const [error, setError] = useState<string | null>(null);
 
-  const [sections, setSections] = useState<{ label: string; fieldMetadataIds: string[] }[] | null>(null);
-  const current = sections ?? (serverSections ?? []).map((s) => ({ label: s.label, fieldMetadataIds: s.fieldMetadataIds }));
-
-  // Fields eligible to place on the record page: active scalar fields (exclude relations + system audit).
-  const eligibleFields = detail.fields.filter(
-    (f) => f.isActive && f.type !== 'RELATION' && f.type !== 'MORPH_RELATION' && f.isRestrictable,
-  );
-  const fieldById = new Map(eligibleFields.map((f) => [f.id, f]));
-  const assigned = new Set(current.flatMap((s) => s.fieldMetadataIds));
-  const unassigned = eligibleFields.filter((f) => !assigned.has(f.id));
-
-  const save = useMutation({
-    mutationFn: () => dataModelApi.setSections(objectId, current.filter((s) => s.label.trim())),
-    onSuccess: () => {
-      setSections(null);
-      void queryClient.invalidateQueries({ queryKey: ['object-sections', objectId] });
+  const customize = useMutation({
+    mutationFn: async () => {
+      const list = await recordApi.list(detail.object.namePlural, { pageSize: 1 });
+      const first = list.records[0];
+      if (!first) throw new Error('Create at least one record to customize this layout.');
+      return first.id as string;
     },
+    onSuccess: (recordId) => navigate(`/objects/${detail.object.namePlural}/${recordId}?customize=1`),
+    onError: (err) => setError(err instanceof Error ? err.message : 'Something went wrong'),
   });
 
-  function update(next: { label: string; fieldMetadataIds: string[] }[]): void {
-    setSections(next);
-  }
+  const reset = useMutation({
+    mutationFn: () => dataModelApi.resetPageLayout(objectId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['page-layout', objectId] }),
+  });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Record page sections</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Group fields into named sections (e.g. General / Business / Contact) shown on the record page. Unassigned
-          fields appear in a trailing “Other” section.
-        </p>
-
-        {current.map((section, index) => (
-          <div key={index} className="space-y-2 rounded-lg border p-3">
-            <div className="flex items-center gap-2">
-              <Input
-                value={section.label}
-                onChange={(e) => update(current.map((s, i) => (i === index ? { ...s, label: e.target.value } : s)))}
-                className="max-w-xs"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-muted-foreground hover:text-destructive"
-                onClick={() => update(current.filter((_, i) => i !== index))}
-              >
-                <X className="size-4" /> Remove
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {section.fieldMetadataIds.map((fid) => (
-                <Badge key={fid} variant="secondary" className="gap-1">
-                  {fieldById.get(fid)?.label ?? fid}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update(
-                        current.map((s, i) =>
-                          i === index ? { ...s, fieldMetadataIds: s.fieldMetadataIds.filter((x) => x !== fid) } : s,
-                        ),
-                      )
-                    }
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              ))}
-              {unassigned.length > 0 && (
-                <Select
-                  value=""
-                  onValueChange={(fid) =>
-                    fid &&
-                    update(current.map((s, i) => (i === index ? { ...s, fieldMetadataIds: [...s.fieldMetadataIds, fid] } : s)))
-                  }
-                >
-                  <SelectTrigger className="h-7 w-40 text-xs">
-                    <SelectValue placeholder="+ Add field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unassigned.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => update([...current, { label: 'New section', fieldMetadataIds: [] }])}
-          >
-            <Plus className="size-4" /> Add section
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Customize</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">Customize the layout for this object&apos;s record page.</p>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Button variant="outline" className="w-full justify-between" onClick={() => customize.mutate()} disabled={customize.isPending}>
+            Customize record page
+            <ChevronRight className="size-4" />
           </Button>
-          <Button size="sm" disabled={!sections || save.isPending} onClick={() => save.mutate()}>
-            Save layout
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reset</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">Reset all overrides on this layout to return it to the app default.</p>
+          <Button variant="outline" onClick={() => reset.mutate()} disabled={reset.isPending}>
+            Reset to default
           </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

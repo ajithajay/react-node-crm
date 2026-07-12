@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Building2, CheckSquare, LayoutDashboard, StickyNote, Target, Users, Workflow } from 'lucide-react';
+import { LayoutDashboard, Workflow } from 'lucide-react';
 
 export interface NavItem {
   label: string;
@@ -7,15 +7,13 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
-/** Sidebar objects, in the order specified by brd.md §3. */
-export const NAV_ITEMS: NavItem[] = [
-  { label: 'Companies', path: '/companies', icon: Building2 },
-  { label: 'People', path: '/people', icon: Users },
-  { label: 'Opportunities', path: '/opportunities', icon: Target },
-  { label: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { label: 'Notes', path: '/notes', icon: StickyNote },
-  { label: 'Dashboards', path: '/dashboards', icon: LayoutDashboard },
-];
+/**
+ * Hardcoded, non-customizable sidebar entries — Companies/People/Opportunities/Tasks/Notes moved to
+ * real `navigation_menu_items` rows (Twenty parity: every real object is an explicit sidebar item,
+ * seeded by default, editable in layout-customization mode; see `navigation.service.ts`). Dashboards
+ * and Workflows have no backing object metadata (Phase 7/8 placeholders), so they stay here.
+ */
+export const NAV_ITEMS: NavItem[] = [{ label: 'Dashboards', path: '/dashboards', icon: LayoutDashboard }];
 
 export const WORKFLOWS_NAV = {
   label: 'Workflows',

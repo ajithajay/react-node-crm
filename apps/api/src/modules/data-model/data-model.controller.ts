@@ -11,7 +11,9 @@ import type {
   UpdateFieldRequest,
   UpdateObjectRequest,
 } from '@saasly/shared';
+import type { SavePageLayoutRequest } from '@saasly/shared';
 import * as dataModelService from './data-model.service.js';
+import * as pageLayoutService from './page-layout.service.js';
 
 export async function listObjects(req: Request, res: Response): Promise<void> {
   const result = await dataModelService.listObjects(req.workspaceId!);
@@ -141,5 +143,23 @@ export async function listSections(req: Request<{ id: string }>, res: Response):
 
 export async function setSections(req: Request<{ id: string }>, res: Response): Promise<void> {
   const result = await dataModelService.setSections(req.workspaceId!, req.params.id, req.user!.id, req.body);
+  res.status(200).json(result);
+}
+
+export async function getPageLayout(req: Request<{ id: string }>, res: Response): Promise<void> {
+  const result = await pageLayoutService.getPageLayout(req.workspaceId!, req.params.id);
+  res.status(200).json(result);
+}
+
+export async function savePageLayout(
+  req: Request<{ id: string }, unknown, SavePageLayoutRequest>,
+  res: Response,
+): Promise<void> {
+  const result = await pageLayoutService.savePageLayout(req.workspaceId!, req.params.id, req.user!.id, req.body);
+  res.status(200).json(result);
+}
+
+export async function resetPageLayout(req: Request<{ id: string }>, res: Response): Promise<void> {
+  const result = await pageLayoutService.resetPageLayout(req.workspaceId!, req.params.id, req.user!.id);
   res.status(200).json(result);
 }

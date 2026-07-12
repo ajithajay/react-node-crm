@@ -7,6 +7,7 @@ import {
   createRelationRequestSchema,
   setActiveRequestSchema,
   setFieldRecordPageVisibilityRequestSchema,
+  savePageLayoutRequestSchema,
   setObjectIdentifiersRequestSchema,
   setSectionsRequestSchema,
   updateFieldRequestSchema,
@@ -22,6 +23,7 @@ import * as dataModelController from './data-model.controller.js';
 export const dataModelRouter: Router = Router();
 
 const requireDataModelPermission = permissionGuard(PermissionFlagType.DATA_MODEL);
+const requireLayoutsPermission = permissionGuard(PermissionFlagType.LAYOUTS);
 
 dataModelRouter.get('/objects', authGuard, workspaceGuard, dataModelController.listObjects);
 dataModelRouter.get('/objects/:id', authGuard, workspaceGuard, dataModelController.getObject);
@@ -139,4 +141,22 @@ dataModelRouter.put(
   requireDataModelPermission,
   validate({ body: setSectionsRequestSchema }),
   dataModelController.setSections,
+);
+
+// Full record-page layout (Settings → Layout customization). Reads open to any member; writes gated by LAYOUTS.
+dataModelRouter.get('/objects/:id/page-layout', authGuard, workspaceGuard, dataModelController.getPageLayout);
+dataModelRouter.put(
+  '/objects/:id/page-layout',
+  authGuard,
+  workspaceGuard,
+  requireLayoutsPermission,
+  validate({ body: savePageLayoutRequestSchema }),
+  dataModelController.savePageLayout,
+);
+dataModelRouter.post(
+  '/objects/:id/page-layout/reset',
+  authGuard,
+  workspaceGuard,
+  requireLayoutsPermission,
+  dataModelController.resetPageLayout,
 );

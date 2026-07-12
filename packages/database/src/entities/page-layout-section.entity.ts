@@ -18,11 +18,19 @@ export class PageLayoutSectionEntity {
   @Column({ type: 'uuid', name: 'object_metadata_id' })
   objectMetadataId!: string;
 
+  /** The FIELDS widget this group belongs to (Phase 9 page-layout subsystem). Null for legacy rows
+   * seeded before the widget layer existed; the page-layout GET migrates them under the widget. */
+  @Column({ type: 'uuid', name: 'page_layout_widget_id', nullable: true })
+  pageLayoutWidgetId!: string | null;
+
   @Column({ type: 'varchar' })
   label!: string;
 
   @Column({ type: 'int', default: 0 })
   position!: number;
+
+  @Column({ type: 'boolean', name: 'is_visible', default: true })
+  isVisible!: boolean;
 
   @Column({ type: 'jsonb', name: 'field_metadata_ids', default: () => `'[]'` })
   fieldMetadataIds!: string[];

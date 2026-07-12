@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Maximize2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -191,6 +192,7 @@ export function RecordSheet({
   mode,
   objectLabel,
   objectNameSingular,
+  objectNamePlural,
   objectMetadataId,
   fields,
   labelIdentifierField,
@@ -202,12 +204,14 @@ export function RecordSheet({
   mode: 'create' | 'edit';
   objectLabel: string;
   objectNameSingular: string;
+  objectNamePlural?: string;
   objectMetadataId?: string;
   fields: DataModelField[];
   labelIdentifierField?: DataModelField;
   initialValues?: Record<string, unknown>;
   onSubmit: (body: Record<string, unknown>) => Promise<unknown>;
 }) {
+  const navigate = useNavigate();
   const [values, setValues] = useState<Record<string, unknown>>(initialValues ?? {});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -241,7 +245,7 @@ export function RecordSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col sm:max-w-xl">
-        <SheetHeader className="border-b">
+        <SheetHeader className="flex-row items-center justify-between border-b pr-10">
           <SheetTitle>
             {mode === 'create' ? (
               `New ${objectLabel}`
@@ -251,6 +255,19 @@ export function RecordSheet({
               `Edit ${objectLabel}`
             )}
           </SheetTitle>
+          {mode === 'edit' && sourceRecordId && objectNamePlural && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Open full page"
+              onClick={() => {
+                onOpenChange(false);
+                navigate(`/objects/${objectNamePlural}/${sourceRecordId}`);
+              }}
+            >
+              <Maximize2 className="size-4" />
+            </Button>
+          )}
         </SheetHeader>
 
         {mode === 'edit' && sourceRecordId ? (

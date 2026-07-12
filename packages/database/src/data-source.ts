@@ -7,6 +7,8 @@ import { AddAuditLogs1700000000002 } from './migrations/1700000000002-AddAuditLo
 import { AddRoleToInvitations1700000000003 } from './migrations/1700000000003-AddRoleToInvitations.js';
 import { AddIconToRoles1700000000004 } from './migrations/1700000000004-AddIconToRoles.js';
 import { AddRecordPageVisibilityToFields1700000000005 } from './migrations/1700000000005-AddRecordPageVisibilityToFields.js';
+import { AddPageLayouts1700000000006 } from './migrations/1700000000006-AddPageLayouts.js';
+import { AddColorToNavigationMenuItems1700000000007 } from './migrations/1700000000007-AddColorToNavigationMenuItems.js';
 
 /** Shared control-plane schema (identity, tenancy, metadata). Per-workspace schemas: see workspace-schema/. */
 export const CORE_SCHEMA = 'core';
@@ -28,6 +30,8 @@ export function createCoreDataSource(databaseUrl: string): DataSource {
       AddRoleToInvitations1700000000003,
       AddIconToRoles1700000000004,
       AddRecordPageVisibilityToFields1700000000005,
+      AddPageLayouts1700000000006,
+      AddColorToNavigationMenuItems1700000000007,
     ],
     migrationsTableName: '_migrations',
     synchronize: false,

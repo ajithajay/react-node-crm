@@ -7,6 +7,7 @@ export const createNavigationMenuItemSchema = z.object({
   type: z.enum(NAVIGATION_MENU_ITEM_TYPES),
   label: z.string().trim().min(1).max(100),
   icon: z.string().trim().min(1).max(50).nullish(),
+  color: z.string().trim().min(1).max(30).nullish(),
   folderId: z.string().uuid().nullish(),
   targetObjectMetadataId: z.string().uuid().nullish(),
   viewId: z.string().uuid().nullish(),
@@ -17,6 +18,7 @@ export type CreateNavigationMenuItemRequest = z.infer<typeof createNavigationMen
 export const updateNavigationMenuItemSchema = z.object({
   label: z.string().trim().min(1).max(100).optional(),
   icon: z.string().trim().min(1).max(50).nullish(),
+  color: z.string().trim().min(1).max(30).nullish(),
   folderId: z.string().uuid().nullish(),
   position: z.number().optional(),
 });

@@ -1,92 +1,98 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FieldMetadataType } from '@saasly/shared';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { dataModelApi } from '@/lib/api-client';
-import { getIcon } from '@/lib/icons';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router';
+import { LayoutGrid, ListTree, Pencil, Table2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { dataModelApi, navigationApi, viewApi } from '@/lib/api-client';
+import { useLayoutCustomization } from '@/features/layout-customization/LayoutCustomizationContext';
 
-/** Fields that never show on a record's Overview tab regardless of this toggle (see field-inputs.tsx). */
-const NEVER_EDITABLE_TYPES: ReadonlySet<string> = new Set([
-  FieldMetadataType.ACTOR,
-  FieldMetadataType.MORPH_RELATION,
-  FieldMetadataType.FILES,
-]);
-
-/**
- * Record-page layout customization (BRD §7.2) — now a real entry point, not a placeholder. Record
- * pages (the RecordSheet's Overview tab) exist since Phase 6, so the earlier "nothing to lay out
- * yet" deferral no longer holds. Scoped to what's genuinely useful without inventing a full
- * drag-and-drop section builder: per-object, toggle which fields appear on the Overview tab.
- */
-export function LayoutPage() {
-  const queryClient = useQueryClient();
-  const [objectId, setObjectId] = useState<string | undefined>(undefined);
-
+/** One real workspace-scoped count. Commands/Dashboards stay out of scope (no command menu / Phase 7 dashboards yet). */
+function useLayoutStats() {
+  const { data: navItems } = useQuery({ queryKey: ['navigation'], queryFn: navigationApi.list });
   const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects });
   const activeObjects = (objects ?? []).filter((o) => o.isActive);
-  const currentObjectId = objectId ?? activeObjects[0]?.id;
 
-  const { data: detail } = useQuery({
-    queryKey: ['data-model-object', currentObjectId],
-    queryFn: () => dataModelApi.getObject(currentObjectId!),
-    enabled: !!currentObjectId,
+  const { data: viewsPerObject } = useQuery({
+    queryKey: ['layout-stats-views', activeObjects.map((o) => o.id).join(',')],
+    queryFn: () => Promise.all(activeObjects.map((o) => viewApi.list(o.id))),
+    enabled: activeObjects.length > 0,
+  });
+  const { data: widgetsPerObject } = useQuery({
+    queryKey: ['layout-stats-widgets', activeObjects.map((o) => o.id).join(',')],
+    queryFn: () => Promise.all(activeObjects.map((o) => dataModelApi.getPageLayout(o.id))),
+    enabled: activeObjects.length > 0,
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: ({ fieldId, isVisible }: { fieldId: string; isVisible: boolean }) =>
-      dataModelApi.setFieldRecordPageVisibility(currentObjectId!, fieldId, isVisible),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['data-model-object', currentObjectId] }),
-  });
+  return {
+    sidebarItems: navItems?.length ?? 0,
+    pages: activeObjects.length,
+    views: viewsPerObject?.reduce((sum, v) => sum + v.length, 0) ?? 0,
+    widgets: widgetsPerObject?.reduce((sum, l) => sum + l.tabs.flatMap((t) => t.widgets).length, 0) ?? 0,
+  };
+}
 
-  const layoutFields = (detail?.fields ?? []).filter(
-    (f) => f.isActive && !NEVER_EDITABLE_TYPES.has(f.type) && !['created_at', 'updated_at', 'deleted_at'].includes(f.name),
-  );
+/**
+ * Settings → Layout landing page (Twenty parity): an overview + a single "Customize" entry point
+ * into the global layout-customization mode, which edits the sidebar in place (record-page layouts
+ * are customized per-object, from Data Model → Object → Layout).
+ */
+export function LayoutPage() {
+  const navigate = useNavigate();
+  const { enterSidebarMode } = useLayoutCustomization();
+  const { data: navItems } = useQuery({ queryKey: ['navigation'], queryFn: navigationApi.list });
+  const stats = useLayoutStats();
+
+  function handleCustomize(): void {
+    enterSidebarMode(navItems ?? []);
+    navigate('/');
+  }
 
   return (
     <div>
       <h1 className="text-lg font-medium">Layout</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Choose which fields appear on a record's Overview tab. Relation widgets (People,
-        Opportunities, etc.) always show separately below the fields, and Timeline/Notes/Tasks/Files
-        are managed as their own tabs, not here.
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">Customize how your workspace looks.</p>
 
-      <div className="mt-4 max-w-xs">
-        <Select value={currentObjectId} onValueChange={(id) => id && setObjectId(id)}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Choose an object…" />
-          </SelectTrigger>
-          <SelectContent>
-            {activeObjects.map((o) => (
-              <SelectItem key={o.id} value={o.id}>
-                {o.labelPlural}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card className="mt-4">
+        <CardContent className="flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-md bg-muted">
+              <LayoutGrid className="size-5 text-muted-foreground" />
+            </div>
+            <div>
+              <div className="font-medium">Customize layout</div>
+              <div className="text-sm text-muted-foreground">Customize how your workspace looks.</div>
+            </div>
+          </div>
+          <Button onClick={handleCustomize}>
+            <Pencil className="size-4" /> Customize
+          </Button>
+        </CardContent>
+      </Card>
 
-      {detail && (
-        <div className="mt-4 divide-y rounded-lg border">
-          {layoutFields.map((field) => {
-            const Icon = getIcon(field.icon);
-            const isRecordLabel = field.id === detail.object.labelIdentifierFieldMetadataId;
-            return (
-              <label key={field.id} className="flex items-center gap-3 p-3 text-sm">
-                <Checkbox
-                  checked={field.isVisibleInRecordPage}
-                  disabled={isRecordLabel}
-                  onCheckedChange={(c) => toggleMutation.mutate({ fieldId: field.id, isVisible: c === true })}
-                />
-                <Icon className="size-4 text-muted-foreground" />
-                <span className="flex-1">{field.label}</span>
-                {isRecordLabel && <span className="text-xs text-muted-foreground">Record label — always shown</span>}
-              </label>
-            );
-          })}
+      <div className="mt-6">
+        <h2 className="text-sm font-medium">Overview</h2>
+        <p className="text-sm text-muted-foreground">All the layout items declared on your workspace</p>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard icon={ListTree} label="Sidebar items" value={stats.sidebarItems} />
+          <StatCard icon={Table2} label="Views" value={stats.views} />
+          <StatCard icon={LayoutGrid} label="Widgets" value={stats.widgets} />
+          <StatCard icon={LayoutGrid} label="Pages" value={stats.pages} />
         </div>
-      )}
+      </div>
     </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value }: { icon: typeof LayoutGrid; label: string; value: number }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Icon className="size-3.5" />
+          {label}
+        </div>
+        <div className="mt-1 text-xl font-semibold">{value}</div>
+      </CardContent>
+    </Card>
   );
 }

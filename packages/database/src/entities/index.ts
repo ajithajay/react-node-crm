@@ -24,6 +24,9 @@ import { RefreshTokenEntity, TwoFactorMethodEntity } from './auth-token.entity.j
 import { FileEntity } from './file.entity.js';
 import { AuditLogEntity } from './audit-log.entity.js';
 import { PageLayoutSectionEntity } from './page-layout-section.entity.js';
+import { PageLayoutEntity } from './page-layout.entity.js';
+import { PageLayoutTabEntity } from './page-layout-tab.entity.js';
+import { PageLayoutWidgetEntity } from './page-layout-widget.entity.js';
 import { NavigationMenuItemEntity } from './navigation-menu-item.entity.js';
 
 export * from './user.entity.js';
@@ -41,6 +44,9 @@ export * from './auth-token.entity.js';
 export * from './file.entity.js';
 export * from './audit-log.entity.js';
 export * from './page-layout-section.entity.js';
+export * from './page-layout.entity.js';
+export * from './page-layout-tab.entity.js';
+export * from './page-layout-widget.entity.js';
 export * from './navigation-menu-item.entity.js';
 
 /** Every core-schema entity, registered on the core DataSource. */
@@ -71,5 +77,8 @@ export const CORE_ENTITIES = [
   FileEntity,
   AuditLogEntity,
   PageLayoutSectionEntity,
+  PageLayoutEntity,
+  PageLayoutTabEntity,
+  PageLayoutWidgetEntity,
   NavigationMenuItemEntity,
 ];

@@ -15,17 +15,14 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { dataModelApi, workspaceApi } from '@/lib/api-client';
-import { getIcon } from '@/lib/icons';
-import { FavoritesNav } from './FavoritesNav';
+import { workspaceApi } from '@/lib/api-client';
 import { NAV_ITEMS, WORKFLOWS_NAV } from './nav-items';
 import { WorkspaceMenu } from './WorkspaceMenu';
+import { WorkspaceNav } from './WorkspaceNav';
 
 export function AppSidebar() {
   const location = useLocation();
   const { data: workspace } = useQuery({ queryKey: ['workspace'], queryFn: workspaceApi.getCurrent });
-  const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects });
-  const customObjects = (objects ?? []).filter((o) => o.isCustom && o.isActive);
 
   return (
     <Sidebar collapsible="icon">
@@ -34,7 +31,9 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
+            <WorkspaceNav />
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.path}>
@@ -71,34 +70,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <FavoritesNav />
-
-        {customObjects.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Custom Objects</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {customObjects.map((object) => {
-                  const Icon = getIcon(object.icon);
-                  const path = `/objects/${object.namePlural}`;
-                  return (
-                    <SidebarMenuItem key={object.id}>
-                      <SidebarMenuButton
-                        isActive={location.pathname.startsWith(path)}
-                        tooltip={object.labelPlural}
-                        render={<Link to={path} />}
-                      >
-                        <Icon />
-                        <span>{object.labelPlural}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
       <SidebarRail />
     </Sidebar>

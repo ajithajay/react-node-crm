@@ -34,6 +34,10 @@ export class NavigationMenuItemEntity {
   @Column({ type: 'varchar', nullable: true })
   icon!: string | null;
 
+  /** Accent color name (from the shared TAG_COLORS palette); null = default (blue). */
+  @Column({ type: 'varchar', nullable: true })
+  color!: string | null;
+
   @Column({ type: 'double precision', default: 0 })
   position!: number;
 

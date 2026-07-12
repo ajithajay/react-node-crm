@@ -18,6 +18,16 @@ import type {
   CreateApiKeyRequest,
   CreateWebhookRequest,
   UpdateWebhookRequest,
+  PageLayoutDto,
+  SavePageLayoutRequest,
+} from '@saasly/shared';
+export type {
+  PageLayoutDto as PageLayout,
+  PageLayoutTabDto as PageLayoutTab,
+  PageLayoutWidgetDto as PageLayoutWidget,
+  PageLayoutGroupDto as PageLayoutGroup,
+  PageLayoutFieldDto as PageLayoutField,
+  PageLayoutWidgetType,
 } from '@saasly/shared';
 import { getAccessToken } from './auth-session.js';
 import { getApiBaseUrl } from './host.js';
@@ -487,6 +497,13 @@ export const dataModelApi = {
 
   setSections: (objectId: string, sections: { label: string; fieldMetadataIds: string[] }[]) =>
     put<PageSection[]>(`/data-model/objects/${objectId}/sections`, sections),
+
+  getPageLayout: (objectId: string) => get<PageLayoutDto>(`/data-model/objects/${objectId}/page-layout`),
+
+  savePageLayout: (objectId: string, input: SavePageLayoutRequest) =>
+    put<PageLayoutDto>(`/data-model/objects/${objectId}/page-layout`, input),
+
+  resetPageLayout: (objectId: string) => post<PageLayoutDto>(`/data-model/objects/${objectId}/page-layout/reset`, {}),
 };
 
 export interface PageSection {
@@ -501,6 +518,7 @@ export interface NavigationMenuItem {
   type: 'FOLDER' | 'OBJECT' | 'VIEW' | 'LINK';
   label: string;
   icon: string | null;
+  color: string | null;
   position: number;
   folderId: string | null;
   targetObjectMetadataId: string | null;
@@ -514,13 +532,16 @@ export const navigationApi = {
     type: 'FOLDER' | 'OBJECT' | 'VIEW' | 'LINK';
     label: string;
     icon?: string | null;
+    color?: string | null;
     folderId?: string | null;
     targetObjectMetadataId?: string | null;
     viewId?: string | null;
     link?: string | null;
   }) => post<NavigationMenuItem>('/navigation', input),
-  update: (id: string, input: { label?: string; icon?: string | null; folderId?: string | null; position?: number }) =>
-    patch<NavigationMenuItem>(`/navigation/${id}`, input),
+  update: (
+    id: string,
+    input: { label?: string; icon?: string | null; color?: string | null; folderId?: string | null; position?: number },
+  ) => patch<NavigationMenuItem>(`/navigation/${id}`, input),
   remove: (id: string) => del<{ ok: true }>(`/navigation/${id}`),
 };
 

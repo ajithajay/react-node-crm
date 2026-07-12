@@ -501,6 +501,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
           mode="edit"
           objectLabel={object.labelSingular}
           objectNameSingular={object.nameSingular}
+          objectNamePlural={object.namePlural}
           objectMetadataId={object.id}
           fields={detail.fields}
           labelIdentifierField={labelIdentifierField}
