@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Switch } from '@/components/ui/switch';
 import { FIELD_DISPLAY_MODES, type FieldDisplayMode } from '@saasly/shared';
 import { type DataModelField, type PageLayout, type PageLayoutTab, type PageLayoutWidget } from '@/lib/api-client';
-import { isEditableField } from '../../lib/field-inputs';
+import { isEditableField, isFieldWidgetPickable } from '../../lib/field-inputs';
 import * as draft from '../../lib/page-layout-draft';
 
 const WIDGET_TITLES: Record<string, string> = {
@@ -268,7 +268,7 @@ export function WidgetEditPanel({
                             <SelectValue placeholder="Pick a field…" />
                           </SelectTrigger>
                           <SelectContent>
-                            {objectFields.filter(isEditableField).map((f) => (
+                            {objectFields.filter(isFieldWidgetPickable).map((f) => (
                               <SelectItem key={f.id} value={f.id}>
                                 {f.label}
                               </SelectItem>

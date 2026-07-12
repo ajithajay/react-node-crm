@@ -16,7 +16,7 @@ import {
   recordApi,
 } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { FieldInput, isEditableField } from '../lib/field-inputs';
+import { FieldInput, isEditableField, isReverseRelationField } from '../lib/field-inputs';
 import { friendlyFieldKey, resolveRecordLabel } from '../lib/field-values';
 import * as draft from '../lib/page-layout-draft';
 import { RecordAttachmentsWidget } from '../components/RecordAttachmentsWidget';
@@ -58,20 +58,47 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** A single FIELD widget — one field rendered per its chosen display mode. */
+const READ_ONLY_TYPES: ReadonlySet<string> = new Set(['ACTOR']);
+
+/** Read-only display for a system/audit field (created_at, created_by, …). */
+function ReadOnlyFieldRow({ field, record }: { field: DataModelField; record: Record<string, unknown> }) {
+  const value = record[friendlyFieldKey(field)];
+  const display =
+    field.type === 'ACTOR'
+      ? String((value as Record<string, unknown> | null)?.name || '—')
+      : value
+        ? new Date(value as string).toLocaleString()
+        : '—';
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{field.label}</span>
+      <span>{display}</span>
+    </div>
+  );
+}
+
+/** A single FIELD widget — a collection relation (People/Opportunities) or one field per display mode. */
 function FieldWidget({
   widget,
   fields,
+  recordId,
   values,
   onChange,
 }: {
   widget: PageLayoutWidget;
   fields: DataModelField[];
+  recordId: string;
   values: Record<string, unknown>;
   onChange: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
   const field = fields.find((f) => f.id === widget.configuration.fieldMetadataId);
   if (!field) return null;
+
+  // A collection/reverse relation renders the linked-records widget (add/remove/link).
+  if (isReverseRelationField(field)) {
+    return <RecordRelationWidget field={field} sourceRecordId={recordId} />;
+  }
+
   const key = friendlyFieldKey(field);
   const mode = widget.configuration.displayMode ?? 'PLAIN';
   const options = (field.settings?.options as { value: string; label: string; color: string }[] | undefined) ?? [];
@@ -158,28 +185,25 @@ function ActivityWidget({
   }
 }
 
-/** The Home-tab FIELDS widget: named field groups + reverse-relation widgets + a System section. */
+/**
+ * The FIELDS widget: named field groups from the page layout (General/Business/Contact/System …).
+ * Each field renders editable (FieldInput) or read-only (system/audit fields) inline — nothing is
+ * rendered outside the widget system; relations are their own FIELD widgets.
+ */
 function FieldsWidget({
   widget,
   fields,
   record,
-  recordId,
   values,
   onChange,
 }: {
   widget: PageLayoutWidget;
   fields: DataModelField[];
   record: Record<string, unknown>;
-  recordId: string;
   values: Record<string, unknown>;
   onChange: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
   const fieldById = new Map(fields.map((f) => [f.id, f]));
-  const editableIds = new Set(fields.filter(isEditableField).map((f) => f.id));
-  const relationFields = fields.filter(
-    (f) => f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY' && !f.settings?.isMorphReverse,
-  );
-  const systemFields = fields.filter((f) => SYSTEM_FIELD_NAMES.has(f.name));
 
   return (
     <div className="space-y-4">
@@ -187,13 +211,15 @@ function FieldsWidget({
         .filter((g) => g.isVisible)
         .map((group) => {
           const groupFields = group.fields
-            .filter((gf) => gf.isVisible && editableIds.has(gf.fieldMetadataId))
+            .filter((gf) => gf.isVisible)
             .map((gf) => fieldById.get(gf.fieldMetadataId))
             .filter((f): f is DataModelField => !!f);
           if (!groupFields.length) return null;
           return (
             <Section key={group.id} title={group.label}>
               {groupFields.map((field) => {
+                const editable = isEditableField(field) && !READ_ONLY_TYPES.has(field.type) && !SYSTEM_FIELD_NAMES.has(field.name);
+                if (!editable) return <ReadOnlyFieldRow key={field.id} field={field} record={record} />;
                 const key = friendlyFieldKey(field);
                 return (
                   <div key={field.id}>
@@ -207,30 +233,6 @@ function FieldsWidget({
             </Section>
           );
         })}
-
-      {relationFields.map((field) => (
-        <RecordRelationWidget key={field.id} field={field} sourceRecordId={recordId} />
-      ))}
-
-      {systemFields.length > 0 && (
-        <Section title="System">
-          {systemFields.map((field) => {
-            const value = record[friendlyFieldKey(field)];
-            const display =
-              field.type === 'ACTOR'
-                ? String((value as Record<string, unknown> | null)?.name || '—')
-                : value
-                  ? new Date(value as string).toLocaleString()
-                  : '—';
-            return (
-              <div key={field.id} className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{field.label}</span>
-                <span>{display}</span>
-              </div>
-            );
-          })}
-        </Section>
-      )}
     </div>
   );
 }
@@ -426,9 +428,9 @@ export function RecordDetailPage() {
                   onClick={() => setEditingWidget({ tabId: homeTab.id, widgetId: widget.id })}
                 >
                   {widget.type === 'FIELDS' ? (
-                    <FieldsWidget widget={widget} fields={detail.fields} record={record} recordId={recordId!} values={values} onChange={setValues} />
+                    <FieldsWidget widget={widget} fields={detail.fields} record={record} values={values} onChange={setValues} />
                   ) : widget.type === 'FIELD' ? (
-                    <FieldWidget widget={widget} fields={detail.fields} values={values} onChange={setValues} />
+                    <FieldWidget widget={widget} fields={detail.fields} recordId={recordId!} values={values} onChange={setValues} />
                   ) : (
                     <ActivityWidget widget={widget} objectNameSingular={object.nameSingular} recordId={recordId!} />
                   )}
@@ -481,7 +483,7 @@ export function RecordDetailPage() {
                       .map((widget) => (
                         <EditableWidget key={widget.id} isEditing={isEditingLayout} onClick={() => setEditingWidget({ tabId: tab.id, widgetId: widget.id })}>
                           {widget.type === 'FIELD' ? (
-                            <FieldWidget widget={widget} fields={detail.fields} values={values} onChange={setValues} />
+                            <FieldWidget widget={widget} fields={detail.fields} recordId={recordId!} values={values} onChange={setValues} />
                           ) : (
                             <ActivityWidget widget={widget} objectNameSingular={object.nameSingular} recordId={recordId!} />
                           )}

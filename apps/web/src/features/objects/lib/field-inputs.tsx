@@ -21,6 +21,20 @@ export function isEditableField(field: DataModelField): boolean {
   return true;
 }
 
+/** A collection/reverse relation (People, Opportunities) — rendered as its own FIELD widget. */
+export function isReverseRelationField(field: DataModelField): boolean {
+  return (
+    field.type === FieldMetadataType.RELATION &&
+    field.settings?.relationType === 'ONE_TO_MANY' &&
+    !field.settings?.isMorphReverse
+  );
+}
+
+/** Fields a standalone FIELD widget can display: editable scalars/forward-relations + reverse relations. */
+export function isFieldWidgetPickable(field: DataModelField): boolean {
+  return isEditableField(field) || isReverseRelationField(field);
+}
+
 function CompositeSubInput({
   label,
   value,

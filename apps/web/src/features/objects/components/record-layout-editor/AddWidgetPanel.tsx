@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { FIELD_DISPLAY_MODES, type FieldDisplayMode, type PageLayoutWidgetType } from '@saasly/shared';
 import type { DataModelField } from '@/lib/api-client';
-import { isEditableField } from '../../lib/field-inputs';
+import { isFieldWidgetPickable } from '../../lib/field-inputs';
 
 const WIDGET_TYPE_LABELS: Record<PageLayoutWidgetType, string> = {
   FIELDS: 'Fields',
@@ -40,7 +40,7 @@ export function AddWidgetPanel({
   const [fieldId, setFieldId] = useState('');
   const [displayMode, setDisplayMode] = useState<FieldDisplayMode>('PLAIN');
 
-  const eligibleFields = objectFields.filter(isEditableField);
+  const eligibleFields = objectFields.filter(isFieldWidgetPickable);
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>

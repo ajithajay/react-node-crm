@@ -4,12 +4,12 @@ import { ObjectMetadataEntity } from '../entities/object-metadata.entity.js';
 import { FieldMetadataEntity } from '../entities/field-metadata.entity.js';
 import { RoleEntity } from '../entities/role.entity.js';
 import { ViewEntity } from '../entities/view.entity.js';
-import { PageLayoutSectionEntity } from '../entities/page-layout-section.entity.js';
 import { createWorkspaceSchema } from '../workspace-schema/workspace-schema.service.js';
 import { getWorkspaceSchemaName } from '../workspace-schema/schema-name.util.js';
 import { createMetadataService, SYSTEM_FIELD_DEFS } from '../metadata/metadata.service.js';
 import { STANDARD_OBJECTS, STANDARD_RELATIONS, STANDARD_MORPH_RELATIONS } from './standard-objects.seed.js';
 import { DEFAULT_ROLE_NAME, STANDARD_ROLES } from './standard-roles.seed.js';
+import { seedPageLayoutForObject } from './page-layout.seed.js';
 
 export interface ProvisionWorkspaceResult {
   workspace: WorkspaceEntity;
@@ -57,7 +57,6 @@ export async function provisionWorkspace(
     });
 
     let labelFieldId: string | null = null;
-    const fieldIdByName = new Map<string, string>();
     for (const field of def.fields) {
       const created = await metadataService.createField({
         workspaceId,
@@ -74,26 +73,7 @@ export async function provisionWorkspace(
         isCustom: false,
         isSystem: true,
       });
-      fieldIdByName.set(field.name, created.id);
       if (def.labelField === field.name) labelFieldId = created.id;
-    }
-
-    // Seed default record-page sections (Twenty parity — e.g. Company's General/Business/Contact).
-    if (def.sections?.length) {
-      const sectionRepo = coreDataSource.getRepository(PageLayoutSectionEntity);
-      await sectionRepo.save(
-        def.sections.map((section, position) =>
-          sectionRepo.create({
-            workspaceId,
-            objectMetadataId: object.id,
-            label: section.label,
-            position,
-            fieldMetadataIds: section.fieldNames
-              .map((name) => fieldIdByName.get(name))
-              .filter((id): id is string => !!id),
-          }),
-        ),
-      );
     }
 
     await fieldRepo.save(
@@ -174,6 +154,11 @@ export async function provisionWorkspace(
       onDelete: morph.onDelete,
       isCustom: false,
     });
+  }
+
+  // Pass 4 — default record-page layout per object (needs all fields + relations to exist first).
+  for (const object of objects) {
+    await coreDataSource.transaction((manager) => seedPageLayoutForObject(manager, workspaceId, object));
   }
 
   const roleRepo = coreDataSource.getRepository(RoleEntity);

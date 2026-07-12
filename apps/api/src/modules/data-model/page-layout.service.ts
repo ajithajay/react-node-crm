@@ -7,14 +7,13 @@ import {
   PageLayoutType,
   PageLayoutWidgetEntity,
   PageLayoutWidgetType,
-  STANDARD_OBJECTS,
+  computeFieldsWidgetGroups,
+  isFieldsGroupEligible,
+  isReverseRelationWidgetField,
+  seedPageLayoutForObject,
+  writeFieldsWidgetGroups,
 } from '@saasly/database';
-import {
-  FieldMetadataType,
-  type PageLayoutDto,
-  type PageLayoutWidgetConfiguration,
-  type SavePageLayoutRequest,
-} from '@saasly/shared';
+import { type PageLayoutDto, type PageLayoutWidgetConfiguration, type SavePageLayoutRequest } from '@saasly/shared';
 import type { EntityManager } from 'typeorm';
 import { dataSource } from '../../lib/db.js';
 import { ConflictError, NotFoundError } from '../../lib/errors.js';
@@ -27,80 +26,10 @@ const tabRepo = () => dataSource.getRepository(PageLayoutTabEntity);
 const widgetRepo = () => dataSource.getRepository(PageLayoutWidgetEntity);
 const sectionRepo = () => dataSource.getRepository(PageLayoutSectionEntity);
 
-/** Objects that ARE the activity plumbing — they don't get Timeline/Notes/Tasks/Files tabs. */
-const ACTIVITY_PLUMBING_SINGULARS = new Set([
-  'note_target',
-  'task_target',
-  'timeline_activity',
-  'attachment',
-  'workspace_member',
-]);
-
-/** Base audit columns present on every table — rendered in RecordSheet's own "System" section, not the FIELDS widget. */
-const BASE_SYSTEM_FIELD_NAMES = new Set(['created_at', 'updated_at', 'deleted_at', 'created_by', 'updated_by']);
-
-/** The non-FIELDS activity tabs, in default order after Home. */
-const ACTIVITY_WIDGETS: { type: PageLayoutWidgetType; title: string; icon: string }[] = [
-  { type: PageLayoutWidgetType.TIMELINE, title: 'Timeline', icon: 'Clock' },
-  { type: PageLayoutWidgetType.NOTES, title: 'Notes', icon: 'StickyNote' },
-  { type: PageLayoutWidgetType.TASKS, title: 'Tasks', icon: 'CheckSquare' },
-  { type: PageLayoutWidgetType.FILES, title: 'Files', icon: 'Paperclip' },
-];
-
 const DEFAULT_FIELDS_WIDGET_CONFIG: PageLayoutWidgetConfiguration = {
   showMoreFieldsButton: false,
   autoVisibleNewFields: true,
 };
-
-/** Fields that render inside the FIELDS widget's groups (scalar + forward relations; not reverse
- * relations, morph, files, actor or the base audit fields — those render elsewhere). */
-function isFieldsWidgetEligible(f: FieldMetadataEntity): boolean {
-  if (!f.isActive) return false;
-  if (BASE_SYSTEM_FIELD_NAMES.has(f.name)) return false;
-  if (
-    f.type === FieldMetadataType.ACTOR ||
-    f.type === FieldMetadataType.MORPH_RELATION ||
-    f.type === FieldMetadataType.FILES
-  ) {
-    return false;
-  }
-  // Only the forward (belongs-to-one) side of a relation is a field; the reverse list is a widget.
-  if (f.type === FieldMetadataType.RELATION && f.settings?.relationType !== 'MANY_TO_ONE') return false;
-  return true;
-}
-
-/** Default field-group computation, shared by full-layout synthesis and a single widget's reset. */
-function computeDefaultGroups(
-  object: ObjectMetadataEntity,
-  fields: FieldMetadataEntity[],
-): { label: string; fieldIds: string[] }[] {
-  const eligible = fields.filter(isFieldsWidgetEligible);
-  const fieldByName = new Map(fields.map((f) => [f.name, f]));
-  const seedDef = STANDARD_OBJECTS.find((d) => d.nameSingular === object.nameSingular);
-
-  const groups: { label: string; fieldIds: string[] }[] = [];
-  const covered = new Set<string>();
-  if (seedDef?.sections?.length) {
-    for (const section of seedDef.sections) {
-      const ids = section.fieldNames
-        .map((n) => fieldByName.get(n))
-        .filter((f): f is FieldMetadataEntity => !!f && isFieldsWidgetEligible(f))
-        .map((f) => {
-          covered.add(f.id);
-          return f.id;
-        });
-      if (ids.length) groups.push({ label: section.label, fieldIds: ids });
-    }
-  }
-  const leftover = eligible.filter((f) => !covered.has(f.id)).map((f) => f.id);
-  if (!groups.length && leftover.length) {
-    groups.push({ label: 'General', fieldIds: leftover });
-  } else if (leftover.length) {
-    groups.push({ label: 'Other', fieldIds: leftover });
-  }
-  if (!groups.length) groups.push({ label: 'General', fieldIds: [] });
-  return groups;
-}
 
 // ---- Read ----
 
@@ -198,95 +127,14 @@ async function loadLayout(workspaceId: string, layout: PageLayoutEntity): Promis
   };
 }
 
-/** Build + persist the default record-page layout for an object (Home + activity tabs). */
-async function synthesizeDefaultLayout(
-  workspaceId: string,
-  object: ObjectMetadataEntity,
-): Promise<PageLayoutEntity> {
-  const fields = await fieldRepo().find({ where: { workspaceId, objectMetadataId: object.id } });
-  const groups = computeDefaultGroups(object, fields);
-  const includeActivityTabs = !ACTIVITY_PLUMBING_SINGULARS.has(object.nameSingular);
-
+/**
+ * Fallback for objects with no persisted layout (pre-existing workspaces, or a fresh custom object
+ * before its create hook ran). Delegates to the shared builder so the result is byte-identical to
+ * what workspace provisioning seeds.
+ */
+async function synthesizeDefaultLayout(workspaceId: string, object: ObjectMetadataEntity): Promise<PageLayoutEntity> {
   try {
-    return await dataSource.transaction(async (m) => {
-      const layout = await m.getRepository(PageLayoutEntity).save(
-        m.getRepository(PageLayoutEntity).create({
-          workspaceId,
-          objectMetadataId: object.id,
-          type: PageLayoutType.RECORD_PAGE,
-          name: `${object.labelSingular} Record Page`,
-        }),
-      );
-
-      // Home tab → FIELDS widget → groups (as page_layout_sections).
-      const homeTab = await m.getRepository(PageLayoutTabEntity).save(
-        m.getRepository(PageLayoutTabEntity).create({
-          workspaceId,
-          pageLayoutId: layout.id,
-          title: 'Home',
-          icon: 'LayoutList',
-          position: 0,
-          isVisible: true,
-          isPinned: true,
-        }),
-      );
-      const fieldsWidget = await m.getRepository(PageLayoutWidgetEntity).save(
-        m.getRepository(PageLayoutWidgetEntity).create({
-          workspaceId,
-          pageLayoutTabId: homeTab.id,
-          type: PageLayoutWidgetType.FIELDS,
-          title: 'Fields',
-          position: 0,
-          isVisible: true,
-          configuration: DEFAULT_FIELDS_WIDGET_CONFIG,
-        }),
-      );
-      // Drop any legacy sections then recreate under the widget.
-      await m.getRepository(PageLayoutSectionEntity).delete({ workspaceId, objectMetadataId: object.id });
-      await m.getRepository(PageLayoutSectionEntity).save(
-        groups.map((g, position) =>
-          m.getRepository(PageLayoutSectionEntity).create({
-            workspaceId,
-            objectMetadataId: object.id,
-            pageLayoutWidgetId: fieldsWidget.id,
-            label: g.label,
-            position,
-            isVisible: true,
-            fieldMetadataIds: g.fieldIds,
-          }),
-        ),
-      );
-
-      if (includeActivityTabs) {
-        for (let i = 0; i < ACTIVITY_WIDGETS.length; i++) {
-          const w = ACTIVITY_WIDGETS[i]!;
-          const tab = await m.getRepository(PageLayoutTabEntity).save(
-            m.getRepository(PageLayoutTabEntity).create({
-              workspaceId,
-              pageLayoutId: layout.id,
-              title: w.title,
-              icon: w.icon,
-              position: i + 1,
-              isVisible: true,
-              isPinned: false,
-            }),
-          );
-          await m.getRepository(PageLayoutWidgetEntity).save(
-            m.getRepository(PageLayoutWidgetEntity).create({
-              workspaceId,
-              pageLayoutTabId: tab.id,
-              type: w.type,
-              title: w.title,
-              position: 0,
-              isVisible: true,
-              configuration: {},
-            }),
-          );
-        }
-      }
-
-      return layout;
-    });
+    return await dataSource.transaction((m) => seedPageLayoutForObject(m, workspaceId, object));
   } catch (err) {
     // Lost a create race against a concurrent GET — the unique index rejected the second insert.
     const existing = await layoutRepo().findOneBy({
@@ -448,24 +296,8 @@ export async function resetWidgetToDefault(
   await dataSource.transaction(async (m) => {
     if (widget.type === PageLayoutWidgetType.FIELDS) {
       const fields = await m.getRepository(FieldMetadataEntity).find({ where: { workspaceId, objectMetadataId } });
-      const groups = computeDefaultGroups(object, fields);
-      await m.getRepository(PageLayoutSectionEntity).delete({ workspaceId, pageLayoutWidgetId: widgetId });
-      await m.getRepository(PageLayoutSectionEntity).save(
-        groups.map((g, position) =>
-          m.getRepository(PageLayoutSectionEntity).create({
-            workspaceId,
-            objectMetadataId,
-            pageLayoutWidgetId: widgetId,
-            label: g.label,
-            position,
-            isVisible: true,
-            fieldMetadataIds: g.fieldIds,
-          }),
-        ),
-      );
-      await m
-        .getRepository(FieldMetadataEntity)
-        .update({ workspaceId, objectMetadataId }, { isVisibleInRecordPage: true });
+      const groups = computeFieldsWidgetGroups(object, fields);
+      await writeFieldsWidgetGroups(m, workspaceId, objectMetadataId, widgetId, groups, fields);
       const widgetEntity = await m.getRepository(PageLayoutWidgetEntity).findOneByOrFail({ id: widgetId, workspaceId });
       widgetEntity.isVisible = true;
       widgetEntity.configuration = DEFAULT_FIELDS_WIDGET_CONFIG;
@@ -483,30 +315,49 @@ export async function resetWidgetToDefault(
   return loadLayout(workspaceId, layout);
 }
 
-/** Called after a new scalar/forward-relation field is created on an object: auto-appends it to
- * that object's FIELDS widget (visible or hidden per the widget's `autoVisibleNewFields` setting),
- * so newly-added fields actually show up on the record page without a manual layout edit. A no-op
- * if the object has no persisted layout yet — the next `getPageLayout` synthesizes one from the
- * object's current (already-including-this-field) fields directly. */
-export async function appendFieldToDefaultFieldsWidget(
-  workspaceId: string,
-  objectMetadataId: string,
-  fieldId: string,
-): Promise<void> {
+/**
+ * Called after a new field/relation is created on an object: wire it into that object's existing
+ * record-page layout so it shows up without a manual edit. A scalar/forward-relation field is
+ * appended to the FIELDS widget's first group (visible/hidden per `autoVisibleNewFields`); a
+ * collection/reverse relation becomes a new FIELD widget on the Home tab. A no-op if the object has
+ * no persisted layout yet (the next `getPageLayout` synthesizes one from current fields directly).
+ */
+export async function appendFieldToLayout(workspaceId: string, objectMetadataId: string, fieldId: string): Promise<void> {
   const layout = await layoutRepo().findOneBy({ workspaceId, objectMetadataId, type: PageLayoutType.RECORD_PAGE });
   if (!layout) return;
 
   const homeTab = await tabRepo().findOne({ where: { workspaceId, pageLayoutId: layout.id }, order: { position: 'ASC' } });
   if (!homeTab) return;
+
+  const field = await fieldRepo().findOneBy({ id: fieldId, workspaceId });
+  if (!field) return;
+
+  // Collection/reverse relation → its own FIELD widget (People, Opportunities, …).
+  if (isReverseRelationWidgetField(field)) {
+    const siblings = await widgetRepo().find({ where: { workspaceId, pageLayoutTabId: homeTab.id }, order: { position: 'DESC' }, take: 1 });
+    const position = (siblings[0]?.position ?? -1) + 1;
+    await widgetRepo().save(
+      widgetRepo().create({
+        workspaceId,
+        pageLayoutTabId: homeTab.id,
+        type: PageLayoutWidgetType.FIELD,
+        title: field.label,
+        position,
+        isVisible: true,
+        configuration: { fieldMetadataId: field.id, displayMode: 'CARD' },
+      }),
+    );
+    return;
+  }
+
+  if (!isFieldsGroupEligible(field)) return;
+
   const fieldsWidget = await widgetRepo().findOneBy({
     workspaceId,
     pageLayoutTabId: homeTab.id,
     type: PageLayoutWidgetType.FIELDS,
   });
   if (!fieldsWidget) return;
-
-  const field = await fieldRepo().findOneBy({ id: fieldId, workspaceId });
-  if (!field || !isFieldsWidgetEligible(field)) return;
 
   const config = (fieldsWidget.configuration as PageLayoutWidgetConfiguration) ?? {};
   const visible = config.autoVisibleNewFields !== false;
@@ -518,8 +369,9 @@ export async function appendFieldToDefaultFieldsWidget(
   const alreadyPlaced = sections.some((s) => (s.fieldMetadataIds ?? []).includes(fieldId));
   if (alreadyPlaced) return;
 
-  if (sections.length > 0) {
-    const target = sections[0]!;
+  // Append to the first non-System group (so new fields land in "General", not the System group).
+  const target = sections.find((s) => s.label !== 'System') ?? sections[0];
+  if (target) {
     target.fieldMetadataIds = [...(target.fieldMetadataIds ?? []), fieldId];
     await sectionRepo().save(target);
   } else {

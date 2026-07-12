@@ -18,4 +18,5 @@ export * from './workspace-entity/entity-schema.factory.js';
 export * from './workspace-entity/workspace-datasource-cache.js';
 export * from './workspace-manager/standard-objects.seed.js';
 export * from './workspace-manager/standard-roles.seed.js';
+export * from './workspace-manager/page-layout.seed.js';
 export * from './workspace-manager/workspace-manager.service.js';

@@ -58,6 +58,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "name" varchar NOT NULL,
         "label" varchar NOT NULL,
         "description" varchar,
+        "icon" varchar NOT NULL DEFAULT 'User',
         "is_editable" boolean NOT NULL DEFAULT true,
         "can_update_all_settings" boolean NOT NULL DEFAULT false,
         "can_read_all_object_records" boolean NOT NULL DEFAULT false,
@@ -104,6 +105,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "time_zone" varchar NOT NULL DEFAULT 'UTC',
         "date_format" varchar NOT NULL DEFAULT 'MM/DD/YYYY',
         "time_format" varchar NOT NULL DEFAULT 'HH:mm',
+        "number_format" varchar NOT NULL DEFAULT '1,000.00',
         "created_at" timestamptz NOT NULL DEFAULT now(),
         "updated_at" timestamptz NOT NULL DEFAULT now(),
         UNIQUE ("workspace_id", "user_id")
@@ -118,6 +120,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "token_hash" varchar NOT NULL,
         "status" varchar NOT NULL DEFAULT 'PENDING',
         "invited_by_id" uuid REFERENCES "core"."users"("id") ON DELETE SET NULL,
+        "role_id" uuid REFERENCES "core"."roles"("id") ON DELETE SET NULL,
         "expires_at" timestamptz NOT NULL,
         "created_at" timestamptz NOT NULL DEFAULT now(),
         UNIQUE ("workspace_id", "email")
@@ -162,6 +165,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "is_nullable" boolean NOT NULL DEFAULT true,
         "is_unique" boolean NOT NULL DEFAULT false,
         "is_restrictable" boolean NOT NULL DEFAULT true,
+        "is_visible_in_record_page" boolean NOT NULL DEFAULT true,
         "default_value" jsonb,
         "settings" jsonb,
         "created_at" timestamptz NOT NULL DEFAULT now(),
@@ -362,6 +366,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "type" varchar NOT NULL,
         "label" varchar NOT NULL,
         "icon" varchar,
+        "color" varchar,
         "position" double precision NOT NULL DEFAULT 0,
         "folder_id" uuid REFERENCES "core"."navigation_menu_items"("id") ON DELETE CASCADE,
         "target_object_metadata_id" uuid REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
@@ -372,10 +377,75 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
       );
       CREATE INDEX "IDX_navigation_menu_items_member" ON "core"."navigation_menu_items" ("workspace_id", "workspace_member_id");
     `);
+
+    await queryRunner.query(`
+      CREATE TABLE "core"."audit_logs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "actor_user_id" uuid REFERENCES "core"."users"("id") ON DELETE SET NULL,
+        "action" varchar NOT NULL,
+        "target_type" varchar,
+        "target_id" varchar,
+        "metadata" jsonb,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_audit_logs_workspace_created" ON "core"."audit_logs" ("workspace_id", "created_at");
+    `);
+
+    // Page-layout subsystem (Settings → Layout): page_layouts → page_layout_tabs → page_layout_widgets;
+    // page_layout_sections (the FIELDS widget's field-groups) link back to their widget.
+    await queryRunner.query(`
+      CREATE TABLE "core"."page_layouts" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "object_metadata_id" uuid NOT NULL REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
+        "type" varchar NOT NULL DEFAULT 'RECORD_PAGE',
+        "name" varchar NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX "IDX_page_layouts_object" ON "core"."page_layouts" ("workspace_id", "object_metadata_id", "type");
+
+      CREATE TABLE "core"."page_layout_tabs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "page_layout_id" uuid NOT NULL REFERENCES "core"."page_layouts"("id") ON DELETE CASCADE,
+        "title" varchar NOT NULL,
+        "icon" varchar,
+        "position" double precision NOT NULL DEFAULT 0,
+        "is_visible" boolean NOT NULL DEFAULT true,
+        "is_pinned" boolean NOT NULL DEFAULT false,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_page_layout_tabs_layout" ON "core"."page_layout_tabs" ("page_layout_id");
+
+      CREATE TABLE "core"."page_layout_widgets" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "page_layout_tab_id" uuid NOT NULL REFERENCES "core"."page_layout_tabs"("id") ON DELETE CASCADE,
+        "type" varchar NOT NULL,
+        "title" varchar NOT NULL,
+        "position" double precision NOT NULL DEFAULT 0,
+        "is_visible" boolean NOT NULL DEFAULT true,
+        "configuration" jsonb NOT NULL DEFAULT '{}',
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_page_layout_widgets_tab" ON "core"."page_layout_widgets" ("page_layout_tab_id");
+
+      ALTER TABLE "core"."page_layout_sections"
+        ADD COLUMN "page_layout_widget_id" uuid REFERENCES "core"."page_layout_widgets"("id") ON DELETE CASCADE,
+        ADD COLUMN "is_visible" boolean NOT NULL DEFAULT true;
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const tables = [
+      'page_layout_widgets',
+      'page_layout_tabs',
+      'page_layouts',
+      'audit_logs',
       'navigation_menu_items',
       'page_layout_sections',
       'files',
