@@ -19,6 +19,8 @@ import { ApiSettingsPage } from '@/features/settings/pages/ApiSettingsPage';
 import { RestPlaygroundPage } from '@/features/settings/pages/RestPlaygroundPage';
 import { ObjectRecordsPage } from '@/features/objects/pages/ObjectRecordsPage';
 import { RecordDetailPage } from '@/features/objects/pages/RecordDetailPage';
+import { DashboardsListPage } from '@/features/dashboards/pages/DashboardsListPage';
+import { DashboardPage } from '@/features/dashboards/pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -59,7 +61,8 @@ export function WorkspaceHostRoutes() {
           <Route path="/notes" element={<ObjectRecordsPage objectNamePlural="notes" />} />
           <Route path="/objects/:objectNamePlural" element={<CustomObjectRoute />} />
           <Route path="/objects/:objectNamePlural/:recordId" element={<RecordDetailPage />} />
-          <Route path="/dashboards" element={<ComingSoonPage title="Dashboards" phase="Phase 7" />} />
+          <Route path="/dashboards" element={<DashboardsListPage />} />
+          <Route path="/dashboards/:id" element={<DashboardPage />} />
           <Route path="/workflows" element={<ComingSoonPage title="Workflows" phase="Phase 8" />} />
           <Route path="/workflows/runs" element={<ComingSoonPage title="Workflow Runs" phase="Phase 8" />} />
           <Route path="/workflows/versions" element={<ComingSoonPage title="Workflow Versions" phase="Phase 8" />} />

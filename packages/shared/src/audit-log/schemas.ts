@@ -42,5 +42,9 @@ export const AUDIT_LOG_ACTIONS = [
   'webhook.updated',
   'webhook.deleted',
   'webhook.secret_regenerated',
+  'dashboard.created',
+  'dashboard.updated',
+  'dashboard.deleted',
+  'dashboard.layout_updated',
 ] as const;
 export type AuditLogAction = (typeof AUDIT_LOG_ACTIONS)[number];

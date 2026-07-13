@@ -88,10 +88,10 @@ async function main(): Promise<void> {
     coreDataSource.getRepository(WorkspaceEntity).create({ name: 'DataModel Co', subdomain: TEST_SUBDOMAIN, databaseSchema: '' }),
   );
   const { objects } = await provisionWorkspace(coreDataSource, workspace.id);
-  assert(objects.length === 10, `expected 10 standard objects, got ${objects.length}`);
+  assert(objects.length === 11, `expected 11 standard objects, got ${objects.length}`);
   const ws = await coreDataSource.getRepository(WorkspaceEntity).findOneByOrFail({ id: workspace.id });
   const schema = ws.databaseSchema;
-  ok(`10 objects: ${objects.map((o) => o.nameSingular).join(', ')}`);
+  ok(`11 objects: ${objects.map((o) => o.nameSingular).join(', ')}`);
   void user;
 
   const objectRepo = coreDataSource.getRepository(ObjectMetadataEntity);

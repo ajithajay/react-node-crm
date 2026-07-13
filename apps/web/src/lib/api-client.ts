@@ -20,6 +20,11 @@ import type {
   UpdateWebhookRequest,
   PageLayoutDto,
   SavePageLayoutRequest,
+  DashboardSummary,
+  DashboardDetail,
+  SaveDashboardLayoutRequest,
+  ChartDataRequest,
+  ChartDataResponse,
 } from '@saasly/shared';
 export type {
   PageLayoutDto as PageLayout,
@@ -28,6 +33,20 @@ export type {
   PageLayoutGroupDto as PageLayoutGroup,
   PageLayoutFieldDto as PageLayoutField,
   PageLayoutWidgetType,
+  DashboardSummary as Dashboard,
+  DashboardDetail,
+  DashboardTabDto as DashboardTab,
+  DashboardWidgetDto as DashboardWidget,
+  DashboardWidgetType,
+  DashboardWidgetConfiguration,
+  GridPosition,
+  GraphType,
+  AggregateOperation,
+  DateGranularity,
+  ChartNumberFormat,
+  ChartDataPoint,
+  BarChartLayout,
+  ChartOrderBy,
 } from '@saasly/shared';
 import { getAccessToken } from './auth-session.js';
 import { getApiBaseUrl } from './host.js';
@@ -747,4 +766,21 @@ export const viewApi = {
 
   setGroups: (id: string, groups: { fieldValue: string; isVisible: boolean }[]) =>
     put<ViewGroupConfig[]>(`/views/${id}/groups`, groups),
+};
+
+export const dashboardApi = {
+  list: () => get<DashboardSummary[]>('/dashboards'),
+
+  get: (id: string) => get<DashboardDetail>(`/dashboards/${id}`),
+
+  create: (title: string) => post<DashboardDetail>('/dashboards', { title }),
+
+  update: (id: string, title: string) => patch<DashboardDetail>(`/dashboards/${id}`, { title }),
+
+  remove: (id: string) => del<{ ok: true }>(`/dashboards/${id}`),
+
+  saveLayout: (id: string, input: SaveDashboardLayoutRequest) =>
+    put<DashboardDetail>(`/dashboards/${id}/layout`, input),
+
+  chartData: (input: ChartDataRequest) => post<ChartDataResponse>('/dashboards/chart-data', input),
 };

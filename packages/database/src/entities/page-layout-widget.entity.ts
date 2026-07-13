@@ -4,7 +4,10 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Update
  * A widget within a page-layout tab (Twenty's `pageLayoutWidget`). FIELDS renders the object's
  * field groups (`page_layout_sections` pointing back at this widget); TIMELINE/NOTES/TASKS/FILES
  * render the record's activity relations and carry no extra config (parity with Twenty, whose
- * timeline/notes/tasks/files widget configs are empty). `position` orders widgets within a tab.
+ * timeline/notes/tasks/files widget configs are empty). GRAPH/IFRAME/RECORD_TABLE/
+ * STANDALONE_RICH_TEXT (Phase 7 Dashboards) read `objectMetadataId` (the source object, nullable —
+ * IFRAME/STANDALONE_RICH_TEXT have none) and use the `grid_*` columns for their dashboard-grid
+ * position/size instead of the record-page `position` float.
  */
 export const PageLayoutWidgetType = {
   FIELDS: 'FIELDS',
@@ -13,6 +16,10 @@ export const PageLayoutWidgetType = {
   NOTES: 'NOTES',
   TASKS: 'TASKS',
   FILES: 'FILES',
+  GRAPH: 'GRAPH',
+  IFRAME: 'IFRAME',
+  RECORD_TABLE: 'RECORD_TABLE',
+  STANDALONE_RICH_TEXT: 'STANDALONE_RICH_TEXT',
 } as const;
 export type PageLayoutWidgetType = (typeof PageLayoutWidgetType)[keyof typeof PageLayoutWidgetType];
 
@@ -34,8 +41,23 @@ export class PageLayoutWidgetEntity {
   @Column({ type: 'varchar' })
   title!: string;
 
+  @Column({ type: 'uuid', name: 'object_metadata_id', nullable: true })
+  objectMetadataId!: string | null;
+
   @Column({ type: 'double precision', default: 0 })
   position!: number;
+
+  @Column({ type: 'int', name: 'grid_row', default: 0 })
+  gridRow!: number;
+
+  @Column({ type: 'int', name: 'grid_column', default: 0 })
+  gridColumn!: number;
+
+  @Column({ type: 'int', name: 'grid_row_span', default: 1 })
+  gridRowSpan!: number;
+
+  @Column({ type: 'int', name: 'grid_column_span', default: 1 })
+  gridColumnSpan!: number;
 
   @Column({ type: 'boolean', name: 'is_visible', default: true })
   isVisible!: boolean;

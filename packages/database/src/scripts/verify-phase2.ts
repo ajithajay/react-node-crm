@@ -70,7 +70,7 @@ async function main(): Promise<void> {
 
   console.log('\n2. Provision workspace (schema + standard objects/fields/views/roles)');
   const { objects, roles } = await provisionWorkspace(coreDataSource, workspace.id);
-  assert(objects.length === 10, `expected 10 standard objects, got ${objects.length}`);
+  assert(objects.length === 11, `expected 11 standard objects, got ${objects.length}`);
   assert(roles.length === 3, `expected 3 default roles, got ${roles.length}`);
   const refreshedWorkspace = await coreDataSource
     .getRepository(WorkspaceEntity)

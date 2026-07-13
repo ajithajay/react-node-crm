@@ -13,7 +13,12 @@ import {
   seedPageLayoutForObject,
   writeFieldsWidgetGroups,
 } from '@saasly/database';
-import { type PageLayoutDto, type PageLayoutWidgetConfiguration, type SavePageLayoutRequest } from '@saasly/shared';
+import {
+  type PageLayoutDto,
+  type PageLayoutWidgetConfiguration,
+  type PageLayoutWidgetType as SharedPageLayoutWidgetType,
+  type SavePageLayoutRequest,
+} from '@saasly/shared';
 import type { EntityManager } from 'typeorm';
 import { dataSource } from '../../lib/db.js';
 import { ConflictError, NotFoundError } from '../../lib/errors.js';
@@ -49,9 +54,12 @@ export async function getPageLayout(workspaceId: string, objectMetadataId: strin
 
 /** Serialize a persisted layout into the nested DTO the client edits. */
 async function loadLayout(workspaceId: string, layout: PageLayoutEntity): Promise<PageLayoutDto> {
+  // This module only ever loads RECORD_PAGE layouts, which always carry a real objectMetadataId
+  // (DASHBOARD layouts, which may have a null objectMetadataId, are handled by the dashboard module).
+  const objectMetadataId = layout.objectMetadataId!;
   const [tabs, fields] = await Promise.all([
     tabRepo().find({ where: { workspaceId, pageLayoutId: layout.id }, order: { position: 'ASC' } }),
-    fieldRepo().find({ where: { workspaceId, objectMetadataId: layout.objectMetadataId } }),
+    fieldRepo().find({ where: { workspaceId, objectMetadataId } }),
   ]);
   const fieldById = new Map(fields.map((f) => [f.id, f]));
 
@@ -84,7 +92,7 @@ async function loadLayout(workspaceId: string, layout: PageLayoutEntity): Promis
 
   return {
     id: layout.id,
-    objectMetadataId: layout.objectMetadataId,
+    objectMetadataId,
     type: layout.type,
     name: layout.name,
     tabs: tabs.map((tab) => ({
@@ -98,7 +106,9 @@ async function loadLayout(workspaceId: string, layout: PageLayoutEntity): Promis
         .filter((w) => w.pageLayoutTabId === tab.id)
         .map((w) => ({
           id: w.id,
-          type: w.type,
+          // This module only ever loads RECORD_PAGE layouts, whose widgets are always one of the
+          // record-page types — the DB enum is a superset (also covers Phase 7 dashboard widgets).
+          type: w.type as SharedPageLayoutWidgetType,
           title: w.title,
           position: w.position,
           isVisible: w.isVisible,

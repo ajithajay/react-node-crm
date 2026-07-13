@@ -185,6 +185,24 @@ function applyCondition(
 }
 
 /**
+ * Applies a flat AND-of-conditions filter list to a QueryBuilder (shared by the record list query
+ * and dashboard chart-data aggregation, which both filter over the same "simple" field types).
+ */
+export function applyFilterConditions(
+  qb: SelectQueryBuilder<object>,
+  alias: string,
+  filterable: Map<string, FilterableField>,
+  conditions: RecordFilter,
+  paramSeq: { n: number } = { n: 0 },
+): void {
+  for (const condition of conditions) {
+    const target = filterable.get(condition.field);
+    if (!target) throw new AppError(`Unknown or unfilterable field "${condition.field}"`, 400);
+    applyCondition(qb, alias, target, condition.operand as ViewFilterOperand, condition.value, paramSeq);
+  }
+}
+
+/**
  * Applies filter/search/sort/pagination (solution-approach.md §5's "shared query parser") to a
  * QueryBuilder scoped to one workspace object table. Mutates and returns the same builder.
  * v1 scope: a flat AND-of-conditions filter list (nested AND/OR groups are a documented follow-up)
@@ -207,12 +225,7 @@ export function applyRecordListQuery(
       throw new AppError('filter must be valid JSON', 400);
     }
     if (!Array.isArray(conditions)) throw new AppError('filter must be a JSON array', 400);
-
-    for (const condition of conditions) {
-      const target = filterable.get(condition.field);
-      if (!target) throw new AppError(`Unknown or unfilterable field "${condition.field}"`, 400);
-      applyCondition(qb, alias, target, condition.operand as ViewFilterOperand, condition.value, paramSeq);
-    }
+    applyFilterConditions(qb, alias, filterable, conditions, paramSeq);
   }
 
   if (query.search) {

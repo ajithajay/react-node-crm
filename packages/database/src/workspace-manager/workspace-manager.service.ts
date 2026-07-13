@@ -15,6 +15,10 @@ import {
 } from './standard-objects.seed.js';
 import { DEFAULT_ROLE_NAME, STANDARD_ROLES } from './standard-roles.seed.js';
 import { seedPageLayoutForObject } from './page-layout.seed.js';
+import { seedInitialDashboard } from './dashboard.seed.js';
+
+/** Objects that render via their own page_layout (Phase 7 dashboards), not a generic record page. */
+const PAGE_LAYOUT_EXCLUDED_SINGULARS = new Set(['dashboard']);
 
 export interface ProvisionWorkspaceResult {
   workspace: WorkspaceEntity;
@@ -200,7 +204,22 @@ export async function provisionWorkspace(
 
   // Pass 4 — default record-page layout per object (needs all fields + relations to exist first).
   for (const object of objects) {
+    if (PAGE_LAYOUT_EXCLUDED_SINGULARS.has(object.nameSingular)) continue;
     await coreDataSource.transaction((manager) => seedPageLayoutForObject(manager, workspaceId, object));
+  }
+
+  // Pass 5 — seed "My First Dashboard" (Phase 7), over the Company/Opportunity objects just created.
+  const dashboardObject = objectIdByName.get('dashboard');
+  const companyObject = objectIdByName.get('company');
+  const opportunityObject = objectIdByName.get('opportunity');
+  if (dashboardObject && companyObject && opportunityObject) {
+    await coreDataSource.transaction((manager) =>
+      seedInitialDashboard(manager, workspaceId, schemaName, {
+        dashboard: dashboardObject,
+        company: companyObject,
+        opportunity: opportunityObject,
+      }),
+    );
   }
 
   const roleRepo = coreDataSource.getRepository(RoleEntity);

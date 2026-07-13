@@ -243,6 +243,24 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
     fields: [],
   },
   {
+    // A dashboard record just holds a title + a pointer to its DASHBOARD-type page_layout (Twenty
+    // parity — the widget/tab tree lives in the page_layout* tables, not on this object). It's
+    // deliberately excluded from the record-page-layout seed pass (Phase 7 dashboards render via
+    // their own page_layout, not a record page) — see `PAGE_LAYOUT_EXCLUDED_SINGULARS` in
+    // `workspace-manager.service.ts`.
+    nameSingular: 'dashboard',
+    namePlural: 'dashboards',
+    labelSingular: 'Dashboard',
+    labelPlural: 'Dashboards',
+    icon: 'LayoutDashboard',
+    description: 'A page layout of chart, view, iframe, and rich-text widgets.',
+    labelField: 'title',
+    fields: [
+      { name: 'title', label: 'Title', type: FieldMetadataType.TEXT, icon: 'CaseSensitive', isNullable: false },
+      { name: 'page_layout_id', label: 'Page Layout', type: FieldMetadataType.UUID, icon: 'LayoutGrid' },
+    ],
+  },
+  {
     nameSingular: 'timeline_activity',
     namePlural: 'timeline_activities',
     labelSingular: 'Timeline Activity',

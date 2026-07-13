@@ -393,19 +393,23 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
       CREATE INDEX "IDX_audit_logs_workspace_created" ON "core"."audit_logs" ("workspace_id", "created_at");
     `);
 
-    // Page-layout subsystem (Settings → Layout): page_layouts → page_layout_tabs → page_layout_widgets;
-    // page_layout_sections (the FIELDS widget's field-groups) link back to their widget.
+    // Page-layout subsystem (Settings → Layout, and Phase 7 Dashboards): page_layouts →
+    // page_layout_tabs → page_layout_widgets; page_layout_sections (the FIELDS widget's
+    // field-groups) link back to their widget. `type = RECORD_PAGE` layouts are one-per-object
+    // (partial unique index below); `type = DASHBOARD` layouts have no single object
+    // (`object_metadata_id` is null) and many can exist per workspace.
     await queryRunner.query(`
       CREATE TABLE "core"."page_layouts" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
-        "object_metadata_id" uuid NOT NULL REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
+        "object_metadata_id" uuid REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
         "type" varchar NOT NULL DEFAULT 'RECORD_PAGE',
         "name" varchar NOT NULL,
         "created_at" timestamptz NOT NULL DEFAULT now(),
         "updated_at" timestamptz NOT NULL DEFAULT now()
       );
-      CREATE UNIQUE INDEX "IDX_page_layouts_object" ON "core"."page_layouts" ("workspace_id", "object_metadata_id", "type");
+      CREATE UNIQUE INDEX "IDX_page_layouts_object" ON "core"."page_layouts" ("workspace_id", "object_metadata_id", "type")
+        WHERE "type" = 'RECORD_PAGE';
 
       CREATE TABLE "core"."page_layout_tabs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -427,7 +431,12 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "page_layout_tab_id" uuid NOT NULL REFERENCES "core"."page_layout_tabs"("id") ON DELETE CASCADE,
         "type" varchar NOT NULL,
         "title" varchar NOT NULL,
+        "object_metadata_id" uuid REFERENCES "core"."object_metadata"("id") ON DELETE CASCADE,
         "position" double precision NOT NULL DEFAULT 0,
+        "grid_row" int NOT NULL DEFAULT 0,
+        "grid_column" int NOT NULL DEFAULT 0,
+        "grid_row_span" int NOT NULL DEFAULT 1,
+        "grid_column_span" int NOT NULL DEFAULT 1,
         "is_visible" boolean NOT NULL DEFAULT true,
         "configuration" jsonb NOT NULL DEFAULT '{}',
         "created_at" timestamptz NOT NULL DEFAULT now(),

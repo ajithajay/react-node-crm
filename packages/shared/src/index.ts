@@ -33,4 +33,5 @@ export * from './record/schemas.js';
 export * from './view/schemas.js';
 export * from './navigation/schemas.js';
 export * from './page-layout/schemas.js';
+export * from './dashboard/schemas.js';
 export * from './utils/naming.js';
