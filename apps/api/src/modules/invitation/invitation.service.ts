@@ -183,7 +183,7 @@ async function joinWorkspaceViaInvitation(invitation: InvitationEntity, userId: 
         workspaceId: invitation.workspaceId,
         userId,
         roleId: invitation.roleId ?? workspace.defaultRoleId,
-        firstName: user.firstName,
+        firstName: user.firstName || user.email.split('@')[0]!,
         lastName: user.lastName,
       }),
     );

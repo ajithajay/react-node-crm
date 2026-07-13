@@ -12,8 +12,9 @@ import type { FilterCondition } from '../components/FilterBar';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { RecordSheet } from '../components/RecordSheet';
 import { RecordTableCellDisplay } from '../components/RecordTableCellDisplay';
+import { RecordTableColumnHeadMenu } from '../components/RecordTableColumnHeadMenu';
 import { RecordTableToolbar } from '../components/RecordTableToolbar';
-import { friendlyFieldKey } from '../lib/field-values';
+import { friendlyFieldKey, operandsForType } from '../lib/field-values';
 import {
   conditionsToViewFilters,
   localSortToViewSorts,
@@ -21,7 +22,7 @@ import {
   viewFiltersToConditions,
   viewSortToLocal,
 } from '../lib/view-mapping';
-import { FIELD_TYPE_ICON, TABLE_ROW_HEIGHT } from '../lib/table-tokens';
+import { TABLE_ROW_HEIGHT } from '../lib/table-tokens';
 
 const PAGE_SIZE = 25;
 
@@ -224,6 +225,15 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
     },
   });
 
+  const setGroupFieldMutation = useMutation({
+    mutationFn: (fieldMetadataId: string | undefined) =>
+      viewApi.update(currentViewId!, { kanbanFieldMetadataId: fieldMetadataId ?? null }),
+    onSuccess: () => {
+      invalidateViews();
+      void queryClient.invalidateQueries({ queryKey: ['view', currentViewId] });
+    },
+  });
+
   function openCreate(initialValues?: Record<string, unknown>): void {
     setCreateInitialValues(initialValues);
     setCreateOpen(true);
@@ -261,14 +271,26 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
     );
   }
 
-  function toggleSort(field: DataModelField): void {
-    const key = friendlyFieldKey(field);
-    if (sortField !== key) {
-      setSortField(key);
-      setSortDirection('ASC');
-    } else {
-      setSortDirection((d) => (d === 'ASC' ? 'DESC' : 'ASC'));
-    }
+  function addFilterForField(field: DataModelField): void {
+    const operand = operandsForType(field.type)[0];
+    if (!operand) return;
+    setFilters((prev) => [...prev, { field: friendlyFieldKey(field), operand }]);
+  }
+
+  /** Swaps a visible column with its left/right neighbor, preserving hidden fields' positions. */
+  function moveColumn(fieldMetadataId: string, direction: 'left' | 'right'): void {
+    if (!viewDetail) return;
+    const visible = [...viewDetail.fields].filter((f) => f.isVisible).sort((a, b) => a.position - b.position);
+    const hidden = viewDetail.fields.filter((f) => !f.isVisible).sort((a, b) => a.position - b.position);
+    const idx = visible.findIndex((f) => f.fieldMetadataId === fieldMetadataId);
+    const swapIdx = direction === 'left' ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= visible.length) return;
+    const tmp = visible[idx]!;
+    visible[idx] = visible[swapIdx]!;
+    visible[swapIdx] = tmp;
+    setFieldsMutation.mutate(
+      [...visible, ...hidden].map((f) => ({ fieldMetadataId: f.fieldMetadataId, isVisible: f.isVisible, size: f.size })),
+    );
   }
 
   function toggleSelectAll(checked: boolean): void {
@@ -353,6 +375,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
           onDuplicateView={() => duplicateViewMutation.mutate()}
           onDeleteView={() => deleteViewMutation.mutate()}
           canDeleteView={(views?.length ?? 0) > 1}
+          onSetGroupField={(fieldMetadataId) => setGroupFieldMutation.mutate(fieldMetadataId)}
         />
       )}
 
@@ -363,6 +386,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
               objectNamePlural={objectNamePlural}
               labelIdentifierField={labelIdentifierField}
               groupByField={groupByField}
+              cardFields={columns.filter((f) => f.id !== labelIdentifierField?.id && f.id !== groupByField.id)}
               search={search}
               filters={filters}
               onOpenRecord={setEditRecord}
@@ -384,23 +408,30 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
               <TableHead className="sticky left-0 z-10 w-8 bg-background">
                 <Checkbox checked={allSelected} onCheckedChange={(c) => toggleSelectAll(c === true)} />
               </TableHead>
-              {columns.map((field) => {
-                const Icon = getIcon(FIELD_TYPE_ICON[field.type] ?? 'Circle');
-                return (
-                  <TableHead
-                    key={field.id}
-                    className="cursor-pointer select-none whitespace-nowrap px-2 font-medium"
-                    style={{ width: viewDetail?.fields.find((f) => f.fieldMetadataId === field.id)?.size ?? 150 }}
-                    onClick={() => toggleSort(field)}
-                  >
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Icon className="size-3.5" />
-                      {field.label}
-                      {sortField === friendlyFieldKey(field) && (sortDirection === 'ASC' ? ' ▲' : ' ▼')}
-                    </span>
-                  </TableHead>
-                );
-              })}
+              {columns.map((field, i) => (
+                <TableHead
+                  key={field.id}
+                  className="select-none whitespace-nowrap px-2 font-medium"
+                  style={{ width: viewDetail?.fields.find((f) => f.fieldMetadataId === field.id)?.size ?? 150 }}
+                >
+                  <RecordTableColumnHeadMenu
+                    field={field}
+                    isLabelIdentifier={detail.object.labelIdentifierFieldMetadataId === field.id}
+                    isSorted={sortField === friendlyFieldKey(field)}
+                    sortDirection={sortDirection}
+                    onSort={(direction) => {
+                      setSortField(friendlyFieldKey(field));
+                      setSortDirection(direction);
+                    }}
+                    onFilter={() => addFilterForField(field)}
+                    canMoveLeft={i > 0 && detail.object.labelIdentifierFieldMetadataId !== columns[i - 1]?.id}
+                    canMoveRight={i < columns.length - 1}
+                    onMoveLeft={() => moveColumn(field.id, 'left')}
+                    onMoveRight={() => moveColumn(field.id, 'right')}
+                    onHide={() => toggleFieldVisibility(field.id, false)}
+                  />
+                </TableHead>
+              ))}
               <TableHead
                 className="w-8 cursor-pointer text-center hover:bg-muted/50"
                 title="Manage fields in Data Model settings"
@@ -488,7 +519,9 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
         objectLabel={object.labelSingular}
         objectNameSingular={object.nameSingular}
         objectMetadataId={object.id}
+        objectIcon={object.icon}
         fields={detail.fields}
+        labelIdentifierField={labelIdentifierField}
         initialValues={createInitialValues}
         onSubmit={(body) => createMutation.mutateAsync(body)}
       />
@@ -503,6 +536,7 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
           objectNameSingular={object.nameSingular}
           objectNamePlural={object.namePlural}
           objectMetadataId={object.id}
+          objectIcon={object.icon}
           fields={detail.fields}
           labelIdentifierField={labelIdentifierField}
           initialValues={editRecord}

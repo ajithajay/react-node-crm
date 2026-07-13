@@ -23,6 +23,16 @@ export interface StandardObjectDef {
   /** Default named record-page sections (Twenty parity), by field name. Optional — objects with
    * none get a single implicit "General" section at render time. */
   sections?: { label: string; fieldNames: string[] }[];
+  /** Forward (MANY_TO_ONE) relation field names promoted to their own FIELD widget on the record
+   * page instead of being inlined in a FIELDS-widget section (Twenty parity — e.g. Person's
+   * `company`, Opportunity's `company`/`point_of_contact`/`owner`). Order here is the widget order. */
+  widgetRelationFields?: string[];
+  /** Which activity tabs to seed on the record page; defaults to all four when omitted. Task/Note
+   * override this — a task/note doesn't have its own sub-notes/sub-tasks. */
+  activityWidgetTypes?: ('TIMELINE' | 'NOTES' | 'TASKS' | 'FILES')[];
+  /** A RICH_TEXT field excluded from the Fields groups and instead surfaced as a dedicated "Note"
+   * tab (full-document editor, no icon/label) — Twenty parity for Task/Note's body. */
+  richTextTabField?: string;
 }
 
 /** A regular (single-target) relation seeded between two standard objects. */
@@ -102,6 +112,12 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       { name: 'linkedin', label: 'Linkedin', type: FieldMetadataType.LINKS, icon: 'Linkedin' },
       { name: 'city', label: 'City', type: FieldMetadataType.TEXT, icon: 'MapPin' },
     ],
+    sections: [
+      { label: 'General', fieldNames: ['name'] },
+      { label: 'Work', fieldNames: ['job_title'] },
+      { label: 'Social', fieldNames: ['emails', 'phones', 'linkedin', 'city'] },
+    ],
+    widgetRelationFields: ['company'],
   },
   {
     nameSingular: 'opportunity',
@@ -131,6 +147,11 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
         },
       },
     ],
+    sections: [
+      { label: 'General', fieldNames: ['name'] },
+      { label: 'Deal', fieldNames: ['amount', 'stage', 'close_date'] },
+    ],
+    widgetRelationFields: ['company', 'point_of_contact', 'owner'],
   },
   {
     nameSingular: 'task',
@@ -158,6 +179,8 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       },
       { name: 'due_at', label: 'Due At', type: FieldMetadataType.DATE_TIME, icon: 'CalendarClock' },
     ],
+    activityWidgetTypes: ['TIMELINE', 'FILES'],
+    richTextTabField: 'body',
   },
   {
     nameSingular: 'note',
@@ -171,6 +194,8 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       { name: 'title', label: 'Title', type: FieldMetadataType.TEXT, icon: 'CaseSensitive', isNullable: false },
       { name: 'body', label: 'Body', type: FieldMetadataType.RICH_TEXT, icon: 'AlignLeft' },
     ],
+    activityWidgetTypes: ['TIMELINE', 'FILES'],
+    richTextTabField: 'body',
   },
   {
     nameSingular: 'workspace_member',
@@ -283,6 +308,18 @@ export const STANDARD_RELATIONS: StandardRelationDef[] = [
     onDelete: RelationOnDeleteAction.SET_NULL,
   },
   {
+    source: 'opportunity',
+    target: 'workspace_member',
+    relationType: RelationType.MANY_TO_ONE,
+    forwardName: 'owner',
+    forwardLabel: 'Owner',
+    forwardIcon: 'UserRound',
+    reverseName: 'owner_for_opportunities',
+    reverseLabel: 'Opportunities',
+    reverseIcon: 'Target',
+    onDelete: RelationOnDeleteAction.SET_NULL,
+  },
+  {
     source: 'note_target',
     target: 'note',
     relationType: RelationType.MANY_TO_ONE,
@@ -310,6 +347,71 @@ export const STANDARD_RELATIONS: StandardRelationDef[] = [
 
 /** The three record types that notes/tasks/attachments/timeline activities can point at. */
 const MORPH_TARGETS = ['company', 'person', 'opportunity'];
+
+/**
+ * Default TABLE-view column order/visibility per standard object (Twenty parity — see
+ * `compute-standard-<object>-view-fields.util.ts` in the Twenty reference clone). Seeded as
+ * `ViewFieldEntity` rows on workspace provisioning so the default "All X" view starts curated
+ * instead of showing every column unsorted. Fields not listed here fall back to the
+ * synthesize-on-read behavior in `view.service.ts` (shown, in DB order) — used for objects below
+ * that intentionally have no curated list (junction/system objects) and for any custom object.
+ */
+export const STANDARD_TABLE_VIEW_FIELDS: Record<string, { name: string; size?: number; hidden?: boolean }[]> = {
+  company: [
+    { name: 'name', size: 180 },
+    { name: 'domain_name', size: 170 },
+    { name: 'created_by', size: 150 },
+    { name: 'account_owner', size: 150 },
+    { name: 'created_at', size: 150 },
+    { name: 'linkedin', size: 170 },
+    { name: 'address', size: 170 },
+    { name: 'updated_at', hidden: true },
+    { name: 'updated_by', hidden: true },
+  ],
+  person: [
+    { name: 'name', size: 180 },
+    { name: 'company', size: 150 },
+    { name: 'emails', size: 170 },
+    { name: 'job_title', size: 150 },
+    { name: 'phones', size: 150 },
+    { name: 'created_by', size: 150 },
+    { name: 'created_at', size: 150 },
+    { name: 'linkedin', size: 170 },
+    { name: 'city', size: 150 },
+    { name: 'updated_at', hidden: true },
+    { name: 'updated_by', hidden: true },
+  ],
+  opportunity: [
+    { name: 'name', size: 180 },
+    { name: 'amount', size: 150 },
+    { name: 'stage', size: 150 },
+    { name: 'company', size: 150 },
+    { name: 'point_of_contact', size: 150 },
+    { name: 'close_date', size: 150 },
+    { name: 'created_by', size: 150 },
+    { name: 'created_at', size: 150 },
+    { name: 'updated_at', hidden: true },
+    { name: 'updated_by', hidden: true },
+  ],
+  task: [
+    { name: 'title', size: 180 },
+    { name: 'status', size: 150 },
+    { name: 'due_at', size: 150 },
+    { name: 'created_by', size: 150 },
+    { name: 'created_at', size: 150 },
+    { name: 'body', hidden: true },
+    { name: 'updated_at', hidden: true },
+    { name: 'updated_by', hidden: true },
+  ],
+  note: [
+    { name: 'title', size: 180 },
+    { name: 'created_by', size: 150 },
+    { name: 'created_at', size: 150 },
+    { name: 'body', hidden: true },
+    { name: 'updated_at', hidden: true },
+    { name: 'updated_by', hidden: true },
+  ],
+};
 
 export const STANDARD_MORPH_RELATIONS: StandardMorphRelationDef[] = [
   {
@@ -347,7 +449,9 @@ export const STANDARD_MORPH_RELATIONS: StandardMorphRelationDef[] = [
   },
   {
     source: 'timeline_activity',
-    targets: MORPH_TARGETS,
+    // Task/Note get their own Timeline tab populated too — unlike note_target/task_target/
+    // attachment, whose targets stay Company/Person/Opportunity only (a Task shouldn't be "about" another Task).
+    targets: [...MORPH_TARGETS, 'task', 'note'],
     forwardName: 'target',
     forwardLabel: 'Target',
     forwardIcon: 'Crosshair',

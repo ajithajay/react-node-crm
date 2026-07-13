@@ -1,5 +1,23 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Copy, Filter as FilterIcon, Lock, MoreHorizontal, Pencil, Plus, Save, Search, Settings2, Trash2, X } from 'lucide-react';
+import { FieldMetadataType } from '@saasly/shared';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Filter as FilterIcon,
+  Lock,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Save,
+  Search,
+  Settings2,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -13,7 +31,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -83,6 +100,44 @@ const OPERAND_SUMMARY: Record<string, string> = {
   IS_RELATIVE: '~',
 };
 
+/** A root-page row in the view "Options" popover — label left, contextual value/chevron right. */
+function OptionsRow({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
+  const content = (
+    <>
+      <span>{label}</span>
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        {value}
+        {onClick && <ChevronRight className="size-3.5" />}
+      </span>
+    </>
+  );
+  if (!onClick) {
+    return <div className="flex items-center justify-between rounded px-1 py-1.5 text-sm">{content}</div>;
+  }
+  return (
+    <button
+      type="button"
+      className="flex w-full items-center justify-between rounded px-1 py-1.5 text-sm hover:bg-muted"
+      onClick={onClick}
+    >
+      {content}
+    </button>
+  );
+}
+
+/** Back-chevron header for an Options popover sub-page. */
+function OptionsSubHeader({ label, onBack }: { label: string; onBack: () => void }) {
+  return (
+    <button
+      type="button"
+      className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+      onClick={onBack}
+    >
+      <ArrowLeft className="size-3.5" /> {label}
+    </button>
+  );
+}
+
 function Chip({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
   return (
     <span className="inline-flex h-7 items-center gap-1.5 rounded-md border bg-muted/40 px-2 text-xs">
@@ -132,6 +187,7 @@ export function RecordTableToolbar({
   onDuplicateView,
   onDeleteView,
   canDeleteView,
+  onSetGroupField,
 }: {
   views: View[];
   activeViewId: string | undefined;
@@ -156,6 +212,7 @@ export function RecordTableToolbar({
   onDuplicateView: () => void;
   onDeleteView: () => void;
   canDeleteView: boolean;
+  onSetGroupField: (fieldMetadataId: string | undefined) => void;
 }) {
   const fieldByKey = new Map(fields.map((f) => [friendlyFieldKey(f), f]));
   const sortableFields = fields.filter((f) => FILTERABLE_TYPES.has(f.type));
@@ -164,6 +221,10 @@ export function RecordTableToolbar({
   const visibilityByFieldId = new Map(viewFields.map((f) => [f.fieldMetadataId, f.isVisible]));
   const [renameOpen, setRenameOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
+  const [optionsPage, setOptionsPage] = useState<'root' | 'fields' | 'group'>('root');
+  const visibleFieldCount = viewFields.filter((f) => f.isVisible).length;
+  const groupField = activeView?.kanbanFieldMetadataId ? fields.find((f) => f.id === activeView.kanbanFieldMetadataId) : undefined;
+  const selectFields = fields.filter((f) => f.type === FieldMetadataType.SELECT);
 
   return (
     <div className="border-b">
@@ -203,14 +264,6 @@ export function RecordTableToolbar({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onDuplicateView}>
                 <Copy className="size-3.5" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={!canDeleteView || activeView?.isDefault}
-                onClick={onDeleteView}
-              >
-                <Trash2 className="size-3.5" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -301,29 +354,91 @@ export function RecordTableToolbar({
             </PopoverContent>
           </Popover>
 
-          <Popover>
+          <Popover onOpenChange={(open) => !open && setOptionsPage('root')}>
             <PopoverTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" />}>
               <Settings2 className="size-3.5" /> Options
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-56">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Fields</p>
-              <div className="max-h-80 space-y-1 overflow-y-auto">
-                {columnFields.map((field) => (
-                  <label key={field.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted">
-                    <Checkbox
-                      checked={visibilityByFieldId.get(field.id) ?? true}
-                      onCheckedChange={(c) => onToggleFieldVisibility(field.id, c === true)}
+            <PopoverContent align="end" className="w-64">
+              {optionsPage === 'root' && (
+                <div className="space-y-0.5">
+                  <OptionsRow label="Layout" value={activeView?.type === 'KANBAN' ? 'Kanban' : 'Table'} />
+                  <OptionsRow label="Visibility" value="Workspace" />
+                  <OptionsRow
+                    label="Fields"
+                    value={`${visibleFieldCount} shown`}
+                    onClick={() => setOptionsPage('fields')}
+                  />
+                  {activeView?.type === 'KANBAN' && (
+                    <OptionsRow
+                      label="Group"
+                      value={groupField?.label ?? 'Not set'}
+                      onClick={() => setOptionsPage('group')}
                     />
-                    {field.label}
-                  </label>
-                ))}
-              </div>
-              <div className="mt-2 space-y-0.5 border-t pt-2">
-                <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 text-xs" onClick={onExport}>
-                  Export CSV
-                </Button>
-                <ImportCsvDialog onImport={onImport} />
-              </div>
+                  )}
+                  <div className="my-1 border-t" />
+                  <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 text-xs" onClick={onExport}>
+                    Export CSV
+                  </Button>
+                  <ImportCsvDialog onImport={onImport} />
+                  <div className="my-1 border-t" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-full justify-start px-2 text-xs text-destructive hover:text-destructive"
+                    disabled={!canDeleteView || activeView?.isDefault}
+                    onClick={onDeleteView}
+                  >
+                    <Trash2 className="size-3.5" /> Delete view
+                  </Button>
+                </div>
+              )}
+
+              {optionsPage === 'fields' && (
+                <div>
+                  <OptionsSubHeader label="Fields" onBack={() => setOptionsPage('root')} />
+                  <div className="max-h-80 space-y-1 overflow-y-auto">
+                    {columnFields.map((field) => (
+                      <label key={field.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted">
+                        <Checkbox
+                          checked={visibilityByFieldId.get(field.id) ?? true}
+                          onCheckedChange={(c) => onToggleFieldVisibility(field.id, c === true)}
+                        />
+                        {field.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {optionsPage === 'group' && (
+                <div>
+                  <OptionsSubHeader label="Group" onBack={() => setOptionsPage('root')} />
+                  <div className="max-h-80 space-y-1 overflow-y-auto">
+                    <button
+                      type="button"
+                      className="flex w-full items-center rounded px-1 py-1 text-left text-sm hover:bg-muted"
+                      onClick={() => onSetGroupField(undefined)}
+                    >
+                      Not set
+                    </button>
+                    {selectFields.map((field) => (
+                      <button
+                        key={field.id}
+                        type="button"
+                        className="flex w-full items-center rounded px-1 py-1 text-left text-sm hover:bg-muted"
+                        onClick={() => onSetGroupField(field.id)}
+                      >
+                        {field.label}
+                      </button>
+                    ))}
+                    {selectFields.length === 0 && (
+                      <p className="px-1 py-1 text-xs text-muted-foreground">
+                        This object has no Select fields yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
         </div>

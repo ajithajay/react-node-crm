@@ -166,6 +166,7 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         "is_unique" boolean NOT NULL DEFAULT false,
         "is_restrictable" boolean NOT NULL DEFAULT true,
         "is_visible_in_record_page" boolean NOT NULL DEFAULT true,
+        "position" integer NOT NULL DEFAULT 0,
         "default_value" jsonb,
         "settings" jsonb,
         "created_at" timestamptz NOT NULL DEFAULT now(),

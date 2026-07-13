@@ -3,11 +3,16 @@ import { WorkspaceEntity, WorkspaceActivationStatus } from '../entities/workspac
 import { ObjectMetadataEntity } from '../entities/object-metadata.entity.js';
 import { FieldMetadataEntity } from '../entities/field-metadata.entity.js';
 import { RoleEntity } from '../entities/role.entity.js';
-import { ViewEntity } from '../entities/view.entity.js';
+import { ViewEntity, ViewFieldEntity } from '../entities/view.entity.js';
 import { createWorkspaceSchema } from '../workspace-schema/workspace-schema.service.js';
 import { getWorkspaceSchemaName } from '../workspace-schema/schema-name.util.js';
 import { createMetadataService, SYSTEM_FIELD_DEFS } from '../metadata/metadata.service.js';
-import { STANDARD_OBJECTS, STANDARD_RELATIONS, STANDARD_MORPH_RELATIONS } from './standard-objects.seed.js';
+import {
+  STANDARD_OBJECTS,
+  STANDARD_RELATIONS,
+  STANDARD_MORPH_RELATIONS,
+  STANDARD_TABLE_VIEW_FIELDS,
+} from './standard-objects.seed.js';
 import { DEFAULT_ROLE_NAME, STANDARD_ROLES } from './standard-roles.seed.js';
 import { seedPageLayoutForObject } from './page-layout.seed.js';
 
@@ -40,6 +45,7 @@ export async function provisionWorkspace(
   const fieldRepo = coreDataSource.getRepository(FieldMetadataEntity);
   const objects: ObjectMetadataEntity[] = [];
   const objectIdByName = new Map<string, ObjectMetadataEntity>();
+  const viewIdByObjectName = new Map<string, string>();
 
   // Pass 1 — objects + their scalar/system fields + default view + record-label identifier.
   for (const def of STANDARD_OBJECTS) {
@@ -77,7 +83,7 @@ export async function provisionWorkspace(
     }
 
     await fieldRepo.save(
-      SYSTEM_FIELD_DEFS.map((field) =>
+      SYSTEM_FIELD_DEFS.map((field, i) =>
         fieldRepo.create({
           workspaceId,
           objectMetadataId: object.id,
@@ -90,6 +96,7 @@ export async function provisionWorkspace(
           isCustom: false,
           isSystem: true,
           isRestrictable: false,
+          position: def.fields.length + i,
         }),
       ),
     );
@@ -98,7 +105,7 @@ export async function provisionWorkspace(
       await metadataService.setObjectIdentifiers(workspaceId, object.id, labelFieldId, null);
     }
 
-    await coreDataSource.getRepository(ViewEntity).save(
+    const view = await coreDataSource.getRepository(ViewEntity).save(
       coreDataSource.getRepository(ViewEntity).create({
         workspaceId,
         objectMetadataId: object.id,
@@ -108,6 +115,7 @@ export async function provisionWorkspace(
         isDefault: true,
       }),
     );
+    viewIdByObjectName.set(def.nameSingular, view.id);
 
     objects.push(object);
     objectIdByName.set(def.nameSingular, object);
@@ -154,6 +162,40 @@ export async function provisionWorkspace(
       onDelete: morph.onDelete,
       isCustom: false,
     });
+  }
+
+  // Pass 3.5 — curated default TABLE-view columns (Twenty parity), now that relation fields exist.
+  // Every column-eligible field gets an explicit row (curated ones first, then any leftover
+  // column-eligible field hidden) so the Fields picker never shows a field as "shown" that isn't
+  // actually seeded as a column, and vice versa.
+  const viewFieldRepo = coreDataSource.getRepository(ViewFieldEntity);
+  for (const [objectName, columns] of Object.entries(STANDARD_TABLE_VIEW_FIELDS)) {
+    const object = objectIdByName.get(objectName);
+    const viewId = viewIdByObjectName.get(objectName);
+    if (!object || !viewId) continue;
+
+    const fields = await fieldRepo.findBy({ workspaceId, objectMetadataId: object.id });
+    const fieldIdByName = new Map(fields.map((f) => [f.name, f.id]));
+    const isColumnEligible = (f: FieldMetadataEntity) =>
+      f.type !== 'MORPH_RELATION' && !(f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY');
+
+    const curatedNames = new Set(columns.map((c) => c.name));
+    const leftover = fields.filter((f) => isColumnEligible(f) && !curatedNames.has(f.name));
+    const allColumns = [...columns, ...leftover.map((f) => ({ name: f.name, hidden: true }))];
+
+    await viewFieldRepo.save(
+      allColumns
+        .filter((col) => fieldIdByName.has(col.name))
+        .map((col, i) =>
+          viewFieldRepo.create({
+            viewId,
+            fieldMetadataId: fieldIdByName.get(col.name)!,
+            position: i,
+            isVisible: !col.hidden,
+            size: 'size' in col ? (col.size ?? 150) : 150,
+          }),
+        ),
+    );
   }
 
   // Pass 4 — default record-page layout per object (needs all fields + relations to exist first).

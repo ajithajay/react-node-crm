@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { type DataModelField, recordApi } from '@/lib/api-client';
 import type { FilterCondition } from './FilterBar';
 import { RecordChip } from './RecordChip';
-import { friendlyFieldKey } from '../lib/field-values';
+import { formatFieldValue, friendlyFieldKey } from '../lib/field-values';
 import { tagColor } from '../lib/table-tokens';
 
 const NO_VALUE = '__no_value__';
@@ -23,6 +23,7 @@ export function KanbanBoard({
   objectNamePlural,
   labelIdentifierField,
   groupByField,
+  cardFields,
   search,
   filters,
   onOpenRecord,
@@ -31,6 +32,7 @@ export function KanbanBoard({
   objectNamePlural: string;
   labelIdentifierField: DataModelField | undefined;
   groupByField: DataModelField;
+  cardFields: DataModelField[];
   search: string;
   filters: FilterCondition[];
   onOpenRecord: (record: Record<string, unknown>) => void;
@@ -127,6 +129,20 @@ export function KanbanBoard({
                   className="cursor-pointer rounded-md border bg-background p-2 text-sm shadow-sm hover:border-primary/50"
                 >
                   <RecordChip name={labelFor(record)} />
+                  {cardFields.length > 0 && (
+                    <div className="mt-1.5 space-y-1 text-xs text-muted-foreground">
+                      {cardFields.map((f) => {
+                        const formatted = formatFieldValue(f, record);
+                        if (formatted === '—') return null;
+                        return (
+                          <div key={f.id} className="flex items-center gap-1 truncate">
+                            <span className="shrink-0">{f.label}:</span>
+                            <span className="truncate text-foreground">{formatted}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
               {columnRecords.length === 0 && <p className="text-xs text-muted-foreground">No records.</p>}

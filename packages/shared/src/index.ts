@@ -14,6 +14,7 @@ export * from './metadata/field-metadata-settings.js';
 export * from './metadata/identifier.js';
 export * from './metadata/permission-flag.js';
 export * from './metadata/view-type.js';
+export * from './metadata/currencies.js';
 export * from './auth/token-type.js';
 export * from './auth/subdomain.js';
 export * from './auth/schemas.js';

@@ -171,7 +171,7 @@ export async function createWorkspace(
       workspaceId: workspace.id,
       userId,
       roleId: adminRole?.id ?? provisioned.workspace.defaultRoleId,
-      firstName: user.firstName,
+      firstName: user.firstName || user.email.split('@')[0]!,
       lastName: user.lastName,
     }),
   );

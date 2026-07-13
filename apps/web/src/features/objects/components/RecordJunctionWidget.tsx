@@ -160,6 +160,7 @@ export function RecordJunctionWidget({
           objectNameSingular={itemObject.nameSingular}
           objectMetadataId={itemObject.id}
           fields={itemFields}
+          labelIdentifierField={labelField}
           onSubmit={createItemAndLink}
         />
       )}

@@ -1,20 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Maximize2 } from 'lucide-react';
+import { Maximize2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getIcon } from '@/lib/icons';
 import { ApiError, type DataModelField, dataModelApi } from '@/lib/api-client';
-import { cn } from '@/lib/utils';
-import { FieldInput, isEditableField } from '../lib/field-inputs';
+import { isEditableField } from '../lib/field-inputs';
 import { friendlyFieldKey } from '../lib/field-values';
+import { formatRelativeDate } from '../lib/format-relative-date';
+import { ReadOnlyFieldRow, RecordDocumentField, RecordField, RecordNameHeader, Section } from './RecordFieldRows';
 import { RecordAttachmentsWidget } from './RecordAttachmentsWidget';
-import { RecordChip } from './RecordChip';
 import { RecordJunctionWidget } from './RecordJunctionWidget';
 import { RecordRelationWidget } from './RecordRelationWidget';
+import { RecordTargetsWidget } from './RecordTargetsWidget';
 import { RecordTimelineWidget } from './RecordTimelineWidget';
 
 /**
@@ -28,6 +29,7 @@ import { RecordTimelineWidget } from './RecordTimelineWidget';
  * `isMorphReverse` field on `fields`, rather than hardcoding object names.
  */
 const DETAIL_TAB_DEFS = [
+  { key: 'note', label: 'Note', reverseFieldName: undefined },
   { key: 'timeline', label: 'Timeline', reverseFieldName: 'timeline_activities' },
   { key: 'notes', label: 'Notes', reverseFieldName: 'note_targets' },
   { key: 'tasks', label: 'Tasks', reverseFieldName: 'task_targets' },
@@ -43,6 +45,20 @@ const ACTIVITY_PLUMBING_OBJECTS: ReadonlySet<string> = new Set([
   'workspace_member',
 ]);
 
+/** Task/Note get "Note" (their own body as a document) + Timeline + Files, and skip the generic
+ * Notes/Tasks relation tabs (a task doesn't have sub-notes/sub-tasks) — mirrors `activityWidgetTypes`
+ * in the standard-objects seed (packages/database), which the full record page already honors via
+ * its persisted page layout. */
+const LIMITED_ACTIVITY_TAB_KEYS: ReadonlySet<string> = new Set(['note', 'timeline', 'files']);
+const LIMITED_ACTIVITY_OBJECTS: ReadonlySet<string> = new Set(['task', 'note']);
+
+/** Task's/Note's own junction → the "Relations" widget (which Company/Person/Opportunity it's
+ * about), replacing the raw junction reverse-relation widget filtered out below. */
+const TARGET_RELATIONS_CONFIG: Record<string, { junctionObjectNamePlural: string; forwardKey: string }> = {
+  task: { junctionObjectNamePlural: 'task_targets', forwardKey: 'taskId' },
+  note: { junctionObjectNamePlural: 'note_targets', forwardKey: 'noteId' },
+};
+
 /** created_at/updated_at/deleted_at/created_by/updated_by — displayed read-only, never in the editable form. */
 const SYSTEM_FIELD_NAMES: ReadonlySet<string> = new Set([
   'created_at',
@@ -52,63 +68,14 @@ const SYSTEM_FIELD_NAMES: ReadonlySet<string> = new Set([
   'updated_by',
 ]);
 
-function FieldSection({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border-b pb-3">
-      <button
-        type="button"
-        className="mb-2 flex w-full items-center justify-between text-xs font-medium text-muted-foreground"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {title}
-        <ChevronDown className={cn('size-3.5 transition-transform', !open && '-rotate-90')} />
-      </button>
-      {open && <div className="space-y-4">{children}</div>}
-    </div>
-  );
-}
-
-function FieldRow({
-  field,
-  value,
-  onChange,
-}: {
-  field: DataModelField;
-  value: unknown;
-  onChange: (v: unknown) => void;
-}) {
-  return (
-    <div>
-      <Label>{field.label}</Label>
-      <div className="mt-1">
-        <FieldInput field={field} value={value} onChange={onChange} />
-      </div>
-    </div>
-  );
-}
-
-function SystemFieldRow({ field, record }: { field: DataModelField; record: Record<string, unknown> }) {
-  const value = record[friendlyFieldKey(field)];
-  const display =
-    field.type === 'ACTOR'
-      ? String((value as Record<string, unknown> | null)?.name || '—')
-      : value
-        ? new Date(value as string).toLocaleString()
-        : '—';
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-muted-foreground">{field.label}</span>
-      <span>{display}</span>
-    </div>
-  );
-}
-
 function OverviewTab({
   fields,
   objectMetadataId,
   record,
   sourceRecordId,
+  labelFieldId,
+  documentFieldName,
+  targetRelations,
   values,
   onChange,
 }: {
@@ -116,14 +83,31 @@ function OverviewTab({
   objectMetadataId: string | undefined;
   record: Record<string, unknown> | null;
   sourceRecordId: string | undefined;
+  /** The label-identifier field — never shown here, it lives in the sheet header instead. */
+  labelFieldId: string | undefined;
+  /** Task/Note's rich-text body — shown as its own full-width document block, not a compact row. */
+  documentFieldName: string | undefined;
+  /** Task/Note's own "Relations" config — replaces the raw junction reverse-relation widget below. */
+  targetRelations: { junctionObjectNamePlural: string; forwardKey: string } | undefined;
   values: Record<string, unknown>;
   onChange: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
-  const editableFields = fields.filter((f) => isEditableField(f) && f.isVisibleInRecordPage);
-  const systemFields = fields.filter((f) => SYSTEM_FIELD_NAMES.has(f.name));
-  const relationFields = fields.filter(
-    (f) => f.type === 'RELATION' && f.settings?.relationType === 'ONE_TO_MANY' && !f.settings?.isMorphReverse,
+  const documentField = fields.find((f) => f.name === documentFieldName);
+  const editableFields = fields.filter(
+    (f) => isEditableField(f) && f.isVisibleInRecordPage && f.id !== labelFieldId && f.id !== documentField?.id,
   );
+  const systemFields = fields.filter((f) => SYSTEM_FIELD_NAMES.has(f.name));
+
+  // Reverse relations pointing at a junction/activity-plumbing object (e.g. Task's own
+  // `task_targets`) are internal wiring — `targetRelations` (Task/Note only) replaces them with the
+  // resolved Company/Person/Opportunity chips instead; every other object keeps its normal collection widgets.
+  const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects });
+  const relationFields = fields.filter((f) => {
+    if (f.type !== 'RELATION' || f.settings?.relationType !== 'ONE_TO_MANY' || f.settings?.isMorphReverse) return false;
+    const targetId = f.settings?.relationTargetObjectMetadataId;
+    const targetObject = objects?.find((o) => o.id === targetId);
+    return !targetObject || !ACTIVITY_PLUMBING_OBJECTS.has(targetObject.nameSingular);
+  });
 
   // Named record-page sections (Twenty parity — e.g. Company's General/Business/Contact). Falls back
   // to a single "Fields" section when the object has none configured (gap D1/D2).
@@ -152,36 +136,63 @@ function OverviewTab({
     groups = [{ label: 'Fields', fields: editableFields }];
   }
 
+  const draftRecord = { ...values, id: sourceRecordId };
+
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-3 py-4">
       {groups.map((group) => (
-        <FieldSection key={group.label} title={group.label}>
+        <Section key={group.label} title={group.label}>
           {group.fields.map((field) => {
             const key = friendlyFieldKey(field);
             return (
-              <FieldRow
+              <RecordField
                 key={field.id}
+                // Draft mode (onChange provided below) never invokes the API, so this is inert.
+                objectNamePlural=""
+                recordId={sourceRecordId ?? ''}
                 field={field}
-                value={values[key]}
+                record={draftRecord}
+                variant="row"
                 onChange={(v) => onChange((prev) => ({ ...prev, [key]: v }))}
               />
             );
           })}
-        </FieldSection>
+        </Section>
       ))}
 
       {record && systemFields.length > 0 && (
-        <FieldSection title="System" defaultOpen={false}>
+        <Section title="System" defaultOpen={false}>
           {systemFields.map((field) => (
-            <SystemFieldRow key={field.id} field={field} record={record} />
+            <ReadOnlyFieldRow key={field.id} field={field} record={record} />
           ))}
-        </FieldSection>
+        </Section>
+      )}
+
+      {documentField && !sourceRecordId && (
+        <RecordDocumentField
+          field={documentField}
+          objectNamePlural=""
+          recordId={sourceRecordId ?? ''}
+          value={values[friendlyFieldKey(documentField)]}
+          onChange={(v) => {
+            const key = friendlyFieldKey(documentField);
+            onChange((prev) => ({ ...prev, [key]: v }));
+          }}
+        />
       )}
 
       {sourceRecordId &&
         relationFields.map((field) => (
           <RecordRelationWidget key={field.id} field={field} sourceRecordId={sourceRecordId} />
         ))}
+
+      {sourceRecordId && targetRelations && (
+        <RecordTargetsWidget
+          junctionObjectNamePlural={targetRelations.junctionObjectNamePlural}
+          forwardKey={targetRelations.forwardKey}
+          sourceRecordId={sourceRecordId}
+        />
+      )}
     </div>
   );
 }
@@ -194,6 +205,7 @@ export function RecordSheet({
   objectNameSingular,
   objectNamePlural,
   objectMetadataId,
+  objectIcon,
   fields,
   labelIdentifierField,
   initialValues,
@@ -206,6 +218,7 @@ export function RecordSheet({
   objectNameSingular: string;
   objectNamePlural?: string;
   objectMetadataId?: string;
+  objectIcon?: string;
   fields: DataModelField[];
   labelIdentifierField?: DataModelField;
   initialValues?: Record<string, unknown>;
@@ -216,17 +229,23 @@ export function RecordSheet({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const recordName = labelIdentifierField
-    ? String(values[friendlyFieldKey(labelIdentifierField)] ?? '').trim()
-    : '';
   const sourceRecordId = initialValues?.id as string | undefined;
+  // Task/Note's rich-text body is excluded from the compact Fields list and shown as its own
+  // full-width document block (create) / "Note" tab (edit) instead — see (C) in the plan.
+  const documentFieldName = LIMITED_ACTIVITY_OBJECTS.has(objectNameSingular) ? 'body' : undefined;
+  const documentField = fields.find((f) => f.name === documentFieldName);
+  const targetRelations = TARGET_RELATIONS_CONFIG[objectNameSingular];
 
   // Every real object gets Timeline/Notes/Tasks/Files (Twenty parity — its generic record layout
   // hardcodes these tabs). The junction/activity widgets query the *global* note_targets/task_targets/
   // attachments/timeline_activities objects by targetType/targetId, so they work for any object
   // (incl. custom) without that object carrying a reverse field. Only the activity/junction plumbing
   // objects themselves are excluded (they're never opened as user-facing records).
-  const detailTabs = ACTIVITY_PLUMBING_OBJECTS.has(objectNameSingular) ? [] : DETAIL_TAB_DEFS;
+  const detailTabs = ACTIVITY_PLUMBING_OBJECTS.has(objectNameSingular)
+    ? []
+    : LIMITED_ACTIVITY_OBJECTS.has(objectNameSingular)
+      ? DETAIL_TAB_DEFS.filter((t) => LIMITED_ACTIVITY_TAB_KEYS.has(t.key))
+      : DETAIL_TAB_DEFS.filter((t) => t.key !== 'note');
 
   async function handleSubmit(): Promise<void> {
     setSubmitting(true);
@@ -242,19 +261,34 @@ export function RecordSheet({
     }
   }
 
+  const ObjectIcon = getIcon(objectIcon ?? 'Circle');
+  const createdAt = initialValues?.createdAt as string | undefined;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col sm:max-w-xl">
-        <SheetHeader className="flex-row items-center justify-between border-b pr-10">
-          <SheetTitle>
-            {mode === 'create' ? (
-              `New ${objectLabel}`
-            ) : recordName ? (
-              <RecordChip name={recordName} />
-            ) : (
-              `Edit ${objectLabel}`
+        <SheetHeader className="flex-row items-center justify-between gap-3 border-b pr-10">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <ObjectIcon className="size-4 shrink-0 text-muted-foreground" />
+              <SheetTitle className="sr-only">{mode === 'create' ? `New ${objectLabel}` : `Edit ${objectLabel}`}</SheetTitle>
+              {labelIdentifierField ? (
+                <RecordNameHeader
+                  field={labelIdentifierField}
+                  value={values[friendlyFieldKey(labelIdentifierField)]}
+                  onChange={(v) => {
+                    const key = friendlyFieldKey(labelIdentifierField);
+                    setValues((prev) => ({ ...prev, [key]: v }));
+                  }}
+                />
+              ) : (
+                <span className="text-sm font-medium">{mode === 'create' ? `New ${objectLabel}` : `Edit ${objectLabel}`}</span>
+              )}
+            </div>
+            {mode === 'edit' && !!createdAt && (
+              <span className="pl-6 text-xs text-muted-foreground">Added {formatRelativeDate(createdAt)}</span>
             )}
-          </SheetTitle>
+          </div>
           {mode === 'edit' && sourceRecordId && objectNamePlural && (
             <Button
               variant="ghost"
@@ -287,14 +321,25 @@ export function RecordSheet({
                   objectMetadataId={objectMetadataId}
                   record={initialValues ?? null}
                   sourceRecordId={sourceRecordId}
+                  labelFieldId={labelIdentifierField?.id}
+                  documentFieldName={documentFieldName}
+                  targetRelations={targetRelations}
                   values={values}
                   onChange={setValues}
                 />
               </TabsContent>
               {detailTabs.map((t) => (
                 <TabsContent key={t.key} value={t.key}>
+                  {t.key === 'note' && documentField && (
+                    <RecordDocumentField
+                      field={documentField}
+                      objectNamePlural={objectNamePlural!}
+                      recordId={sourceRecordId}
+                      value={initialValues?.[friendlyFieldKey(documentField)]}
+                    />
+                  )}
                   {t.key === 'timeline' && (
-                    <RecordTimelineWidget sourceObjectNameSingular={objectNameSingular} sourceRecordId={sourceRecordId} />
+                    <RecordTimelineWidget sourceObjectNameSingular={objectNameSingular} sourceRecordId={sourceRecordId} fields={fields} />
                   )}
                   {t.key === 'notes' && (
                     <RecordJunctionWidget
@@ -332,6 +377,9 @@ export function RecordSheet({
               objectMetadataId={objectMetadataId}
               record={null}
               sourceRecordId={undefined}
+              labelFieldId={labelIdentifierField?.id}
+              documentFieldName={documentFieldName}
+              targetRelations={targetRelations}
               values={values}
               onChange={setValues}
             />

@@ -1,5 +1,5 @@
 import { FieldMetadataEntity, ObjectMetadataEntity } from '@saasly/database';
-import type { RecordListQuery } from '@saasly/shared';
+import { toCamelCase, type RecordListQuery } from '@saasly/shared';
 import { dataSource } from '../../lib/db.js';
 import { workspaceDataSourceCache } from '../../lib/workspace-data-source.js';
 import { applyRecordListQuery } from '../../lib/query-parser.js';
@@ -115,6 +115,7 @@ async function writeTimelineActivity(
   recordId: string,
   verb: string,
   actor: ActorRole,
+  properties?: Record<string, unknown>,
 ): Promise<void> {
   const timelineObject = await objectRepo().findOneBy({ workspaceId, nameSingular: 'timeline_activity', isActive: true });
   if (!timelineObject) return;
@@ -122,14 +123,40 @@ async function writeTimelineActivity(
   const row: Record<string, unknown> = {
     name: verb,
     happens_at: new Date(),
-    target_type: object.nameSingular,
-    target_id: recordId,
+    target_target_type: object.nameSingular,
+    target_target_id: recordId,
+    properties: properties ?? null,
   };
   for (const [suffix, value] of Object.entries(actorStamp(actor))) {
     row[`created_by_${suffix}`] = value;
     row[`updated_by_${suffix}`] = value;
   }
   await repo.save(repo.create(row));
+}
+
+/**
+ * Field-level before/after diff for an update (Twenty parity — the timeline shows "updated Field →
+ * value" rather than a generic verb). Only fields the caller actually attempted to change (present in
+ * `body`) are compared; ACTOR/reverse-relation fields are never diffed (system-managed / no own value).
+ */
+function computeFieldDiff(
+  fields: FieldMetadataEntity[],
+  body: Record<string, unknown>,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Record<string, { label: string; before: unknown; after: unknown }> | undefined {
+  const diff: Record<string, { label: string; before: unknown; after: unknown }> = {};
+  for (const field of fields) {
+    if (field.type === 'ACTOR' || field.type === 'MORPH_RELATION') continue;
+    if (field.type === 'RELATION' && field.settings?.relationType === 'ONE_TO_MANY') continue;
+    const key = toCamelCase(field.name);
+    if (!(key in body)) continue;
+    const beforeValue = before[key] ?? null;
+    const afterValue = after[key] ?? null;
+    if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) continue;
+    diff[field.name] = { label: field.label, before: beforeValue, after: afterValue };
+  }
+  return Object.keys(diff).length > 0 ? diff : undefined;
 }
 
 /** Post-mutation side effects: auto-timeline (create/update only) + webhook fan-out. Never throws. */
@@ -141,10 +168,18 @@ async function afterRecordMutation(
   operation: 'created' | 'updated' | 'deleted',
   actor: ActorRole,
   record: Record<string, unknown>,
+  diff?: Record<string, unknown>,
 ): Promise<void> {
   if (operation !== 'deleted' && fields.some((f) => f.name === 'timeline_activities')) {
     try {
-      await writeTimelineActivity(workspaceId, object, recordId, `${operation === 'created' ? 'Created' : 'Updated'} ${object.labelSingular}`, actor);
+      await writeTimelineActivity(
+        workspaceId,
+        object,
+        recordId,
+        `${operation === 'created' ? 'Created' : 'Updated'} ${object.labelSingular}`,
+        actor,
+        diff ? { diff } : undefined,
+      );
     } catch (err) {
       logger.error({ err, objectId: object.id, recordId }, 'timeline activity write failed');
     }
@@ -202,6 +237,7 @@ export async function updateRecord(
   const repository = await getRepository(workspaceId, object);
   const existing = await repository.findOneBy({ id });
   if (!existing) throw new NotFoundError('Record not found');
+  const before = decodeRecord(fields, existing as Record<string, unknown>, restrictedForRead);
 
   const data = encodeRecordInput(fields, body, restrictedForWrite);
   const stamp = actorStamp(actor);
@@ -209,7 +245,8 @@ export async function updateRecord(
 
   const saved = await repository.save(repository.merge(existing, data));
   const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
-  await afterRecordMutation(workspaceId, object, fields, id, 'updated', actor, decoded);
+  const diff = computeFieldDiff(fields, body, before, decoded);
+  await afterRecordMutation(workspaceId, object, fields, id, 'updated', actor, decoded, diff);
   return decoded;
 }
 

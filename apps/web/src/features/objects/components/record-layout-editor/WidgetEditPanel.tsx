@@ -25,6 +25,7 @@ const DISPLAY_MODE_LABELS: Record<FieldDisplayMode, string> = {
   PLAIN: 'Field',
   CARD: 'Card',
   TABLE: 'Table',
+  DOCUMENT: 'Document',
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {

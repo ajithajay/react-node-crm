@@ -34,12 +34,13 @@ const ACTIVITY_PLUMBING_SINGULARS = new Set([
   'workspace_member',
 ]);
 
-const ACTIVITY_WIDGETS: { type: PageLayoutWidgetType; title: string; icon: string }[] = [
-  { type: PageLayoutWidgetType.TIMELINE, title: 'Timeline', icon: 'Clock' },
-  { type: PageLayoutWidgetType.NOTES, title: 'Notes', icon: 'StickyNote' },
-  { type: PageLayoutWidgetType.TASKS, title: 'Tasks', icon: 'CheckSquare' },
-  { type: PageLayoutWidgetType.FILES, title: 'Files', icon: 'Paperclip' },
-];
+const ACTIVITY_WIDGET_DEFS: Record<'TIMELINE' | 'NOTES' | 'TASKS' | 'FILES', { type: PageLayoutWidgetType; title: string; icon: string }> = {
+  TIMELINE: { type: PageLayoutWidgetType.TIMELINE, title: 'Timeline', icon: 'Clock' },
+  NOTES: { type: PageLayoutWidgetType.NOTES, title: 'Notes', icon: 'StickyNote' },
+  TASKS: { type: PageLayoutWidgetType.TASKS, title: 'Tasks', icon: 'CheckSquare' },
+  FILES: { type: PageLayoutWidgetType.FILES, title: 'Files', icon: 'Paperclip' },
+};
+const DEFAULT_ACTIVITY_WIDGET_TYPES: ('TIMELINE' | 'NOTES' | 'TASKS' | 'FILES')[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES'];
 
 const DEFAULT_FIELDS_WIDGET_CONFIG = { showMoreFieldsButton: false, autoVisibleNewFields: true };
 
@@ -80,9 +81,11 @@ export interface DefaultGroup {
  * per-widget reset, and the lazy fallback so all three stay identical.
  */
 export function computeFieldsWidgetGroups(object: ObjectMetadataEntity, fields: FieldMetadataEntity[]): DefaultGroup[] {
-  const eligible = fields.filter(isFieldsGroupEligible);
   const fieldByName = new Map(fields.map((f) => [f.name, f]));
   const seedDef = STANDARD_OBJECTS.find((d) => d.nameSingular === object.nameSingular);
+  const widgetRelationNames = new Set(seedDef?.widgetRelationFields ?? []);
+  const excludedNames = new Set([...widgetRelationNames, ...(seedDef?.richTextTabField ? [seedDef.richTextTabField] : [])]);
+  const eligible = fields.filter((f) => isFieldsGroupEligible(f) && !excludedNames.has(f.name));
 
   const groups: DefaultGroup[] = [];
   const covered = new Set<string>();
@@ -90,7 +93,7 @@ export function computeFieldsWidgetGroups(object: ObjectMetadataEntity, fields: 
     for (const section of seedDef.sections) {
       const ids = section.fieldNames
         .map((n) => fieldByName.get(n))
-        .filter((f): f is FieldMetadataEntity => !!f && isFieldsGroupEligible(f))
+        .filter((f): f is FieldMetadataEntity => !!f && isFieldsGroupEligible(f) && !excludedNames.has(f.name))
         .map((f) => {
           covered.add(f.id);
           return f.id;
@@ -162,8 +165,29 @@ export async function seedPageLayoutForObject(
 ): Promise<PageLayoutEntity> {
   const fields = await manager.getRepository(FieldMetadataEntity).find({ where: { workspaceId, objectMetadataId: object.id } });
   const groups = computeFieldsWidgetGroups(object, fields);
-  const reverseRelations = fields.filter(isReverseRelationWidgetField);
+  const seedDef = STANDARD_OBJECTS.find((d) => d.nameSingular === object.nameSingular);
+  const fieldByName = new Map(fields.map((f) => [f.name, f]));
+  // Forward (MANY_TO_ONE) relations promoted to their own widget (Twenty parity — e.g. Person's
+  // Company, Opportunity's Company/Point of Contact/Owner), in the object def's declared order,
+  // followed by the reverse/collection relation widgets (People, Opportunities, …).
+  const forwardRelationWidgets = (seedDef?.widgetRelationFields ?? [])
+    .map((n) => fieldByName.get(n))
+    .filter((f): f is FieldMetadataEntity => !!f);
+  // Reverse relations pointing at a junction/activity-plumbing object (e.g. Task's own
+  // `task_targets` — the plain FK reverse of task_target.task) are internal wiring, not a
+  // meaningful "collection" to show on the record page; only the morph-reverse side (already
+  // excluded above) resolves to real Company/Person/Opportunity records worth displaying.
+  const objectsById = new Map(
+    (await manager.getRepository(ObjectMetadataEntity).find({ where: { workspaceId } })).map((o) => [o.id, o]),
+  );
+  const reverseRelations = fields.filter(isReverseRelationWidgetField).filter((f) => {
+    const targetId = f.settings?.relationTargetObjectMetadataId as string | undefined;
+    const targetObject = targetId ? objectsById.get(targetId) : undefined;
+    return !targetObject || !ACTIVITY_PLUMBING_SINGULARS.has(targetObject.nameSingular);
+  });
+  const relationWidgets = [...forwardRelationWidgets, ...reverseRelations];
   const includeActivityTabs = !ACTIVITY_PLUMBING_SINGULARS.has(object.nameSingular);
+  const activityTypes = seedDef?.activityWidgetTypes ?? DEFAULT_ACTIVITY_WIDGET_TYPES;
 
   const layout = await manager.getRepository(PageLayoutEntity).save(
     manager.getRepository(PageLayoutEntity).create({
@@ -200,9 +224,9 @@ export async function seedPageLayoutForObject(
   );
   await writeFieldsWidgetGroups(manager, workspaceId, object.id, fieldsWidget.id, groups, fields);
 
-  // Widgets 1..n — one FIELD widget per collection/reverse relation (People, Opportunities, …).
-  for (let i = 0; i < reverseRelations.length; i++) {
-    const rel = reverseRelations[i]!;
+  // Widgets 1..n — one FIELD widget per forward/reverse relation (Company, People, Opportunities, …).
+  for (let i = 0; i < relationWidgets.length; i++) {
+    const rel = relationWidgets[i]!;
     await manager.getRepository(PageLayoutWidgetEntity).save(
       manager.getRepository(PageLayoutWidgetEntity).create({
         workspaceId,
@@ -216,17 +240,47 @@ export async function seedPageLayoutForObject(
     );
   }
 
+  // "Note" tab — a Task/Note's rich-text body as a dedicated full-document tab, before the activity
+  // tabs (Twenty parity: Note, Timeline, Files).
+  let nextTabPosition = 1;
+  const richTextField = seedDef?.richTextTabField ? fieldByName.get(seedDef.richTextTabField) : undefined;
+  if (richTextField) {
+    const noteTab = await manager.getRepository(PageLayoutTabEntity).save(
+      manager.getRepository(PageLayoutTabEntity).create({
+        workspaceId,
+        pageLayoutId: layout.id,
+        title: 'Note',
+        icon: 'FileText',
+        position: nextTabPosition,
+        isVisible: true,
+        isPinned: false,
+      }),
+    );
+    await manager.getRepository(PageLayoutWidgetEntity).save(
+      manager.getRepository(PageLayoutWidgetEntity).create({
+        workspaceId,
+        pageLayoutTabId: noteTab.id,
+        type: PageLayoutWidgetType.FIELD,
+        title: 'Note',
+        position: 0,
+        isVisible: true,
+        configuration: { fieldMetadataId: richTextField.id, displayMode: 'DOCUMENT' },
+      }),
+    );
+    nextTabPosition += 1;
+  }
+
   // Activity tabs.
   if (includeActivityTabs) {
-    for (let i = 0; i < ACTIVITY_WIDGETS.length; i++) {
-      const w = ACTIVITY_WIDGETS[i]!;
+    for (let i = 0; i < activityTypes.length; i++) {
+      const w = ACTIVITY_WIDGET_DEFS[activityTypes[i]!];
       const tab = await manager.getRepository(PageLayoutTabEntity).save(
         manager.getRepository(PageLayoutTabEntity).create({
           workspaceId,
           pageLayoutId: layout.id,
           title: w.title,
           icon: w.icon,
-          position: i + 1,
+          position: nextTabPosition + i,
           isVisible: true,
           isPinned: false,
         }),

@@ -6,7 +6,11 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { type DataModelField, recordApi } from '@/lib/api-client';
 import { FieldInput } from '../lib/field-inputs';
+import { fieldIcon } from '../lib/field-icon';
 import { ensureAbsoluteUrl, friendlyFieldKey, isFieldDraftValid, selectColor, selectLabel } from '../lib/field-values';
+import { formatRelativeDate } from '../lib/format-relative-date';
+
+const RELATIVE_DATE_FIELD_NAMES: ReadonlySet<string> = new Set(['created_at', 'updated_at']);
 import { Tag } from './Tag';
 
 /** Rich read-only rendering of a scalar/composite field value (clickable links, tags, etc.). */
@@ -77,9 +81,21 @@ function FieldValueDisplay({ field, value }: { field: DataModelField; value: unk
     case FieldMetadataType.RICH_TEXT:
       return <span className="truncate">{(value as { markdown?: string }).markdown?.slice(0, 120) || '—'}</span>;
     case FieldMetadataType.DATE:
-      return <span>{new Date(value as string).toLocaleDateString()}</span>;
+      return (
+        <span>
+          {RELATIVE_DATE_FIELD_NAMES.has(field.name)
+            ? formatRelativeDate(value as string)
+            : new Date(value as string).toLocaleDateString()}
+        </span>
+      );
     case FieldMetadataType.DATE_TIME:
-      return <span>{new Date(value as string).toLocaleString()}</span>;
+      return (
+        <span>
+          {RELATIVE_DATE_FIELD_NAMES.has(field.name)
+            ? formatRelativeDate(value as string)
+            : new Date(value as string).toLocaleString()}
+        </span>
+      );
     default:
       return <span className="truncate">{String(value)}</span>;
   }
@@ -113,6 +129,7 @@ export function RecordFieldCell({
   field,
   value,
   variant = 'stacked',
+  onChange,
 }: {
   objectNamePlural: string;
   recordId: string;
@@ -120,6 +137,8 @@ export function RecordFieldCell({
   value: unknown;
   /** stacked = label above value (default form look); row = label left / value right (Table mode). */
   variant?: 'stacked' | 'row';
+  /** Redirects the commit into local draft state instead of the API (create/edit sheet usage). */
+  onChange?: (value: unknown) => void;
 }) {
   const queryClient = useQueryClient();
   const key = friendlyFieldKey(field);
@@ -145,15 +164,25 @@ export function RecordFieldCell({
       return;
     }
     setOpen(false);
-    if (JSON.stringify(norm) !== JSON.stringify(value ?? null)) save.mutate(norm ?? null);
+    if (JSON.stringify(norm) !== JSON.stringify(value ?? null)) {
+      if (onChange) onChange(norm ?? null);
+      else save.mutate(norm ?? null);
+    }
   }
 
   const valueNode = <FieldValueDisplay field={field} value={value} />;
+  const Icon = fieldIcon(field);
 
   return (
-    <div className={cn(variant === 'row' ? 'flex items-center justify-between gap-3 py-1.5 text-sm' : 'space-y-1')}>
-      <span className={cn('text-xs font-medium', variant === 'row' ? 'shrink-0 text-muted-foreground' : 'text-muted-foreground')}>
-        {field.label}
+    <div className={cn(variant === 'row' ? 'flex items-center gap-1' : 'space-y-1')}>
+      <span
+        className={cn(
+          'flex items-center gap-1 text-xs font-medium text-muted-foreground',
+          variant === 'row' && 'w-22.5 shrink-0 truncate',
+        )}
+      >
+        <Icon className="size-3.5 shrink-0" />
+        <span className="truncate">{field.label}</span>
       </span>
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger
@@ -164,7 +193,7 @@ export function RecordFieldCell({
               tabIndex={0}
               className={cn(
                 'flex min-h-8 min-w-0 cursor-pointer items-center rounded-md px-2 py-1 text-sm hover:bg-muted/60',
-                variant === 'row' ? 'justify-end text-right' : 'w-full',
+                variant === 'row' ? 'flex-1' : 'w-full',
               )}
             />
           }

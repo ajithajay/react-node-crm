@@ -19,6 +19,7 @@ const DISPLAY_MODE_LABELS: Record<FieldDisplayMode, string> = {
   PLAIN: 'Field',
   CARD: 'Card',
   TABLE: 'Table',
+  DOCUMENT: 'Document',
 };
 
 /** Widget-type picker used both for "Add widget above/below" and a brand-new empty tab. */

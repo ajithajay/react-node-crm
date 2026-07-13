@@ -6,8 +6,9 @@ import { z } from 'zod';
 export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'FIELD', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'] as const;
 export type PageLayoutWidgetType = (typeof PAGE_LAYOUT_WIDGET_TYPES)[number];
 
-/** How a single FIELD widget renders its value — matches Twenty's Field / Card / Table. */
-export const FIELD_DISPLAY_MODES = ['PLAIN', 'CARD', 'TABLE'] as const;
+/** How a single FIELD widget renders its value — matches Twenty's Field / Card / Table, plus our
+ * DOCUMENT mode (a Task/Note's rich-text body as a full-width, always-editable document). */
+export const FIELD_DISPLAY_MODES = ['PLAIN', 'CARD', 'TABLE', 'DOCUMENT'] as const;
 export type FieldDisplayMode = (typeof FIELD_DISPLAY_MODES)[number];
 
 /** Polymorphic per-widget-type settings, stored as the widget's `configuration` jsonb. */

@@ -1,5 +1,9 @@
 import { FieldMetadataType, toCamelCase, ViewFilterOperand, type SelectOption } from '@saasly/shared';
 import type { DataModelField } from '@/lib/api-client';
+import { formatRelativeDate } from './format-relative-date';
+
+/** Audit-timestamp fields display as relative time everywhere (Twenty parity); other date fields stay absolute. */
+const RELATIVE_DATE_FIELD_NAMES: ReadonlySet<string> = new Set(['created_at', 'updated_at']);
 
 /** Field types whose value lives under a single friendly JSON key (mirrors record-field-codec.ts). */
 const COMPOSITE_TYPES: ReadonlySet<string> = new Set([
@@ -173,9 +177,13 @@ export function formatFieldValue(field: DataModelField, record: Record<string, u
     case FieldMetadataType.BOOLEAN:
       return value ? 'Yes' : 'No';
     case FieldMetadataType.DATE:
-      return new Date(value as string).toLocaleDateString();
+      return RELATIVE_DATE_FIELD_NAMES.has(field.name)
+        ? formatRelativeDate(value as string)
+        : new Date(value as string).toLocaleDateString();
     case FieldMetadataType.DATE_TIME:
-      return new Date(value as string).toLocaleString();
+      return RELATIVE_DATE_FIELD_NAMES.has(field.name)
+        ? formatRelativeDate(value as string)
+        : new Date(value as string).toLocaleString();
     case FieldMetadataType.SELECT:
       return selectLabel(field, value);
     case FieldMetadataType.MULTI_SELECT:

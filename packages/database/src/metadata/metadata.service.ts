@@ -35,6 +35,8 @@ export interface CreateFieldInput {
   isSystem?: boolean;
   settings?: FieldMetadataLike['settings'];
   defaultValue?: unknown;
+  /** Declaration order within the object; defaults to appended-last (max existing position + 1). */
+  position?: number;
 }
 
 export interface UpdateObjectInput {
@@ -153,6 +155,19 @@ const ON_DELETE_SQL: Record<RelationOnDeleteAction, 'CASCADE' | 'RESTRICT' | 'SE
   NO_ACTION: 'NO ACTION',
 };
 
+/** Next available `position` for a new field on an object: max existing position + 1 (appended last). */
+async function nextFieldPosition(manager: EntityManager, workspaceId: string, objectMetadataId: string): Promise<number> {
+  const { max } = await manager
+    .getRepository(FieldMetadataEntity)
+    .createQueryBuilder('f')
+    .select('MAX(f.position)', 'max')
+    .where('f.workspace_id = :workspaceId', { workspaceId })
+    .andWhere('f.object_metadata_id = :objectMetadataId', { objectMetadataId })
+    .getRawOne<{ max: string | null }>()
+    .then((row) => ({ max: row?.max ?? null }));
+  return max === null ? 0 : parseInt(max, 10) + 1;
+}
+
 async function bumpMetadataVersion(manager: EntityManager, workspaceId: string): Promise<void> {
   await manager.query(
     `INSERT INTO "core"."workspace_metadata_versions" (workspace_id, version)
@@ -171,6 +186,7 @@ async function insertFieldWithDdl(manager: EntityManager, input: CreateFieldInpu
   const isNullable = input.isNullable ?? true;
   const isUnique = input.isUnique ?? false;
   const settings = input.settings ?? null;
+  const position = input.position ?? (await nextFieldPosition(manager, input.workspaceId, input.objectMetadataId));
 
   const field = repo.create({
     workspaceId: input.workspaceId,
@@ -186,6 +202,7 @@ async function insertFieldWithDdl(manager: EntityManager, input: CreateFieldInpu
     isUnique,
     settings,
     defaultValue: input.defaultValue ?? null,
+    position,
   });
   await repo.save(field);
 
@@ -269,8 +286,9 @@ export function createMetadataService(coreDataSource: DataSource) {
     /** Seed the metadata-only system/audit field rows (created_at/…/updated_by) on a freshly-created object. */
     async seedSystemFields(input: { workspaceId: string; objectMetadataId: string }): Promise<void> {
       const repo = coreDataSource.getRepository(FieldMetadataEntity);
+      const startPosition = await nextFieldPosition(coreDataSource.manager, input.workspaceId, input.objectMetadataId);
       await repo.save(
-        SYSTEM_FIELD_DEFS.map((field) =>
+        SYSTEM_FIELD_DEFS.map((field, i) =>
           repo.create({
             workspaceId: input.workspaceId,
             objectMetadataId: input.objectMetadataId,
@@ -283,6 +301,7 @@ export function createMetadataService(coreDataSource: DataSource) {
             isCustom: false,
             isSystem: true,
             isRestrictable: false,
+            position: startPosition + i,
           }),
         ),
       );
@@ -314,8 +333,9 @@ export function createMetadataService(coreDataSource: DataSource) {
         });
 
         const repo = manager.getRepository(FieldMetadataEntity);
+        const startPosition = await nextFieldPosition(manager, input.workspaceId, input.objectMetadataId);
         await repo.save(
-          SYSTEM_FIELD_DEFS.map((field) =>
+          SYSTEM_FIELD_DEFS.map((field, i) =>
             repo.create({
               workspaceId: input.workspaceId,
               objectMetadataId: input.objectMetadataId,
@@ -328,6 +348,7 @@ export function createMetadataService(coreDataSource: DataSource) {
               isCustom: false,
               isSystem: true,
               isRestrictable: false,
+              position: startPosition + i,
             }),
           ),
         );
@@ -586,6 +607,7 @@ export function createMetadataService(coreDataSource: DataSource) {
             relationTargetObjectMetadataId: virtual.targetObjectMetadataId,
             relationTargetFieldName: virtual.reverseName,
           },
+          position: await nextFieldPosition(manager, input.workspaceId, virtual.objectMetadataId),
         });
         await repo.save(virtualField);
 
@@ -649,6 +671,7 @@ export function createMetadataService(coreDataSource: DataSource) {
               relationTargetFieldName: input.forwardName,
               isMorphReverse: true,
             },
+            position: await nextFieldPosition(manager, input.workspaceId, targetObjectMetadataId),
           });
           await repo.save(reverse);
           reverses.push(reverse);

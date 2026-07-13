@@ -52,6 +52,10 @@ export class FieldMetadataEntity {
   @Column({ type: 'boolean', name: 'is_visible_in_record_page', default: true })
   isVisibleInRecordPage!: boolean;
 
+  /** Declaration order within the object; also the default table-column order. */
+  @Column({ type: 'int', default: 0 })
+  position!: number;
+
   @Column({ type: 'jsonb', name: 'default_value', nullable: true })
   defaultValue!: unknown;
 
