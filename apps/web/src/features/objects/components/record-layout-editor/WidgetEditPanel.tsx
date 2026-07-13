@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
-import { FIELD_DISPLAY_MODES, type FieldDisplayMode } from '@saasly/shared';
+import { cn } from '@/lib/utils';
+import { type FieldDisplayMode } from '@saasly/shared';
 import { type DataModelField, type PageLayout, type PageLayoutTab, type PageLayoutWidget } from '@/lib/api-client';
-import { isEditableField, isFieldWidgetPickable } from '../../lib/field-inputs';
+import { displayModesForField, isEditableField, isFieldWidgetPickable } from '../../lib/field-inputs';
 import * as draft from '../../lib/page-layout-draft';
 
 const WIDGET_TITLES: Record<string, string> = {
-  FIELDS: 'Fields',
+  FIELDS: 'Fields group',
   FIELD: 'Field',
   TIMELINE: 'Timeline',
   NOTES: 'Notes',
@@ -24,7 +25,6 @@ const DISPLAY_MODE_LABELS: Record<FieldDisplayMode, string> = {
   PLAIN: 'Field',
   CARD: 'Card',
   TABLE: 'Table',
-  CHIP_LIST: 'Multiple options',
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -57,17 +57,29 @@ function FieldsLayoutEditor({
       {widget.groups.map((group) => (
         <div
           key={group.id}
-          draggable
-          onDragStart={() => setDraggingGroup(group.id)}
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => {
+            if (draggingGroup) e.preventDefault();
+          }}
           onDrop={() => {
             if (draggingGroup && draggingGroup !== group.id) onChange(draft.reorderGroups(widget, draggingGroup, group.id));
             setDraggingGroup(null);
           }}
-          className="rounded-lg border"
+          className={cn('rounded-lg border', draggingGroup === group.id && 'opacity-50')}
         >
           <div className="flex items-center gap-1.5 border-b px-2 py-1.5">
-            <GripVertical className="size-3.5 shrink-0 cursor-grab text-muted-foreground" />
+            <span
+              draggable
+              onDragStart={(e) => {
+                e.stopPropagation();
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', group.id);
+                setDraggingGroup(group.id);
+              }}
+              onDragEnd={() => setDraggingGroup(null)}
+              className="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+            >
+              <GripVertical className="size-3.5" />
+            </span>
             <Input
               value={group.label}
               onChange={(e) => onChange(draft.updateGroup(widget, group.id, (g) => ({ ...g, label: e.target.value })))}
@@ -86,9 +98,15 @@ function FieldsLayoutEditor({
             </button>
           </div>
           <div
-            className="space-y-1 p-2"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
+            className="min-h-6 space-y-1 p-2"
+            onDragOver={(e) => {
+              if (draggingField) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onDrop={(e) => {
+              e.stopPropagation();
               if (draggingField) onChange(draft.moveField(widget, draggingField, group.id, group.fields.length));
               setDraggingField(null);
             }}
@@ -98,20 +116,35 @@ function FieldsLayoutEditor({
               return (
                 <div
                   key={gf.fieldMetadataId}
-                  draggable
-                  onDragStart={() => setDraggingField(gf.fieldMetadataId)}
                   onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    if (draggingField) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
                   }}
                   onDrop={(e) => {
                     e.stopPropagation();
                     if (draggingField) onChange(draft.moveField(widget, draggingField, group.id, idx));
                     setDraggingField(null);
                   }}
-                  className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted/50"
+                  className={cn(
+                    'flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted/50',
+                    draggingField === gf.fieldMetadataId && 'opacity-50',
+                  )}
                 >
-                  <GripVertical className="size-3.5 shrink-0 cursor-grab text-muted-foreground" />
+                  <span
+                    draggable
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', gf.fieldMetadataId);
+                      setDraggingField(gf.fieldMetadataId);
+                    }}
+                    onDragEnd={() => setDraggingField(null)}
+                    className="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+                  >
+                    <GripVertical className="size-3.5" />
+                  </span>
                   <Checkbox
                     checked={gf.isVisible}
                     onCheckedChange={(c) =>
@@ -256,48 +289,64 @@ export function WidgetEditPanel({
                       </div>
                     </>
                   )}
-                  {isField && (
-                    <>
-                      <div className="px-1 py-1.5 text-sm">
-                        <span className="mb-1 block text-muted-foreground">Field</span>
-                        <Select
-                          value={widget.configuration.fieldMetadataId ?? ''}
-                          onValueChange={(fid: string | null) => fid && setWidget({ ...widget, configuration: { ...widget.configuration, fieldMetadataId: fid } })}
-                        >
-                          <SelectTrigger className="h-8 w-full">
-                            <SelectValue placeholder="Pick a field…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {objectFields.filter(isFieldWidgetPickable).map((f) => (
-                              <SelectItem key={f.id} value={f.id}>
-                                {f.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="px-1 py-1.5 text-sm">
-                        <span className="mb-1 block text-muted-foreground">Layout</span>
-                        <Select
-                          value={widget.configuration.displayMode ?? 'PLAIN'}
-                          onValueChange={(m: string | null) =>
-                            m && setWidget({ ...widget, configuration: { ...widget.configuration, displayMode: m as FieldDisplayMode } })
-                          }
-                        >
-                          <SelectTrigger className="h-8 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FIELD_DISPLAY_MODES.map((m) => (
-                              <SelectItem key={m} value={m}>
-                                {DISPLAY_MODE_LABELS[m]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
+                  {isField &&
+                    (() => {
+                      const selected = objectFields.find((f) => f.id === widget.configuration.fieldMetadataId);
+                      const modes = selected ? displayModesForField(selected) : (['PLAIN'] as FieldDisplayMode[]);
+                      const current = (widget.configuration.displayMode ?? 'PLAIN') as FieldDisplayMode;
+                      const effective = modes.includes(current) ? current : modes[0]!;
+                      return (
+                        <>
+                          <div className="px-1 py-1.5 text-sm">
+                            <span className="mb-1 block text-muted-foreground">Field</span>
+                            <Select
+                              value={widget.configuration.fieldMetadataId ?? ''}
+                              onValueChange={(fid: string | null) => {
+                                if (!fid) return;
+                                const f = objectFields.find((x) => x.id === fid);
+                                setWidget({
+                                  ...widget,
+                                  configuration: { ...widget.configuration, fieldMetadataId: fid, displayMode: f ? displayModesForField(f)[0] : 'PLAIN' },
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-full">
+                                <SelectValue placeholder="Pick a field…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {objectFields.filter(isFieldWidgetPickable).map((f) => (
+                                  <SelectItem key={f.id} value={f.id}>
+                                    {f.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {modes.length > 1 && (
+                            <div className="px-1 py-1.5 text-sm">
+                              <span className="mb-1 block text-muted-foreground">Layout</span>
+                              <Select
+                                value={effective}
+                                onValueChange={(m: string | null) =>
+                                  m && setWidget({ ...widget, configuration: { ...widget.configuration, displayMode: m as FieldDisplayMode } })
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {modes.map((m) => (
+                                    <SelectItem key={m} value={m}>
+                                      {DISPLAY_MODE_LABELS[m]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                 </div>
               </div>
             )}

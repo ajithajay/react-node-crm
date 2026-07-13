@@ -35,6 +35,17 @@ export function isFieldWidgetPickable(field: DataModelField): boolean {
   return isEditableField(field) || isReverseRelationField(field);
 }
 
+/**
+ * Which FIELD-widget display modes a field type supports (Twenty parity): a scalar field only has
+ * "Field"; a to-one relation adds "Card"; a to-many relation adds "Card" and "Table".
+ */
+export function displayModesForField(field: DataModelField): ('PLAIN' | 'CARD' | 'TABLE')[] {
+  if (field.type === FieldMetadataType.RELATION) {
+    return field.settings?.relationType === 'ONE_TO_MANY' ? ['PLAIN', 'CARD', 'TABLE'] : ['PLAIN', 'CARD'];
+  }
+  return ['PLAIN'];
+}
+
 function CompositeSubInput({
   label,
   value,

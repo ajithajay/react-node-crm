@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ChevronDown, Plus } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  ApiError,
   type DataModelField,
   type PageLayout,
   type PageLayoutWidget,
@@ -16,15 +13,16 @@ import {
   recordApi,
 } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { FieldInput, isEditableField, isReverseRelationField } from '../lib/field-inputs';
+import { isEditableField, isReverseRelationField } from '../lib/field-inputs';
 import { friendlyFieldKey, resolveRecordLabel } from '../lib/field-values';
 import * as draft from '../lib/page-layout-draft';
 import { RecordAttachmentsWidget } from '../components/RecordAttachmentsWidget';
 import { RecordChip } from '../components/RecordChip';
+import { RecordFieldCell } from '../components/RecordFieldCell';
 import { RecordJunctionWidget } from '../components/RecordJunctionWidget';
 import { RecordRelationWidget } from '../components/RecordRelationWidget';
 import { RecordTimelineWidget } from '../components/RecordTimelineWidget';
-import { Tag } from '../components/Tag';
+import { RelationPickerInput } from '../components/RelationPickerInput';
 import { WidgetEditPanel } from '../components/record-layout-editor/WidgetEditPanel';
 import { TabEditPanel } from '../components/record-layout-editor/TabEditPanel';
 import { AddWidgetPanel } from '../components/record-layout-editor/AddWidgetPanel';
@@ -39,21 +37,24 @@ const SYSTEM_FIELD_NAMES: ReadonlySet<string> = new Set([
   'updated_by',
 ]);
 
-const SINGLETON_WIDGET_TYPES: PageLayoutWidgetType[] = ['FIELDS', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'];
+/** Activity widgets are singletons (one Timeline/Notes/Tasks/Files per layout); FIELDS and FIELD can
+ * both be added any number of times (Twenty parity — multiple "Fields group" widgets are allowed). */
+const SINGLETON_WIDGET_TYPES: PageLayoutWidgetType[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES'];
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(true);
+function Section({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-lg border bg-card">
       <button
         type="button"
-        className="flex w-full items-center gap-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        className="flex w-full items-center gap-1.5 rounded-t-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-muted/50"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
       >
+        <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground/70 transition-transform', !open && '-rotate-90')} />
         {title}
-        <ChevronDown className={cn('size-4 transition-transform', !open && '-rotate-90')} />
       </button>
-      {open && <div className="space-y-4 border-t px-4 py-4">{children}</div>}
+      {open && <div className="space-y-3 border-t px-3 py-3">{children}</div>}
     </div>
   );
 }
@@ -77,68 +78,71 @@ function ReadOnlyFieldRow({ field, record }: { field: DataModelField; record: Re
   );
 }
 
-/** A single FIELD widget — a collection relation (People/Opportunities) or one field per display mode. */
+/** A forward (MANY_TO_ONE) relation field — self-saving picker chip with detach + click-through. */
+function ForwardRelationCell({
+  objectNamePlural,
+  recordId,
+  field,
+  record,
+}: {
+  objectNamePlural: string;
+  recordId: string;
+  field: DataModelField;
+  record: Record<string, unknown>;
+}) {
+  const queryClient = useQueryClient();
+  const key = friendlyFieldKey(field);
+  const save = useMutation({
+    mutationFn: (id: string | null) => recordApi.update(objectNamePlural, recordId, { [key]: id }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['record', objectNamePlural, recordId] }),
+  });
+  return (
+    <div className="space-y-1">
+      <span className="text-xs font-medium text-muted-foreground">{field.label}</span>
+      <RelationPickerInput field={field} value={(record[key] as string) ?? null} onChange={(id) => save.mutate(id)} linkRecords />
+    </div>
+  );
+}
+
+/** A single FIELD widget — a collection relation (People/Opportunities), a forward relation, or a
+ * scalar field, rendered per its display mode (Field / Card / Table). */
 function FieldWidget({
   widget,
+  objectNamePlural,
   fields,
   recordId,
-  values,
-  onChange,
+  record,
 }: {
   widget: PageLayoutWidget;
+  objectNamePlural: string;
   fields: DataModelField[];
   recordId: string;
-  values: Record<string, unknown>;
-  onChange: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  record: Record<string, unknown>;
 }) {
   const field = fields.find((f) => f.id === widget.configuration.fieldMetadataId);
   if (!field) return null;
-
-  // A collection/reverse relation renders the linked-records widget (add/remove/link).
-  if (isReverseRelationField(field)) {
-    return <RecordRelationWidget field={field} sourceRecordId={recordId} />;
-  }
-
-  const key = friendlyFieldKey(field);
   const mode = widget.configuration.displayMode ?? 'PLAIN';
-  const options = (field.settings?.options as { value: string; label: string; color: string }[] | undefined) ?? [];
-  const value = values[key];
 
-  if (mode === 'CHIP_LIST' && Array.isArray(value)) {
-    return (
-      <div>
-        <Label>{field.label}</Label>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {value.map((v) => {
-            const opt = options.find((o) => o.value === v);
-            return <Tag key={String(v)} label={opt?.label ?? String(v)} color={opt?.color} />;
-          })}
-        </div>
-      </div>
-    );
+  // A collection/reverse relation renders the linked-records widget (add/detach/link) in the mode.
+  if (isReverseRelationField(field)) {
+    return <RecordRelationWidget field={field} sourceRecordId={recordId} displayMode={mode} />;
   }
 
-  const inner = (
-    <div>
-      <Label>{field.label}</Label>
-      <div className="mt-1">
-        <FieldInput field={field} value={value} onChange={(v) => onChange((p) => ({ ...p, [key]: v }))} />
-      </div>
-    </div>
+  const isForward = field.type === 'RELATION';
+  const body = isForward ? (
+    <ForwardRelationCell objectNamePlural={objectNamePlural} recordId={recordId} field={field} record={record} />
+  ) : (
+    <RecordFieldCell
+      objectNamePlural={objectNamePlural}
+      recordId={recordId}
+      field={field}
+      value={record[friendlyFieldKey(field)]}
+      variant={mode === 'TABLE' ? 'row' : 'stacked'}
+    />
   );
 
-  if (mode === 'CARD') return <div className="rounded-lg border p-3">{inner}</div>;
-  if (mode === 'TABLE') {
-    return (
-      <div className="flex items-center gap-3 border-b py-1.5 text-sm">
-        <span className="w-32 shrink-0 text-muted-foreground">{field.label}</span>
-        <div className="flex-1">
-          <FieldInput field={field} value={value} onChange={(v) => onChange((p) => ({ ...p, [key]: v }))} />
-        </div>
-      </div>
-    );
-  }
-  return inner;
+  if (mode === 'CARD') return <div className="rounded-lg border bg-card p-3">{body}</div>;
+  return body;
 }
 
 /** The activity widgets (Timeline/Notes/Tasks/Files) render straight from the record's morph relations. */
@@ -186,53 +190,70 @@ function ActivityWidget({
 }
 
 /**
- * The FIELDS widget: named field groups from the page layout (General/Business/Contact/System …).
- * Each field renders editable (FieldInput) or read-only (system/audit fields) inline — nothing is
- * rendered outside the widget system; relations are their own FIELD widgets.
+ * The FIELDS widget: named field groups from the page layout. Each field is a self-saving inline
+ * cell (or a forward-relation picker, or a read-only system row). When "Display more fields" is on,
+ * fields hidden from the record page appear under a collapsed "More (n)" disclosure (Twenty parity).
  */
 function FieldsWidget({
   widget,
+  objectNamePlural,
   fields,
+  recordId,
   record,
-  values,
-  onChange,
 }: {
   widget: PageLayoutWidget;
+  objectNamePlural: string;
   fields: DataModelField[];
+  recordId: string;
   record: Record<string, unknown>;
-  values: Record<string, unknown>;
-  onChange: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
   const fieldById = new Map(fields.map((f) => [f.id, f]));
+  const showMore = widget.configuration.showMoreFieldsButton === true;
+
+  function renderField(field: DataModelField): React.ReactNode {
+    const isSystem = READ_ONLY_TYPES.has(field.type) || SYSTEM_FIELD_NAMES.has(field.name);
+    if (isSystem) return <ReadOnlyFieldRow key={field.id} field={field} record={record} />;
+    if (field.type === 'RELATION' && field.settings?.relationType === 'MANY_TO_ONE') {
+      return <ForwardRelationCell key={field.id} objectNamePlural={objectNamePlural} recordId={recordId} field={field} record={record} />;
+    }
+    if (!isEditableField(field)) return null; // reverse relations etc. are their own widgets
+    return (
+      <RecordFieldCell
+        key={field.id}
+        objectNamePlural={objectNamePlural}
+        recordId={recordId}
+        field={field}
+        value={record[friendlyFieldKey(field)]}
+      />
+    );
+  }
+
+  const hidden: DataModelField[] = [];
 
   return (
     <div className="space-y-4">
       {widget.groups
         .filter((g) => g.isVisible)
         .map((group) => {
-          const groupFields = group.fields
-            .filter((gf) => gf.isVisible)
-            .map((gf) => fieldById.get(gf.fieldMetadataId))
-            .filter((f): f is DataModelField => !!f);
-          if (!groupFields.length) return null;
+          const visible: DataModelField[] = [];
+          for (const gf of group.fields) {
+            const field = fieldById.get(gf.fieldMetadataId);
+            if (!field) continue;
+            if (gf.isVisible) visible.push(field);
+            else hidden.push(field);
+          }
+          if (!visible.length) return null;
           return (
             <Section key={group.id} title={group.label}>
-              {groupFields.map((field) => {
-                const editable = isEditableField(field) && !READ_ONLY_TYPES.has(field.type) && !SYSTEM_FIELD_NAMES.has(field.name);
-                if (!editable) return <ReadOnlyFieldRow key={field.id} field={field} record={record} />;
-                const key = friendlyFieldKey(field);
-                return (
-                  <div key={field.id}>
-                    <Label>{field.label}</Label>
-                    <div className="mt-1">
-                      <FieldInput field={field} value={values[key]} onChange={(v) => onChange((p) => ({ ...p, [key]: v }))} />
-                    </div>
-                  </div>
-                );
-              })}
+              {visible.map(renderField)}
             </Section>
           );
         })}
+      {showMore && hidden.length > 0 && (
+        <Section title={`More (${hidden.length})`} defaultOpen={false}>
+          {hidden.map(renderField)}
+        </Section>
+      )}
     </div>
   );
 }
@@ -265,7 +286,6 @@ export function RecordDetailPage() {
   const { objectNamePlural, recordId } = useParams<{ objectNamePlural: string; recordId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { pageLayout, enterPageLayoutMode, setPageLayoutDraft } = useLayoutCustomization();
 
   const { data: objectSummary } = useQuery({ queryKey: ['data-model-objects'], queryFn: () => dataModelApi.listObjects() });
@@ -301,29 +321,6 @@ export function RecordDetailPage() {
   }, [requestedCustomize, objectId, detail, fetchedLayout, isEditingLayout, enterPageLayoutMode]);
 
   const layout: PageLayout | undefined = isEditingLayout ? pageLayout!.draft : fetchedLayout;
-
-  const [values, setValues] = useState<Record<string, unknown>>({});
-  const [error, setError] = useState<string | null>(null);
-  const originalRef = useRef<string>('{}');
-
-  useEffect(() => {
-    if (record) {
-      setValues(record);
-      originalRef.current = JSON.stringify(record);
-    }
-  }, [record]);
-
-  const isDirty = useMemo(() => JSON.stringify(values) !== originalRef.current, [values]);
-
-  const saveMutation = useMutation({
-    mutationFn: () => recordApi.update(objectNamePlural!, recordId!, values),
-    onSuccess: (updated) => {
-      originalRef.current = JSON.stringify(updated);
-      setValues(updated);
-      queryClient.invalidateQueries({ queryKey: ['record', objectNamePlural, recordId] });
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Failed to save'),
-  });
 
   const resetWidgetMutation = useMutation({
     mutationFn: (widgetId: string) => dataModelApi.resetPageLayoutWidget(objectId!, widgetId),
@@ -368,8 +365,9 @@ export function RecordDetailPage() {
     allTabs.flatMap((t) => t.widgets).map((w) => w.type).filter((t) => SINGLETON_WIDGET_TYPES.includes(t)),
   );
   const availableWidgetTypes: PageLayoutWidgetType[] = [
-    ...SINGLETON_WIDGET_TYPES.filter((t) => !usedSingletonTypes.has(t)),
+    'FIELDS',
     'FIELD',
+    ...SINGLETON_WIDGET_TYPES.filter((t) => !usedSingletonTypes.has(t)),
   ];
 
   const editingTab = editingTabId ? allTabs.find((t) => t.id === editingTabId) : undefined;
@@ -386,25 +384,7 @@ export function RecordDetailPage() {
           <ObjectIcon className="size-4 shrink-0 text-muted-foreground" />
           <RecordChip name={recordName} />
         </div>
-        <div className="flex items-center gap-2">
-          {isDirty && !isEditingLayout && (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => setValues(record)}>
-                Discard
-              </Button>
-              <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-                Save
-              </Button>
-            </>
-          )}
-        </div>
       </div>
-
-      {error && (
-        <Alert variant="destructive" className="m-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       <div className="flex min-h-0 flex-1">
         {/* Left column — always-visible Fields/Field widgets + relation widgets */}
@@ -428,9 +408,9 @@ export function RecordDetailPage() {
                   onClick={() => setEditingWidget({ tabId: homeTab.id, widgetId: widget.id })}
                 >
                   {widget.type === 'FIELDS' ? (
-                    <FieldsWidget widget={widget} fields={detail.fields} record={record} values={values} onChange={setValues} />
+                    <FieldsWidget widget={widget} objectNamePlural={objectNamePlural!} fields={detail.fields} recordId={recordId!} record={record} />
                   ) : widget.type === 'FIELD' ? (
-                    <FieldWidget widget={widget} fields={detail.fields} recordId={recordId!} values={values} onChange={setValues} />
+                    <FieldWidget widget={widget} objectNamePlural={objectNamePlural!} fields={detail.fields} recordId={recordId!} record={record} />
                   ) : (
                     <ActivityWidget widget={widget} objectNameSingular={object.nameSingular} recordId={recordId!} />
                   )}
@@ -483,7 +463,7 @@ export function RecordDetailPage() {
                       .map((widget) => (
                         <EditableWidget key={widget.id} isEditing={isEditingLayout} onClick={() => setEditingWidget({ tabId: tab.id, widgetId: widget.id })}>
                           {widget.type === 'FIELD' ? (
-                            <FieldWidget widget={widget} fields={detail.fields} recordId={recordId!} values={values} onChange={setValues} />
+                            <FieldWidget widget={widget} objectNamePlural={objectNamePlural!} fields={detail.fields} recordId={recordId!} record={record} />
                           ) : (
                             <ActivityWidget widget={widget} objectNameSingular={object.nameSingular} recordId={recordId!} />
                           )}

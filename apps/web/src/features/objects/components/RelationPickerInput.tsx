@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { Check, ChevronDown, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { type DataModelField, dataModelApi, recordApi } from '@/lib/api-client';
@@ -10,18 +10,20 @@ import { RecordChip } from './RecordChip';
 
 /**
  * Search-and-select picker for a forward (MANY_TO_ONE) RELATION field — e.g. Company's Account
- * Owner, Opportunity's Company/Point of Contact. Replaces the raw-uuid text input the record form
- * used to show, matching the same search-to-link pattern already built for reverse relations
- * (RecordRelationWidget) but single-select and writing directly into the field's own value.
+ * Owner, Opportunity's Company/Point of Contact. When `linkRecords` is set (record-page context),
+ * the selected chip links to the target record's own page and a detach control clears the link.
  */
 export function RelationPickerInput({
   field,
   value,
   onChange,
+  linkRecords = false,
 }: {
   field: DataModelField;
   value: string | null;
   onChange: (value: string | null) => void;
+  /** Record-page mode: chip navigates to the target record + a detach (x) control is shown. */
+  linkRecords?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,15 +58,50 @@ export function RelationPickerInput({
 
   if (!targetObject) return null;
 
+  const targetHref = value ? `/objects/${targetObject.namePlural}/${value}` : '#';
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="outline" className="w-full justify-between font-normal" />}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={
+          <div
+            role="button"
+            tabIndex={0}
+            className="group/rel flex min-h-9 w-full cursor-pointer items-center justify-between gap-1 rounded-md border bg-transparent px-3 py-1 text-sm font-normal hover:bg-muted/50"
+          />
+        }
+      >
         {value ? (
-          selectedRecord ? <RecordChip name={displayName(selectedRecord)} /> : '…'
+          <span className="flex min-w-0 items-center gap-1">
+            {linkRecords && selectedRecord ? (
+              <Link to={targetHref} onClick={(e) => e.stopPropagation()} className="min-w-0 hover:underline">
+                <RecordChip name={selectedRecord ? displayName(selectedRecord) : '…'} />
+              </Link>
+            ) : selectedRecord ? (
+              <RecordChip name={displayName(selectedRecord)} />
+            ) : (
+              '…'
+            )}
+          </span>
         ) : (
           <span className="text-muted-foreground">Select {field.label}…</span>
         )}
-        <ChevronDown className="size-3.5 text-muted-foreground" />
+        {value ? (
+          <button
+            type="button"
+            aria-label="Detach"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange(null);
+            }}
+            className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 hover:text-destructive group-hover/rel:opacity-100"
+          >
+            <X className="size-3.5" />
+          </button>
+        ) : (
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72">
         <Input autoFocus placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} className="mb-2" />

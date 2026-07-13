@@ -80,6 +80,44 @@ export function resolveRecordLabel(
   return `Unnamed ${objectLabelSingular ?? 'record'}`;
 }
 
+/** Prepend https:// when a URL has no scheme (Twenty's ensureAbsoluteUrl). */
+export function ensureAbsoluteUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) return t;
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+}
+
+/** Twenty's absolute-URL rule: empty ok (clears the field); reject pure-numeric hosts; must parse. */
+export function isValidUrl(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return true;
+  if (/^\d+$/.test(t)) return false;
+  try {
+    const u = new URL(ensureAbsoluteUrl(t));
+    return !!u.hostname && u.hostname.includes('.');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether a per-field draft value is persistable (mirrors Twenty's per-input `skipPersist` gate).
+ * Returns false to block the save and keep the editor in an error state.
+ */
+export function isFieldDraftValid(field: DataModelField, draft: unknown): boolean {
+  switch (field.type) {
+    case FieldMetadataType.LINKS: {
+      const url = (draft as { primaryLinkUrl?: string } | null)?.primaryLinkUrl ?? '';
+      return isValidUrl(url);
+    }
+    case FieldMetadataType.NUMBER:
+    case FieldMetadataType.RATING:
+      return draft === null || draft === undefined || draft === '' || !Number.isNaN(Number(draft));
+    default:
+      return true;
+  }
+}
+
 export function selectLabel(field: DataModelField, value: unknown): string {
   const options = (field.settings?.options as SelectOption[] | undefined) ?? [];
   return options.find((o) => o.value === value)?.label ?? String(value);

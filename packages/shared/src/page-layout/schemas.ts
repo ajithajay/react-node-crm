@@ -6,8 +6,8 @@ import { z } from 'zod';
 export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'FIELD', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'] as const;
 export type PageLayoutWidgetType = (typeof PAGE_LAYOUT_WIDGET_TYPES)[number];
 
-/** How a single FIELD widget renders its value (Twenty's `FieldDisplayMode`, reduced set). */
-export const FIELD_DISPLAY_MODES = ['PLAIN', 'CARD', 'TABLE', 'CHIP_LIST'] as const;
+/** How a single FIELD widget renders its value — matches Twenty's Field / Card / Table. */
+export const FIELD_DISPLAY_MODES = ['PLAIN', 'CARD', 'TABLE'] as const;
 export type FieldDisplayMode = (typeof FIELD_DISPLAY_MODES)[number];
 
 /** Polymorphic per-widget-type settings, stored as the widget's `configuration` jsonb. */

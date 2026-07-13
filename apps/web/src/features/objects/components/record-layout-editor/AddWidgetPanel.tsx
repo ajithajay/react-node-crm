@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { FIELD_DISPLAY_MODES, type FieldDisplayMode, type PageLayoutWidgetType } from '@saasly/shared';
+import { type FieldDisplayMode, type PageLayoutWidgetType } from '@saasly/shared';
 import type { DataModelField } from '@/lib/api-client';
-import { isFieldWidgetPickable } from '../../lib/field-inputs';
+import { displayModesForField, isFieldWidgetPickable } from '../../lib/field-inputs';
 
 const WIDGET_TYPE_LABELS: Record<PageLayoutWidgetType, string> = {
-  FIELDS: 'Fields',
+  FIELDS: 'Fields group',
   FIELD: 'Field',
   TIMELINE: 'Timeline',
   NOTES: 'Notes',
@@ -19,7 +19,6 @@ const DISPLAY_MODE_LABELS: Record<FieldDisplayMode, string> = {
   PLAIN: 'Field',
   CARD: 'Card',
   TABLE: 'Table',
-  CHIP_LIST: 'Multiple options',
 };
 
 /** Widget-type picker used both for "Add widget above/below" and a brand-new empty tab. */
@@ -71,49 +70,62 @@ export function AddWidgetPanel({
           </div>
         )}
 
-        {pickingField && (
-          <div className="space-y-4 px-4 py-4">
-            <div>
-              <span className="mb-1 block text-sm text-muted-foreground">Field</span>
-              <Select value={fieldId} onValueChange={(v: string | null) => v && setFieldId(v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Pick a field…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleFields.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <span className="mb-1 block text-sm text-muted-foreground">Layout</span>
-              <Select value={displayMode} onValueChange={(v: string | null) => v && setDisplayMode(v as FieldDisplayMode)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FIELD_DISPLAY_MODES.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {DISPLAY_MODE_LABELS[m]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              disabled={!fieldId}
-              onClick={() => {
-                const field = eligibleFields.find((f) => f.id === fieldId);
-                onAdd('FIELD', field?.label ?? 'Field', { fieldMetadataId: fieldId, displayMode });
-              }}
-            >
-              Add
-            </Button>
-          </div>
-        )}
+        {pickingField &&
+          (() => {
+            const selectedField = eligibleFields.find((f) => f.id === fieldId);
+            const modes = selectedField ? displayModesForField(selectedField) : (['PLAIN'] as FieldDisplayMode[]);
+            const effectiveMode = modes.includes(displayMode) ? displayMode : modes[0]!;
+            return (
+              <div className="space-y-4 px-4 py-4">
+                <div>
+                  <span className="mb-1 block text-sm text-muted-foreground">Field</span>
+                  <Select
+                    value={fieldId}
+                    onValueChange={(v: string | null) => {
+                      if (!v) return;
+                      setFieldId(v);
+                      const f = eligibleFields.find((x) => x.id === v);
+                      if (f) setDisplayMode(displayModesForField(f)[0]!);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pick a field…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleFields.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {modes.length > 1 && (
+                  <div>
+                    <span className="mb-1 block text-sm text-muted-foreground">Layout</span>
+                    <Select value={effectiveMode} onValueChange={(v: string | null) => v && setDisplayMode(v as FieldDisplayMode)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modes.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {DISPLAY_MODE_LABELS[m]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <Button
+                  disabled={!fieldId}
+                  onClick={() => onAdd('FIELD', selectedField?.label ?? 'Field', { fieldMetadataId: fieldId, displayMode: effectiveMode })}
+                >
+                  Add
+                </Button>
+              </div>
+            );
+          })()}
       </SheetContent>
     </Sheet>
   );
