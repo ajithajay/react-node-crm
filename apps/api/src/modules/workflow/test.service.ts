@@ -1,6 +1,8 @@
 import vm from 'node:vm';
 import { transformSync } from 'esbuild';
 import { inferCodeParams } from '@saasly/shared';
+import { runCodeInChildProcess } from '../../lib/code-runner.js';
+import { ssrfSafeFetch } from '../../lib/ssrf-safe-fetch.js';
 
 /**
  * "Test" runs for the builder's HTTP / Code steps — executed inline in the api (the builder needs a
@@ -37,7 +39,7 @@ export async function runHttpTest(input: {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(url, {
+    const res = await ssrfSafeFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json', ...(input.headers ?? {}) },
       body: method !== 'GET' && method !== 'HEAD' && input.body ? input.body : undefined,
@@ -68,22 +70,11 @@ export async function runCodeTest(code: string, params: Record<string, unknown>)
   const started = Date.now();
   if (!code.trim()) return { result: null, durationMs: 0 };
   try {
-    const coerced = coerceComplexParams(code, params ?? {});
+    const coerced = JSON.parse(JSON.stringify(coerceComplexParams(code, params ?? {})));
     const js = transformSync(code, { loader: 'ts', format: 'cjs' }).code;
-    const moduleObj: { exports: Record<string, unknown> } = { exports: {} };
-    const sandbox = vm.createContext({
-      module: moduleObj,
-      exports: moduleObj.exports,
-      context: JSON.parse(JSON.stringify(coerced)),
-      params: JSON.parse(JSON.stringify(coerced)),
-    });
-    new vm.Script(js).runInContext(sandbox, { timeout: 2000 });
-    const main = (moduleObj.exports.main ?? (sandbox.exports as Record<string, unknown>)?.main) as
-      | ((p: unknown) => unknown)
-      | undefined;
-    if (typeof main !== 'function') return { error: 'Code must `export const main = ...`', durationMs: Date.now() - started };
-    const out = await main(JSON.parse(JSON.stringify(coerced)));
-    return { result: out === undefined ? null : JSON.parse(JSON.stringify(out)), durationMs: Date.now() - started };
+    const { result, error } = await runCodeInChildProcess(js, coerced, coerced);
+    if (error) return { error, durationMs: Date.now() - started };
+    return { result: result ?? null, durationMs: Date.now() - started };
   } catch (err) {
     return { error: (err as Error).message, durationMs: Date.now() - started };
   }

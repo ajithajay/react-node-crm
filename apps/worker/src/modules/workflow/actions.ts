@@ -9,6 +9,8 @@ import {
   type WorkflowStep,
 } from '@saasly/shared';
 import { createEmailDriver } from '../../lib/email-driver.js';
+import { runCodeInChildProcess } from '../../lib/code-runner.js';
+import { ssrfSafeFetch } from '../../lib/ssrf-safe-fetch.js';
 import * as records from './record-access.js';
 import { evaluateConditions } from './conditions.js';
 
@@ -154,7 +156,7 @@ async function httpRequest(input: Record<string, unknown>): Promise<ActionOutput
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(url, {
+    const res = await ssrfSafeFetch(url, {
       method,
       headers,
       body: hasBody && input.body ? String(input.body) : undefined,
@@ -243,20 +245,7 @@ export async function evalMain(
   context: Record<string, unknown> = {},
 ): Promise<ActionOutput> {
   const js = transformSync(rawCode, { loader: 'ts', format: 'cjs' }).code;
-  const moduleObj: { exports: Record<string, unknown> } = { exports: {} };
-  const sandbox = vm.createContext({
-    module: moduleObj,
-    exports: moduleObj.exports,
-    context: JSON.parse(JSON.stringify(context ?? {})),
-    params: JSON.parse(JSON.stringify(params ?? {})),
-  });
-  new vm.Script(js).runInContext(sandbox, { timeout: 2000 });
-  const main = (moduleObj.exports.main ?? (sandbox.exports as Record<string, unknown>)?.main) as
-    | ((p: unknown) => unknown)
-    | undefined;
-  if (typeof main !== 'function') return { error: 'Code must `export const main = ...`' };
-  const out = await main(JSON.parse(JSON.stringify(params ?? {})));
-  return { result: out === undefined ? null : JSON.parse(JSON.stringify(out)) };
+  return runCodeInChildProcess(js, JSON.parse(JSON.stringify(params ?? {})), JSON.parse(JSON.stringify(context ?? {})));
 }
 
 function asStringMap(value: unknown): Record<string, string> {

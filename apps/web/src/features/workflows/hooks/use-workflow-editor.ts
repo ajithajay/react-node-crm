@@ -31,16 +31,19 @@ export function useWorkflowEditor(workflowId: string) {
   const [flow, setFlow] = useState<Flow>({ trigger: null, steps: [] });
   const [draftVersionId, setDraftVersionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const initialized = useRef(false);
+  // Tracks which workflowId `flow`/`draftVersionId` were last seeded for — not just a one-shot flag —
+  // so navigating between two workflows (e.g. via Duplicate's `navigate()` on the same route, with no
+  // remount) re-seeds instead of leaving the previous workflow's steps/draft version showing.
+  const initializedForId = useRef<string | null>(null);
 
-  // Seed local state from the workflow's current version once loaded.
+  // Seed local state from the workflow's current version whenever `workflowId` changes.
   useEffect(() => {
-    if (initialized.current || !workflow) return;
-    initialized.current = true;
+    if (!workflow || initializedForId.current === workflowId) return;
+    initializedForId.current = workflowId;
     const current = workflow.currentVersion;
     setFlow({ trigger: current?.trigger ?? null, steps: current?.steps ?? [] });
-    if (current?.status === 'DRAFT') setDraftVersionId(current.id);
-  }, [workflow]);
+    setDraftVersionId(current?.status === 'DRAFT' ? current.id : null);
+  }, [workflow, workflowId]);
 
   const ensureDraft = useCallback(async (): Promise<string> => {
     if (draftVersionId) return draftVersionId;

@@ -98,6 +98,9 @@ importers:
       typeorm:
         specifier: ^1.0.0
         version: 1.0.0(ioredis@5.11.1)(pg@8.22.0)
+      undici:
+        specifier: ^8.7.0
+        version: 8.7.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -265,6 +268,9 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      undici:
+        specifier: ^8.7.0
+        version: 8.7.0
     devDependencies:
       '@saasly/config':
         specifier: workspace:*
@@ -5086,6 +5092,10 @@ packages:
   undici@7.28.0:
     resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
+
+  undici@8.7.0:
+    resolution: {integrity: sha512-N7iQtfyLhIMOFgQubvmLV26svHpO0bqKnAiWotTQCVKCmWrcGbBotPuW1x+xwYZ2VHdSTVUfPQQnlEt1/LouTQ==}
+    engines: {node: '>=22.19.0'}
 
   unhead@2.1.15:
     resolution: {integrity: sha512-MCt5T90mCWyr3Z6pUCdM9lVRXoMoVBlL7z7U4CYVIiaDiuzad/UCfLuMqz5MeNmpZUgoBCQnrucJimU7EZR+XA==}
@@ -10826,6 +10836,8 @@ snapshots:
   undici-types@8.3.0: {}
 
   undici@7.28.0: {}
+
+  undici@8.7.0: {}
 
   unhead@2.1.15:
     dependencies:

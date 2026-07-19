@@ -1,5 +1,6 @@
 import type { QueryRunner } from 'typeorm';
 import { assertSafeIdentifier, quoteIdent } from './identifier.util.js';
+import { WORKSPACE_SCHEMA_NAME_REGEX } from '../workspace-schema/schema-name.util.js';
 import type { FieldColumnDefinition } from './field-column-mapper.js';
 
 /**
@@ -37,6 +38,7 @@ export const WorkspaceSchemaManager = {
     tableName: string,
     columns: FieldColumnDefinition[],
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);
     const extra = columns.map((c) => `,\n  ${columnSql(c)}`).join('');
     await runner.query(`
@@ -47,6 +49,7 @@ export const WorkspaceSchemaManager = {
   },
 
   async dropTable(runner: QueryRunner, schemaName: string, tableName: string): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);
     await runner.query(
       `DROP TABLE IF EXISTS ${quoteIdent(schemaName)}.${quoteIdent(tableName)} CASCADE;`,
@@ -59,6 +62,7 @@ export const WorkspaceSchemaManager = {
     tableName: string,
     column: FieldColumnDefinition,
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);
     await runner.query(`
       ALTER TABLE ${quoteIdent(schemaName)}.${quoteIdent(tableName)}
@@ -79,6 +83,7 @@ export const WorkspaceSchemaManager = {
     tableName: string,
     columnName: string,
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);
     assertSafeIdentifier(columnName);
     await runner.query(`
@@ -93,6 +98,7 @@ export const WorkspaceSchemaManager = {
     enumName: string,
     values: string[],
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     const exists = await runner.query(
       `SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
        WHERE t.typname = $1 AND n.nspname = $2`,
@@ -117,6 +123,7 @@ export const WorkspaceSchemaManager = {
     enumName: string,
     values: string[],
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     const existing: { enumlabel: string }[] = await runner.query(
       `SELECT e.enumlabel FROM pg_enum e
        JOIN pg_type t ON t.oid = e.enumtypid
@@ -141,6 +148,7 @@ export const WorkspaceSchemaManager = {
     columnNames: string[],
     opts: { isUnique?: boolean; indexType?: 'BTREE' | 'GIN' } = {},
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);
     assertSafeIdentifier(indexName);
     columnNames.forEach((column) => assertSafeIdentifier(column));
@@ -154,6 +162,7 @@ export const WorkspaceSchemaManager = {
   },
 
   async dropIndex(runner: QueryRunner, schemaName: string, indexName: string): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(indexName);
     await runner.query(`DROP INDEX IF EXISTS ${quoteIdent(schemaName)}.${quoteIdent(indexName)};`);
   },
@@ -166,6 +175,7 @@ export const WorkspaceSchemaManager = {
     refTableName: string,
     onDelete: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'NO ACTION',
   ): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);
     assertSafeIdentifier(columnName);
     assertSafeIdentifier(refTableName);

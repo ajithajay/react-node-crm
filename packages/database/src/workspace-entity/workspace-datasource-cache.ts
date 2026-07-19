@@ -23,6 +23,12 @@ export function createWorkspaceDataSourceCache(
   maxSize = 20,
 ) {
   const cache = new Map<string, CacheEntry>();
+  // Serializes concurrent calls for the same workspace end-to-end (version check + cache
+  // lookup + creation), so two requests racing a cache miss/stale entry can't both build and
+  // `initialize()` their own DataSource — the loser's connection pool would otherwise never be
+  // `.destroy()`-ed. Cleared once the in-flight call settles, so it never serializes cache-hit
+  // calls beyond an actual rebuild in progress.
+  const inFlight = new Map<string, Promise<DataSource>>();
 
   async function destroy(entry: CacheEntry): Promise<void> {
     if (entry.dataSource.isInitialized) await entry.dataSource.destroy();
@@ -38,55 +44,66 @@ export function createWorkspaceDataSourceCache(
     }
   }
 
+  async function loadWorkspaceDataSource(workspaceId: string): Promise<DataSource> {
+    const workspace = await coreDataSource
+      .getRepository(WorkspaceEntity)
+      .findOneByOrFail({ id: workspaceId });
+    const versionRow = await coreDataSource
+      .getRepository(WorkspaceMetadataVersionEntity)
+      .findOneBy({ workspaceId });
+    const currentVersion = versionRow?.version ?? 1;
+
+    const cached = cache.get(workspaceId);
+    if (cached && cached.version === currentVersion) {
+      // Touch for LRU recency.
+      cache.delete(workspaceId);
+      cache.set(workspaceId, cached);
+      return cached.dataSource;
+    }
+    if (cached) {
+      cache.delete(workspaceId);
+      await destroy(cached);
+    }
+
+    const [objects, fields] = await Promise.all([
+      coreDataSource.getRepository(ObjectMetadataEntity).findBy({ workspaceId, isActive: true }),
+      coreDataSource.getRepository(FieldMetadataEntity).findBy({ workspaceId, isActive: true }),
+    ]);
+
+    const entitySchemas = objects.map((object) =>
+      buildEntitySchema(
+        object,
+        fields.filter((f) => f.objectMetadataId === object.id),
+        workspace.databaseSchema,
+      ),
+    );
+
+    const dataSource = new DataSource({
+      type: 'postgres',
+      url: databaseUrl,
+      schema: workspace.databaseSchema,
+      entities: entitySchemas,
+      synchronize: false,
+      logging: false,
+    });
+    await dataSource.initialize();
+
+    cache.set(workspaceId, { dataSource, version: currentVersion });
+    await evictIfNeeded();
+
+    return dataSource;
+  }
+
   return {
-    async getWorkspaceDataSource(workspaceId: string): Promise<DataSource> {
-      const workspace = await coreDataSource
-        .getRepository(WorkspaceEntity)
-        .findOneByOrFail({ id: workspaceId });
-      const versionRow = await coreDataSource
-        .getRepository(WorkspaceMetadataVersionEntity)
-        .findOneBy({ workspaceId });
-      const currentVersion = versionRow?.version ?? 1;
+    getWorkspaceDataSource(workspaceId: string): Promise<DataSource> {
+      const existing = inFlight.get(workspaceId);
+      if (existing) return existing;
 
-      const cached = cache.get(workspaceId);
-      if (cached && cached.version === currentVersion) {
-        // Touch for LRU recency.
-        cache.delete(workspaceId);
-        cache.set(workspaceId, cached);
-        return cached.dataSource;
-      }
-      if (cached) {
-        cache.delete(workspaceId);
-        await destroy(cached);
-      }
-
-      const [objects, fields] = await Promise.all([
-        coreDataSource.getRepository(ObjectMetadataEntity).findBy({ workspaceId, isActive: true }),
-        coreDataSource.getRepository(FieldMetadataEntity).findBy({ workspaceId, isActive: true }),
-      ]);
-
-      const entitySchemas = objects.map((object) =>
-        buildEntitySchema(
-          object,
-          fields.filter((f) => f.objectMetadataId === object.id),
-          workspace.databaseSchema,
-        ),
-      );
-
-      const dataSource = new DataSource({
-        type: 'postgres',
-        url: databaseUrl,
-        schema: workspace.databaseSchema,
-        entities: entitySchemas,
-        synchronize: false,
-        logging: false,
+      const promise = loadWorkspaceDataSource(workspaceId).finally(() => {
+        inFlight.delete(workspaceId);
       });
-      await dataSource.initialize();
-
-      cache.set(workspaceId, { dataSource, version: currentVersion });
-      await evictIfNeeded();
-
-      return dataSource;
+      inFlight.set(workspaceId, promise);
+      return promise;
     },
 
     async closeAll(): Promise<void> {

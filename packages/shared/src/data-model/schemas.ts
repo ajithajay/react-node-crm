@@ -70,37 +70,68 @@ const relationTypeSchema = z.enum(
   Object.values(RelationType) as [RelationType, ...RelationType[]],
 );
 
-export const createRelationRequestSchema = z.object({
-  targetObjectMetadataId: z.string().uuid(),
-  /** The relation type from the perspective of the current (source) object. */
-  relationType: relationTypeSchema.default(RelationType.MANY_TO_ONE),
-  forwardLabel: z.string().trim().min(1).max(100),
-  forwardIcon: z.string().trim().min(1).max(50).optional(),
-  reverseLabel: z.string().trim().min(1).max(100),
-  reverseIcon: z.string().trim().min(1).max(50).optional(),
-  onDelete: relationOnDeleteSchema,
-  isNullable: z.boolean().default(true),
-});
+/** `ON DELETE SET NULL` on a `NOT NULL` column fails the first time Postgres actually tries to null
+ * it out on a parent delete — reject the combination at input-validation time instead. */
+function refuteSetNullOnNotNullable(
+  data: { onDelete: RelationOnDeleteAction; isNullable: boolean },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.onDelete === RelationOnDeleteAction.SET_NULL && !data.isNullable) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'onDelete: SET_NULL requires isNullable: true',
+      path: ['onDelete'],
+    });
+  }
+}
+
+export const createRelationRequestSchema = z
+  .object({
+    targetObjectMetadataId: z.string().uuid(),
+    /** The relation type from the perspective of the current (source) object. */
+    relationType: relationTypeSchema.default(RelationType.MANY_TO_ONE),
+    forwardLabel: z.string().trim().min(1).max(100),
+    forwardIcon: z.string().trim().min(1).max(50).optional(),
+    reverseLabel: z.string().trim().min(1).max(100),
+    reverseIcon: z.string().trim().min(1).max(50).optional(),
+    onDelete: relationOnDeleteSchema,
+    isNullable: z.boolean().default(true),
+  })
+  .superRefine(refuteSetNullOnNotNullable);
 export type CreateRelationRequest = z.infer<typeof createRelationRequestSchema>;
 
 /** Morph (polymorphic) relation: the source "belongs to one of" several targets; each target gets a reverse list. */
-export const createMorphRelationRequestSchema = z.object({
-  targetObjectMetadataIds: z.array(z.string().uuid()).min(1),
-  forwardLabel: z.string().trim().min(1).max(100),
-  forwardIcon: z.string().trim().min(1).max(50).optional(),
-  reverseLabel: z.string().trim().min(1).max(100),
-  reverseIcon: z.string().trim().min(1).max(50).optional(),
-  onDelete: relationOnDeleteSchema,
-  isNullable: z.boolean().default(true),
-});
+export const createMorphRelationRequestSchema = z
+  .object({
+    targetObjectMetadataIds: z.array(z.string().uuid()).min(1),
+    forwardLabel: z.string().trim().min(1).max(100),
+    forwardIcon: z.string().trim().min(1).max(50).optional(),
+    reverseLabel: z.string().trim().min(1).max(100),
+    reverseIcon: z.string().trim().min(1).max(50).optional(),
+    onDelete: relationOnDeleteSchema,
+    isNullable: z.boolean().default(true),
+  })
+  .superRefine(refuteSetNullOnNotNullable);
 export type CreateMorphRelationRequest = z.infer<typeof createMorphRelationRequestSchema>;
 
 export const INDEX_TYPES = ['BTREE', 'GIN'] as const;
-export const createIndexRequestSchema = z.object({
-  fieldMetadataIds: z.array(z.string().uuid()).min(1),
-  indexType: z.enum(INDEX_TYPES).default('BTREE'),
-  isUnique: z.boolean().default(false),
-});
+export const createIndexRequestSchema = z
+  .object({
+    fieldMetadataIds: z.array(z.string().uuid()).min(1),
+    indexType: z.enum(INDEX_TYPES).default('BTREE'),
+    isUnique: z.boolean().default(false),
+  })
+  // Postgres rejects `CREATE UNIQUE INDEX ... USING gin` outright ("access method gin does not
+  // support unique indexes") — reject it at input-validation time instead of as an opaque DB error.
+  .superRefine((data, ctx) => {
+    if (data.indexType === 'GIN' && data.isUnique) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'indexType: GIN does not support isUnique: true',
+        path: ['indexType'],
+      });
+    }
+  });
 export type CreateIndexRequest = z.infer<typeof createIndexRequestSchema>;
 
 /** Record-page field sections (Twenty parity) — bulk-replace, ordered by array position. */

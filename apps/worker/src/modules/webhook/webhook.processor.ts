@@ -4,6 +4,7 @@ import { Redis } from 'ioredis';
 import { QueueName, type WebhookDeliveryJobData } from '@saasly/shared';
 import { env } from '../../lib/config.js';
 import { logger } from '../../lib/logger.js';
+import { ssrfSafeFetch } from '../../lib/ssrf-safe-fetch.js';
 
 const DELIVERY_TIMEOUT_MS = 8000;
 /** Allow private/loopback targets only when explicitly enabled (local testing); blocked by default (SSRF). */
@@ -46,7 +47,7 @@ async function deliver(data: WebhookDeliveryJobData): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
   try {
-    const res = await fetch(data.targetUrl, { method: 'POST', headers, body, signal: controller.signal });
+    const res = await ssrfSafeFetch(data.targetUrl, { method: 'POST', headers, body, signal: controller.signal });
     if (!res.ok) throw new Error(`webhook target responded ${res.status}`); // non-2xx → BullMQ retry
     logger.info({ webhookId: data.webhookId, event: data.eventName, status: res.status }, 'webhook delivered');
   } finally {

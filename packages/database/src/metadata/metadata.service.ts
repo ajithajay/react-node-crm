@@ -223,7 +223,7 @@ async function insertFieldWithDdl(manager: EntityManager, input: CreateFieldInpu
   if (input.type === 'RELATION' && settings?.relationTargetObjectMetadataId) {
     const target = await manager
       .getRepository(ObjectMetadataEntity)
-      .findOneByOrFail({ id: settings.relationTargetObjectMetadataId });
+      .findOneByOrFail({ id: settings.relationTargetObjectMetadataId, workspaceId: input.workspaceId });
     const onDelete = ON_DELETE_SQL[settings.relationOnDelete ?? 'SET_NULL'];
     await WorkspaceSchemaManager.addForeignKey(
       queryRunner,

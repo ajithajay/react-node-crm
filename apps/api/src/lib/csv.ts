@@ -6,10 +6,14 @@
  */
 
 export function stringifyCsvField(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  // A cell value starting with =/+/-/@ is interpreted as a formula by Excel/Sheets on open
+  // (CSV/formula injection, CWE-1236) — prefix with a leading apostrophe to force text, same
+  // mitigation Excel itself uses for "safe" exports.
+  const escaped = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  if (/[",\n\r]/.test(escaped)) {
+    return `"${escaped.replace(/"/g, '""')}"`;
   }
-  return value;
+  return escaped;
 }
 
 export function stringifyCsv(rows: string[][]): string {

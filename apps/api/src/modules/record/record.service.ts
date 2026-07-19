@@ -358,7 +358,9 @@ export async function importRecordsCsv(
         data[`created_by_${suffix}`] = value;
         data[`updated_by_${suffix}`] = value;
       }
-      await repository.save(repository.create(data));
+      const saved = await repository.save(repository.create(data));
+      const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
+      await afterRecordMutation(workspaceId, object, fields, decoded.id as string, 'created', actor, decoded);
       summary.created += 1;
     } catch (err) {
       summary.failed += 1;

@@ -22,11 +22,35 @@ const TERMINAL: ReadonlySet<string> = new Set([
   StepStatus.FAILED_SAFELY,
   StepStatus.SKIPPED,
 ]);
+/** Run-level terminal statuses: once here, no resume/duplicate delivery should touch the run again. */
+const TERMINAL_RUN_STATUSES: ReadonlySet<string> = new Set([
+  WorkflowRunStatus.COMPLETED,
+  WorkflowRunStatus.FAILED,
+  WorkflowRunStatus.STOPPED,
+]);
 
 const runRepo = () => dataSource.getRepository(WorkflowRunEntity);
 
-/** Entry point for a WORKFLOW_EXECUTION job. Idempotent: guards on run status. */
+/**
+ * Entry point for a WORKFLOW_EXECUTION job. Holds a Postgres advisory lock keyed by the run id for
+ * the whole execution, so two concurrent deliveries of the same run (e.g. a BullMQ stalled-job
+ * requeue while the first attempt is still mid-flight) can't both execute the same non-idempotent
+ * side-effecting steps — the second delivery blocks until the first's lock is released (on success,
+ * failure, or the holding connection dying on crash) before touching the run at all.
+ */
 export async function executeRun(job: WorkflowExecutionJobData): Promise<void> {
+  const queryRunner = dataSource.createQueryRunner();
+  await queryRunner.connect();
+  try {
+    await queryRunner.query('SELECT pg_advisory_lock(hashtext($1))', [job.workflowRunId]);
+    await executeRunLocked(job);
+  } finally {
+    await queryRunner.query('SELECT pg_advisory_unlock(hashtext($1))', [job.workflowRunId]).catch(() => {});
+    await queryRunner.release();
+  }
+}
+
+async function executeRunLocked(job: WorkflowExecutionJobData): Promise<void> {
   const run = await runRepo().findOneBy({ id: job.workflowRunId, workspaceId: job.workspaceId });
   if (!run) {
     logger.warn({ runId: job.workflowRunId }, '[workflow] run not found');
@@ -37,6 +61,9 @@ export async function executeRun(job: WorkflowExecutionJobData): Promise<void> {
 
   let frontier: string[];
   if (job.resumeStepId) {
+    // A stray resume can't resurrect an already-finished run (e.g. one that hard-failed via a
+    // sibling branch after this resume was already enqueued).
+    if (TERMINAL_RUN_STATUSES.has(run.status)) return;
     // A DELAY elapsed (or a FORM was submitted): finish that step and continue.
     const info = state.stepInfos[job.resumeStepId];
     if (info && info.status === StepStatus.PENDING) {
@@ -46,13 +73,16 @@ export async function executeRun(job: WorkflowExecutionJobData): Promise<void> {
     const step = stepById.get(job.resumeStepId);
     frontier = step ? nextStepIds(step, undefined) : [];
   } else {
-    if (run.status !== WorkflowRunStatus.NOT_STARTED && run.status !== WorkflowRunStatus.ENQUEUED) {
-      return; // already running/finished — duplicate delivery
-    }
+    // Only a run-level TERMINAL status means "already handled, nothing to do" — a run stuck in
+    // RUNNING (e.g. the previous holder crashed mid-flight, after persisting the RUNNING transition
+    // but before finishing) is exclusively ours now that we hold the lock, so resume it instead of
+    // silently no-oping forever.
+    if (TERMINAL_RUN_STATUSES.has(run.status)) return;
+    const wasAlreadyRunning = run.status === WorkflowRunStatus.RUNNING;
     run.status = WorkflowRunStatus.RUNNING;
-    run.startedAt = new Date();
+    run.startedAt ??= new Date();
     await runRepo().save(run);
-    frontier = state.flow.trigger?.nextStepIds ?? [];
+    frontier = wasAlreadyRunning ? computeResumeFrontier(state, stepById) : (state.flow.trigger?.nextStepIds ?? []);
   }
 
   const ctx = { run, state, stepById, delays: [] as { stepId: string; delayMs: number }[], failed: false };
@@ -60,6 +90,34 @@ export async function executeRun(job: WorkflowExecutionJobData): Promise<void> {
 
   await persist(run, state);
   await finalize(ctx);
+}
+
+/**
+ * Re-derives the execution frontier from persisted step progress after a crash: walks the graph
+ * from the trigger, skipping past already-terminal steps to their children (so completed work isn't
+ * re-queued), and stops at the first non-terminal, non-pending step on each branch.
+ */
+function computeResumeFrontier(state: WorkflowRunState, stepById: Map<string, WorkflowStep>): string[] {
+  const frontier: string[] = [];
+  const seen = new Set<string>();
+  const visit = (ids: string[]): void => {
+    for (const id of ids) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const step = stepById.get(id);
+      if (!step) continue;
+      const info = state.stepInfos[id];
+      if (info && TERMINAL.has(info.status)) {
+        const branch = (info.result as { matched?: 'true' | 'false' } | undefined)?.matched;
+        visit(nextStepIds(step, branch));
+      } else if (!info || info.status !== StepStatus.PENDING) {
+        frontier.push(id);
+      }
+      // PENDING steps (DELAY/FORM) already have their own resume job enqueued; leave them be.
+    }
+  };
+  visit(state.flow.trigger?.nextStepIds ?? []);
+  return frontier;
 }
 
 interface Ctx {
@@ -224,8 +282,10 @@ async function finalize(ctx: Ctx): Promise<void> {
     (i) => i.status === StepStatus.PENDING,
   );
 
-  if (ctx.delays.length > 0) {
-    // Re-enqueue a resume job per delayed step; the run stays RUNNING meanwhile.
+  if (ctx.delays.length > 0 && !ctx.failed) {
+    // Re-enqueue a resume job per delayed step; the run stays RUNNING meanwhile. Skipped entirely
+    // when this invocation hard-failed the run (via a sibling branch) — a delayed step from a
+    // failed run must not get a resume job that could later flip it back to RUNNING/COMPLETED.
     for (const d of ctx.delays) {
       await enqueueWorkflowExecution(
         { workspaceId: ctx.run.workspaceId, workflowRunId: ctx.run.id, resumeStepId: d.stepId },
