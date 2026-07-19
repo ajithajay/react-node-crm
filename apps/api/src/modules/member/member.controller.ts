@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type { ReassignMemberRoleRequest } from '@saasly/shared';
+import { actorUserId, principalOf } from '../../lib/principal.js';
 import { listMembers, reassignRole } from './member.service.js';
 
 export async function list(req: Request, res: Response): Promise<void> {
@@ -11,6 +12,6 @@ export async function updateRole(
   req: Request<{ id: string }, unknown, ReassignMemberRoleRequest>,
   res: Response,
 ): Promise<void> {
-  await reassignRole(req.workspaceId!, req.params.id, req.user!.id, req.body.roleId);
+  await reassignRole(req.workspaceId!, req.params.id, actorUserId(principalOf(req)), req.body.roleId);
   res.status(200).json({ ok: true });
 }

@@ -37,12 +37,12 @@ export async function listMembers(workspaceId: string): Promise<MemberResponse[]
 export async function reassignRole(
   workspaceId: string,
   memberId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   roleId: string,
 ): Promise<void> {
   const member = await dataSource.getRepository(WorkspaceMemberEntity).findOneBy({ id: memberId, workspaceId });
   if (!member) throw new NotFoundError('Member not found');
-  if (member.userId === actorUserId) {
+  if (actorUserId && member.userId === actorUserId) {
     throw new ForbiddenError("You can't change your own role");
   }
 

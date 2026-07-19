@@ -37,7 +37,7 @@ export async function getCurrentWorkspace(workspaceId: string): Promise<CurrentW
 
 export async function updateWorkspace(
   workspaceId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: UpdateWorkspaceRequest,
 ): Promise<CurrentWorkspaceResponse> {
   const workspace = await workspaceRepo().findOneByOrFail({ id: workspaceId });

@@ -411,11 +411,12 @@ function registerMetadataRoutes(registry: OpenAPIRegistry): void {
 }
 
 /**
- * External REST API (v1) — generic per-workspace object CRUD (`/api/v1/{objectNamePlural}`).
- * Object names are dynamic per workspace, so this documents the one generic shape rather than a
- * route per object (same limitation Twenty's own dynamic object routes have). Uses a distinct
- * `apiKeyAuth` security scheme (not `bearerAuth`) so the spec communicates that only API-key
- * bearer tokens work here — session tokens are rejected by `apiKeyGuard`.
+ * External REST API (v1) — everything an API key can actually call: workspace info, members,
+ * invitations, webhooks, the data model (objects/fields/relations/indexes), generic per-object
+ * record CRUD, and files. This is the *only* schema exposed in the customer-facing playground —
+ * Core/Metadata stay internal reference material since API keys can't call them (session-only).
+ * Uses a distinct `apiKeyAuth` security scheme (not `bearerAuth`) so the spec communicates that
+ * only API-key bearer tokens work here — session tokens are rejected by `apiKeyGuard`.
  */
 function registerV1Routes(registry: OpenAPIRegistry): void {
   const apiKeyAuth = registry.registerComponent('securitySchemes', 'apiKeyAuth', {
@@ -425,6 +426,271 @@ function registerV1Routes(registry: OpenAPIRegistry): void {
   });
   const auth = [{ [apiKeyAuth.name]: [] }];
 
+  // ---- Workspace ----
+  registry.registerPath({
+    method: 'get',
+    path: '/workspace',
+    tags: ['Workspace'],
+    summary: 'Current workspace',
+    security: auth,
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/workspace',
+    tags: ['Workspace'],
+    summary: 'Update workspace name/subdomain',
+    security: auth,
+    request: { body: jsonBody(updateWorkspaceRequestSchema) },
+    responses: { 200: ok() },
+  });
+
+  // ---- Members ----
+  registry.registerPath({
+    method: 'get',
+    path: '/members',
+    tags: ['Members'],
+    summary: 'List workspace members',
+    security: auth,
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/members/{id}/role',
+    tags: ['Members'],
+    summary: "Reassign a member's role",
+    security: auth,
+    request: { params: idParam, body: jsonBody(reassignMemberRoleRequestSchema) },
+    responses: { 200: ok() },
+  });
+
+  // ---- Invitations ----
+  registry.registerPath({
+    method: 'get',
+    path: '/invitations',
+    tags: ['Invitations'],
+    summary: 'List invitations',
+    security: auth,
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/invitations',
+    tags: ['Invitations'],
+    summary: 'Invite a member by email',
+    security: auth,
+    request: { body: jsonBody(createInvitationRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/invitations/{id}/resend',
+    tags: ['Invitations'],
+    summary: 'Resend a pending invitation',
+    security: auth,
+    request: { params: idParam },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/invitations/{id}',
+    tags: ['Invitations'],
+    summary: 'Revoke an invitation',
+    security: auth,
+    request: { params: idParam },
+    responses: { 200: ok() },
+  });
+
+  // ---- Webhooks ----
+  registry.registerPath({
+    method: 'get',
+    path: '/webhooks',
+    tags: ['Webhooks'],
+    summary: 'List webhooks',
+    security: auth,
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/webhooks',
+    tags: ['Webhooks'],
+    summary: 'Create a webhook',
+    security: auth,
+    request: { body: jsonBody(createWebhookRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/webhooks/{id}',
+    tags: ['Webhooks'],
+    summary: 'Update a webhook',
+    security: auth,
+    request: { params: idParam, body: jsonBody(updateWebhookRequestSchema) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/webhooks/{id}/regenerate-secret',
+    tags: ['Webhooks'],
+    summary: 'Regenerate the signing secret',
+    security: auth,
+    request: { params: idParam },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/webhooks/{id}',
+    tags: ['Webhooks'],
+    summary: 'Delete a webhook',
+    security: auth,
+    request: { params: idParam },
+    responses: { 200: ok() },
+  });
+
+  // ---- Data model: objects ----
+  registry.registerPath({
+    method: 'get',
+    path: '/objects',
+    tags: ['Objects'],
+    summary: 'List objects',
+    security: auth,
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/objects/{id}',
+    tags: ['Objects'],
+    summary: 'Get an object (fields + indexes)',
+    security: auth,
+    request: { params: idParam },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/objects',
+    tags: ['Objects'],
+    summary: 'Create a custom object',
+    security: auth,
+    request: { body: jsonBody(createObjectRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/objects/{id}',
+    tags: ['Objects'],
+    summary: 'Update an object',
+    security: auth,
+    request: { params: idParam, body: jsonBody(updateObjectRequestSchema) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/objects/{id}/active',
+    tags: ['Objects'],
+    summary: 'Activate / deactivate an object',
+    security: auth,
+    request: { params: idParam, body: jsonBody(setActiveRequestSchema) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/objects/{id}/identifiers',
+    tags: ['Objects'],
+    summary: 'Set record label / image identifier fields',
+    security: auth,
+    request: { params: idParam, body: jsonBody(setObjectIdentifiersRequestSchema) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/objects/{id}',
+    tags: ['Objects'],
+    summary: 'Delete a custom object',
+    security: auth,
+    request: { params: idParam },
+    responses: { 200: ok() },
+  });
+
+  // ---- Data model: fields ----
+  registry.registerPath({
+    method: 'post',
+    path: '/objects/{id}/fields',
+    tags: ['Fields'],
+    summary: 'Create a field',
+    security: auth,
+    request: { params: idParam, body: jsonBody(createFieldRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/objects/{id}/fields/{fieldId}',
+    tags: ['Fields'],
+    summary: 'Update a field',
+    security: auth,
+    request: { params: fieldParams, body: jsonBody(updateFieldRequestSchema) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/objects/{id}/fields/{fieldId}/active',
+    tags: ['Fields'],
+    summary: 'Activate / deactivate a field',
+    security: auth,
+    request: { params: fieldParams, body: jsonBody(setActiveRequestSchema) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/objects/{id}/fields/{fieldId}',
+    tags: ['Fields'],
+    summary: 'Delete a custom field',
+    security: auth,
+    request: { params: fieldParams },
+    responses: { 200: ok() },
+  });
+
+  // ---- Data model: relations & indexes ----
+  registry.registerPath({
+    method: 'post',
+    path: '/objects/{id}/relations',
+    tags: ['Relations'],
+    summary: 'Create a relation (both sides)',
+    security: auth,
+    request: { params: idParam, body: jsonBody(createRelationRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/objects/{id}/morph-relations',
+    tags: ['Relations'],
+    summary: 'Create a polymorphic (morph) relation',
+    security: auth,
+    request: { params: idParam, body: jsonBody(createMorphRelationRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/objects/{id}/indexes',
+    tags: ['Indexes'],
+    summary: 'Create an index',
+    security: auth,
+    request: { params: idParam, body: jsonBody(createIndexRequestSchema) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/objects/{id}/indexes/{indexId}',
+    tags: ['Indexes'],
+    summary: 'Delete an index',
+    security: auth,
+    request: { params: indexParams },
+    responses: { 200: ok() },
+  });
+
+  // ---- Records (generic per-object CRUD) ----
+  // Object names are dynamic per workspace, so this documents the one generic shape rather than a
+  // route per object (same limitation Twenty's own dynamic object routes have) — includes standard
+  // objects like companies/people plus seeded ones like tasks/notes.
   const objectParam = z.object({ objectNamePlural: z.string().openapi({ example: 'companies' }) });
   const objectIdParams = objectParam.extend({ id: z.string().uuid() });
   const recordBody = z.record(z.string(), z.unknown()).openapi('RecordInput');
@@ -441,7 +707,7 @@ function registerV1Routes(registry: OpenAPIRegistry): void {
     method: 'get',
     path: '/{objectNamePlural}',
     tags: ['Records'],
-    summary: 'List records for an object (e.g. companies, people)',
+    summary: 'List records for an object (e.g. companies, people, tasks, notes)',
     security: auth,
     request: { params: objectParam, query: listQuery },
     responses: { 200: ok() },
@@ -480,6 +746,25 @@ function registerV1Routes(registry: OpenAPIRegistry): void {
     summary: 'Delete a record',
     security: auth,
     request: { params: objectIdParams },
+    responses: { 200: ok() },
+  });
+
+  // ---- Files ----
+  registry.registerPath({
+    method: 'post',
+    path: '/files/upload',
+    tags: ['Files'],
+    summary: 'Upload a file (multipart/form-data, field name "file")',
+    security: auth,
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/files/{id}',
+    tags: ['Files'],
+    summary: 'Delete a file',
+    security: auth,
+    request: { params: idParam },
     responses: { 200: ok() },
   });
 }

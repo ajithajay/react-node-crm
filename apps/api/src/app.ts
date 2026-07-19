@@ -9,15 +9,19 @@ import { errorHandler } from './middleware/error-handler.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { userRouter } from './modules/user/user.routes.js';
-import { workspaceRouter } from './modules/workspace/workspace.routes.js';
-import { memberRouter } from './modules/member/member.routes.js';
-import { fileRouter } from './modules/file/file.routes.js';
+import { workspaceRouter, workspaceApiV1Router } from './modules/workspace/workspace.routes.js';
+import { memberRouter, memberApiV1Router } from './modules/member/member.routes.js';
+import { fileRouter, fileApiV1Router } from './modules/file/file.routes.js';
 import { roleRouter } from './modules/role/role.routes.js';
 import { auditLogRouter } from './modules/audit-log/audit-log.routes.js';
-import { invitationAdminRouter, invitationPublicRouter } from './modules/invitation/invitation.routes.js';
-import { dataModelRouter } from './modules/data-model/data-model.routes.js';
+import {
+  invitationAdminRouter,
+  invitationPublicRouter,
+  invitationApiV1Router,
+} from './modules/invitation/invitation.routes.js';
+import { dataModelRouter, dataModelApiV1Router } from './modules/data-model/data-model.routes.js';
 import { apiKeyRouter } from './modules/api-key/api-key.routes.js';
-import { webhookRouter } from './modules/webhook/webhook.routes.js';
+import { webhookRouter, webhookApiV1Router } from './modules/webhook/webhook.routes.js';
 import { openApiRouter } from './modules/open-api/open-api.routes.js';
 import { recordRouter, recordApiV1Router } from './modules/record/record.routes.js';
 import { viewRouter } from './modules/view/view.routes.js';
@@ -50,6 +54,17 @@ export function createApp(): Application {
   app.use('/webhooks', webhookRouter);
   app.use('/open-api', openApiRouter);
   app.use('/rest', recordRouter);
+
+  // External REST API (v1) — API-key auth only, workspace-level rate limit. Specific resource
+  // routers are mounted before the generic `recordApiV1Router` catch-all (`/:objectNamePlural`)
+  // so e.g. `/api/v1/objects` reaches data-model, not a workspace object literally named "objects".
+  // dataModelApiV1Router's own routes already start with `/objects`, so it mounts at the bare `/api/v1`.
+  app.use('/api/v1', workspaceRateLimit, dataModelApiV1Router);
+  app.use('/api/v1/members', workspaceRateLimit, memberApiV1Router);
+  app.use('/api/v1/invitations', workspaceRateLimit, invitationApiV1Router);
+  app.use('/api/v1/webhooks', workspaceRateLimit, webhookApiV1Router);
+  app.use('/api/v1/workspace', workspaceRateLimit, workspaceApiV1Router);
+  app.use('/api/v1/files', workspaceRateLimit, fileApiV1Router);
   app.use('/api/v1', workspaceRateLimit, recordApiV1Router);
   app.use('/views', viewRouter);
   app.use('/navigation', navigationRouter);

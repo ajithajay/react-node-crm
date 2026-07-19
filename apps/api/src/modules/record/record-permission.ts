@@ -7,11 +7,9 @@ import {
 } from '@saasly/database';
 import { dataSource } from '../../lib/db.js';
 import { ForbiddenError, UnauthorizedError } from '../../lib/errors.js';
+import type { Principal } from '../../lib/principal.js';
 
-/** Who is acting on a record request — a logged-in user (member) or an API key (role, no member). */
-export type Principal =
-  | { type: 'user'; userId: string }
-  | { type: 'apiKey'; apiKeyId: string; roleId: string | null; name: string };
+export type { Principal };
 
 export type ObjectAction = 'read' | 'update' | 'softDelete' | 'destroy';
 

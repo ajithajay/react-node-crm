@@ -38,7 +38,7 @@ export async function listWebhooks(workspaceId: string): Promise<WebhookSummary[
 
 export async function createWebhook(
   workspaceId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: CreateWebhookRequest,
 ): Promise<WebhookSummary> {
   const webhook = await webhookRepo().save(
@@ -58,7 +58,7 @@ export async function createWebhook(
 export async function updateWebhook(
   workspaceId: string,
   webhookId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: UpdateWebhookRequest,
 ): Promise<WebhookSummary> {
   const webhook = await webhookRepo().findOneBy({ id: webhookId, workspaceId });
@@ -82,7 +82,7 @@ export async function updateWebhook(
 export async function regenerateWebhookSecret(
   workspaceId: string,
   webhookId: string,
-  actorUserId: string,
+  actorUserId: string | null,
 ): Promise<WebhookSummary> {
   const webhook = await webhookRepo().findOneBy({ id: webhookId, workspaceId });
   if (!webhook) throw new NotFoundError('Webhook not found');
@@ -94,7 +94,7 @@ export async function regenerateWebhookSecret(
   return toSummary(webhook);
 }
 
-export async function deleteWebhook(workspaceId: string, webhookId: string, actorUserId: string): Promise<void> {
+export async function deleteWebhook(workspaceId: string, webhookId: string, actorUserId: string | null): Promise<void> {
   const webhook = await webhookRepo().findOneBy({ id: webhookId, workspaceId });
   if (!webhook) throw new NotFoundError('Webhook not found');
 

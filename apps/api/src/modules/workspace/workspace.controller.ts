@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { UpdateWorkspaceRequest, SetDefaultRoleRequest } from '@saasly/shared';
 import { AppError } from '../../lib/errors.js';
+import { actorUserId, principalOf } from '../../lib/principal.js';
 import * as workspaceService from './workspace.service.js';
 
 export async function current(req: Request, res: Response): Promise<void> {
@@ -12,7 +13,7 @@ export async function update(
   req: Request<unknown, unknown, UpdateWorkspaceRequest>,
   res: Response,
 ): Promise<void> {
-  const result = await workspaceService.updateWorkspace(req.workspaceId!, req.user!.id, req.body);
+  const result = await workspaceService.updateWorkspace(req.workspaceId!, actorUserId(principalOf(req)), req.body);
   res.status(200).json(result);
 }
 

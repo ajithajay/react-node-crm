@@ -177,7 +177,7 @@ export async function getObject(
 
 export async function createObject(
   workspaceId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: CreateObjectRequest,
 ): Promise<ObjectSummary> {
   const workspace = await requireWorkspace(workspaceId);
@@ -243,7 +243,7 @@ export async function createObject(
 export async function updateObject(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: UpdateObjectRequest,
 ): Promise<ObjectSummary> {
   const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });
@@ -266,7 +266,7 @@ export async function updateObject(
 export async function setObjectActive(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   isActive: boolean,
 ): Promise<void> {
   const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });
@@ -277,7 +277,7 @@ export async function setObjectActive(
   await record(workspaceId, actorUserId, 'data_model.object_updated', { objectMetadataId, isActive });
 }
 
-export async function deleteObject(workspaceId: string, objectMetadataId: string, actorUserId: string): Promise<void> {
+export async function deleteObject(workspaceId: string, objectMetadataId: string, actorUserId: string | null): Promise<void> {
   const [workspace, object] = await Promise.all([
     requireWorkspace(workspaceId),
     objectRepo().findOneBy({ id: objectMetadataId, workspaceId }),
@@ -301,7 +301,7 @@ export async function deleteObject(workspaceId: string, objectMetadataId: string
 export async function createField(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: CreateFieldRequest,
 ): Promise<FieldSummary> {
   const [workspace, object] = await Promise.all([
@@ -343,7 +343,7 @@ export async function createField(
 export async function updateField(
   workspaceId: string,
   fieldMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: UpdateFieldRequest,
 ): Promise<FieldSummary> {
   const field = await fieldRepo().findOneBy({ id: fieldMetadataId, workspaceId });
@@ -373,7 +373,7 @@ const NON_DEACTIVATABLE_FIELD_NAMES = new Set(['created_at', 'updated_at', 'dele
 export async function setFieldActive(
   workspaceId: string,
   fieldMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   isActive: boolean,
 ): Promise<void> {
   const field = await fieldRepo().findOneBy({ id: fieldMetadataId, workspaceId });
@@ -399,7 +399,7 @@ export async function setFieldActive(
 export async function setFieldRecordPageVisibility(
   workspaceId: string,
   fieldMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   isVisible: boolean,
 ): Promise<FieldSummary> {
   const field = await fieldRepo().findOneBy({ id: fieldMetadataId, workspaceId });
@@ -411,7 +411,7 @@ export async function setFieldRecordPageVisibility(
   return toFieldSummary(field);
 }
 
-export async function deleteField(workspaceId: string, fieldMetadataId: string, actorUserId: string): Promise<void> {
+export async function deleteField(workspaceId: string, fieldMetadataId: string, actorUserId: string | null): Promise<void> {
   const [workspace, field] = await Promise.all([
     requireWorkspace(workspaceId),
     fieldRepo().findOneBy({ id: fieldMetadataId, workspaceId }),
@@ -439,7 +439,7 @@ export async function deleteField(workspaceId: string, fieldMetadataId: string, 
 export async function createRelation(
   workspaceId: string,
   sourceObjectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: CreateRelationRequest,
 ): Promise<{ forward: FieldSummary; reverse: FieldSummary }> {
   const [workspace, source, target] = await Promise.all([
@@ -489,7 +489,7 @@ export async function createRelation(
 export async function createMorphRelation(
   workspaceId: string,
   sourceObjectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: CreateMorphRelationRequest,
 ): Promise<{ forward: FieldSummary; reverses: FieldSummary[] }> {
   const workspace = await requireWorkspace(workspaceId);
@@ -540,7 +540,7 @@ export async function createMorphRelation(
 export async function setObjectIdentifiers(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: SetObjectIdentifiersRequest,
 ): Promise<ObjectSummary> {
   const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });
@@ -568,7 +568,7 @@ export async function setObjectIdentifiers(
 export async function createIndex(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   input: CreateIndexRequest,
 ): Promise<IndexSummary> {
   const [workspace, object] = await Promise.all([
@@ -607,7 +607,7 @@ export async function createIndex(
 export async function deleteIndex(
   workspaceId: string,
   indexMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
 ): Promise<void> {
   const [workspace, index] = await Promise.all([
     requireWorkspace(workspaceId),
@@ -645,7 +645,7 @@ export async function listSections(workspaceId: string, objectMetadataId: string
 export async function setSections(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   sections: SetSectionsRequest,
 ): Promise<SectionSummary[]> {
   const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });

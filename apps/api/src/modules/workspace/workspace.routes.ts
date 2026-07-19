@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { updateWorkspaceRequestSchema, setDefaultRoleRequestSchema, PermissionFlagType } from '@saasly/shared';
-import { authGuard } from '../../middleware/auth-guard.js';
+import { authGuard, apiKeyGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { permissionGuard } from '../../middleware/permission-guard.js';
 import { validate } from '../../middleware/validate.js';
@@ -39,3 +39,20 @@ workspaceRouter.patch(
   workspaceController.setDefaultRole,
 );
 workspaceRouter.delete('/', authGuard, workspaceGuard, requireWorkspacePermission, workspaceController.remove);
+
+/**
+ * External REST API (v1) — API-key auth. Only read + basic profile update are exposed; logo
+ * upload, default-role, and workspace deletion stay internal-only (not requested, higher blast
+ * radius for an unattended integration to trigger).
+ */
+export const workspaceApiV1Router: Router = Router();
+
+workspaceApiV1Router.get('/', apiKeyGuard, workspaceGuard, workspaceController.current);
+workspaceApiV1Router.patch(
+  '/',
+  apiKeyGuard,
+  workspaceGuard,
+  requireWorkspacePermission,
+  validate({ body: updateWorkspaceRequestSchema }),
+  workspaceController.update,
+);

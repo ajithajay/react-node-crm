@@ -1,16 +1,8 @@
 import type { Request, Response } from 'express';
 import type { RecordListQuery } from '@saasly/shared';
 import { AppError } from '../../lib/errors.js';
-import type { Principal } from './record-permission.js';
+import { principalOf } from '../../lib/principal.js';
 import * as recordService from './record.service.js';
-
-/** The acting principal — an API key when present (gap E3), otherwise the logged-in user. */
-function principalOf(req: Request): Principal {
-  if (req.apiKey) {
-    return { type: 'apiKey', apiKeyId: req.apiKey.id, roleId: req.apiKey.roleId, name: req.apiKey.name };
-  }
-  return { type: 'user', userId: req.user!.id };
-}
 
 export async function index(req: Request<{ objectNamePlural: string }>, res: Response): Promise<void> {
   // validate() has already replaced req.query with the parsed+coerced RecordListQuery at runtime.

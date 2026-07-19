@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type { CreateInvitationRequest, AcceptInvitationRequest } from '@saasly/shared';
+import { actorUserId, principalOf } from '../../lib/principal.js';
 import * as invitationService from './invitation.service.js';
 
 // ---- Admin (workspace-scoped) ----
@@ -10,7 +11,7 @@ export async function create(
 ): Promise<void> {
   const result = await invitationService.createInvitation(
     req.workspaceId!,
-    req.user!.id,
+    actorUserId(principalOf(req)),
     req.body.email,
     req.body.roleId,
   );
@@ -23,12 +24,12 @@ export async function index(req: Request, res: Response): Promise<void> {
 }
 
 export async function resend(req: Request<{ id: string }>, res: Response): Promise<void> {
-  await invitationService.resendInvitation(req.workspaceId!, req.params.id, req.user!.id);
+  await invitationService.resendInvitation(req.workspaceId!, req.params.id, actorUserId(principalOf(req)));
   res.status(200).json({ ok: true });
 }
 
 export async function revoke(req: Request<{ id: string }>, res: Response): Promise<void> {
-  await invitationService.revokeInvitation(req.workspaceId!, req.params.id, req.user!.id);
+  await invitationService.revokeInvitation(req.workspaceId!, req.params.id, actorUserId(principalOf(req)));
   res.status(200).json({ ok: true });
 }
 

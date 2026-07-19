@@ -58,7 +58,7 @@ async function sendInvitationEmail(invitation: InvitationEntity, rawToken: strin
 
 export async function createInvitation(
   workspaceId: string,
-  invitedById: string,
+  invitedById: string | null,
   email: string,
   roleId?: string | null,
 ): Promise<InvitationSummary> {
@@ -116,7 +116,7 @@ export async function listInvitations(workspaceId: string): Promise<InvitationSu
 export async function resendInvitation(
   workspaceId: string,
   invitationId: string,
-  actorUserId: string,
+  actorUserId: string | null,
 ): Promise<void> {
   const invitation = await invitationRepo().findOneBy({ id: invitationId, workspaceId });
   if (!invitation) throw new NotFoundError('Invitation not found');
@@ -136,7 +136,7 @@ export async function resendInvitation(
 export async function revokeInvitation(
   workspaceId: string,
   invitationId: string,
-  actorUserId: string,
+  actorUserId: string | null,
 ): Promise<void> {
   const invitation = await invitationRepo().findOneBy({ id: invitationId, workspaceId });
   if (!invitation) throw new NotFoundError('Invitation not found');

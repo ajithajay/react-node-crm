@@ -162,7 +162,7 @@ async function synthesizeDefaultLayout(workspaceId: string, object: ObjectMetada
 export async function savePageLayout(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
   req: SavePageLayoutRequest,
 ): Promise<PageLayoutDto> {
   const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });
@@ -268,7 +268,7 @@ export async function savePageLayout(
 export async function resetPageLayout(
   workspaceId: string,
   objectMetadataId: string,
-  actorUserId: string,
+  actorUserId: string | null,
 ): Promise<PageLayoutDto> {
   const object = await objectRepo().findOneBy({ id: objectMetadataId, workspaceId });
   if (!object) throw new NotFoundError('Object not found');
@@ -294,7 +294,7 @@ export async function resetWidgetToDefault(
   workspaceId: string,
   objectMetadataId: string,
   widgetId: string,
-  actorUserId: string,
+  actorUserId: string | null,
 ): Promise<PageLayoutDto> {
   const [object, widget] = await Promise.all([
     objectRepo().findOneBy({ id: objectMetadataId, workspaceId }),

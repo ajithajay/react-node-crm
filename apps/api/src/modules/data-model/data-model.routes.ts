@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import {
   createFieldRequestSchema,
   createIndexRequestSchema,
@@ -14,77 +14,135 @@ import {
   updateObjectRequestSchema,
   PermissionFlagType,
 } from '@saasly/shared';
-import { authGuard } from '../../middleware/auth-guard.js';
+import { authGuard, apiKeyGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { permissionGuard } from '../../middleware/permission-guard.js';
 import { validate } from '../../middleware/validate.js';
 import * as dataModelController from './data-model.controller.js';
 
-export const dataModelRouter: Router = Router();
-
 const requireDataModelPermission = permissionGuard(PermissionFlagType.DATA_MODEL);
 const requireLayoutsPermission = permissionGuard(PermissionFlagType.LAYOUTS);
 
-dataModelRouter.get('/objects', authGuard, workspaceGuard, dataModelController.listObjects);
-dataModelRouter.get('/objects/:id', authGuard, workspaceGuard, dataModelController.getObject);
-dataModelRouter.post(
-  '/objects',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: createObjectRequestSchema }),
-  dataModelController.createObject,
-);
-dataModelRouter.patch(
-  '/objects/:id',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: updateObjectRequestSchema }),
-  dataModelController.updateObject,
-);
-dataModelRouter.patch(
-  '/objects/:id/active',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: setActiveRequestSchema }),
-  dataModelController.setObjectActive,
-);
-dataModelRouter.delete('/objects/:id', authGuard, workspaceGuard, requireDataModelPermission, dataModelController.deleteObject);
-dataModelRouter.patch(
-  '/objects/:id/identifiers',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: setObjectIdentifiersRequestSchema }),
-  dataModelController.setObjectIdentifiers,
-);
+/**
+ * Objects/fields/relations/indexes — the actual "data model" surface, exposed both internally
+ * (`/data-model`, session auth) and externally (`/api/v1/objects`, API-key auth). Sections and
+ * page-layout (record-page UI customization) are internal-only app concerns and stay off the v1
+ * router entirely — see `buildInternalOnlyRoutes` below.
+ */
+function buildDataModelRouter(guard: RequestHandler): Router {
+  const router = Router();
 
-dataModelRouter.post(
-  '/objects/:id/fields',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: createFieldRequestSchema }),
-  dataModelController.createField,
-);
-dataModelRouter.patch(
-  '/objects/:id/fields/:fieldId',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: updateFieldRequestSchema }),
-  dataModelController.updateField,
-);
-dataModelRouter.patch(
-  '/objects/:id/fields/:fieldId/active',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: setActiveRequestSchema }),
-  dataModelController.setFieldActive,
-);
+  router.get('/objects', guard, workspaceGuard, dataModelController.listObjects);
+  router.get('/objects/:id', guard, workspaceGuard, dataModelController.getObject);
+  router.post(
+    '/objects',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: createObjectRequestSchema }),
+    dataModelController.createObject,
+  );
+  router.patch(
+    '/objects/:id',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: updateObjectRequestSchema }),
+    dataModelController.updateObject,
+  );
+  router.patch(
+    '/objects/:id/active',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: setActiveRequestSchema }),
+    dataModelController.setObjectActive,
+  );
+  router.delete('/objects/:id', guard, workspaceGuard, requireDataModelPermission, dataModelController.deleteObject);
+  router.patch(
+    '/objects/:id/identifiers',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: setObjectIdentifiersRequestSchema }),
+    dataModelController.setObjectIdentifiers,
+  );
+
+  router.post(
+    '/objects/:id/fields',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: createFieldRequestSchema }),
+    dataModelController.createField,
+  );
+  router.patch(
+    '/objects/:id/fields/:fieldId',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: updateFieldRequestSchema }),
+    dataModelController.updateField,
+  );
+  router.patch(
+    '/objects/:id/fields/:fieldId/active',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: setActiveRequestSchema }),
+    dataModelController.setFieldActive,
+  );
+  router.delete(
+    '/objects/:id/fields/:fieldId',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    dataModelController.deleteField,
+  );
+
+  router.post(
+    '/objects/:id/relations',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: createRelationRequestSchema }),
+    dataModelController.createRelation,
+  );
+  router.post(
+    '/objects/:id/morph-relations',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: createMorphRelationRequestSchema }),
+    dataModelController.createMorphRelation,
+  );
+
+  router.post(
+    '/objects/:id/indexes',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    validate({ body: createIndexRequestSchema }),
+    dataModelController.createIndex,
+  );
+  router.delete(
+    '/objects/:id/indexes/:indexId',
+    guard,
+    workspaceGuard,
+    requireDataModelPermission,
+    dataModelController.deleteIndex,
+  );
+
+  return router;
+}
+
+export const dataModelRouter: Router = buildDataModelRouter(authGuard);
+
+/** External REST API (v1) — API-key auth, scoped by the key's assigned role. */
+export const dataModelApiV1Router: Router = buildDataModelRouter(apiKeyGuard);
+
+// ---- Internal-only: record-page UI customization (sections + page layout), never exposed on v1 ----
+
 dataModelRouter.patch(
   '/objects/:id/fields/:fieldId/record-page-visibility',
   authGuard,
@@ -93,46 +151,7 @@ dataModelRouter.patch(
   validate({ body: setFieldRecordPageVisibilityRequestSchema }),
   dataModelController.setFieldRecordPageVisibility,
 );
-dataModelRouter.delete(
-  '/objects/:id/fields/:fieldId',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  dataModelController.deleteField,
-);
 
-dataModelRouter.post(
-  '/objects/:id/relations',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: createRelationRequestSchema }),
-  dataModelController.createRelation,
-);
-dataModelRouter.post(
-  '/objects/:id/morph-relations',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: createMorphRelationRequestSchema }),
-  dataModelController.createMorphRelation,
-);
-
-dataModelRouter.post(
-  '/objects/:id/indexes',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  validate({ body: createIndexRequestSchema }),
-  dataModelController.createIndex,
-);
-dataModelRouter.delete(
-  '/objects/:id/indexes/:indexId',
-  authGuard,
-  workspaceGuard,
-  requireDataModelPermission,
-  dataModelController.deleteIndex,
-);
 dataModelRouter.get('/objects/:id/sections', authGuard, workspaceGuard, dataModelController.listSections);
 dataModelRouter.put(
   '/objects/:id/sections',
