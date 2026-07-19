@@ -39,6 +39,16 @@ export const serverEnvSchema = z.object({
   S3_SECRET_KEY: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_REGION: z.string().default('us-east-1'),
+
+  // --- Webhooks ---
+  // Blocks loopback/link-local/private-range targets by default (SSRF guard); set to 'true' only
+  // for local dev testing against a receiver on localhost/private network.
+  WEBHOOK_ALLOW_PRIVATE_TARGETS: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
+  WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  WEBHOOK_RETRY_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

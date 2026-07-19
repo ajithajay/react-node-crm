@@ -25,8 +25,8 @@ export const webhookDeliveryQueue = new Queue<WebhookDeliveryJobData>(QueueName.
 
 export async function enqueueWebhookDelivery(data: WebhookDeliveryJobData): Promise<void> {
   await webhookDeliveryQueue.add(WEBHOOK_DELIVERY_JOB_NAME, data, {
-    attempts: 5,
-    backoff: { type: 'exponential', delay: 5000 },
+    attempts: env.WEBHOOK_MAX_ATTEMPTS,
+    backoff: { type: 'exponential', delay: env.WEBHOOK_RETRY_BACKOFF_MS },
     removeOnComplete: 1000,
     removeOnFail: 5000,
   });

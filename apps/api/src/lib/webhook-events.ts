@@ -9,6 +9,13 @@ function matches(operations: string[], objectName: string, operation: string): b
   return operations.some((op) => candidates.has(op));
 }
 
+/** Who performed the mutation — mirrors the `createdBy`/`updatedBy` ACTOR stamp already on records. */
+export interface WebhookActor {
+  userId: string | null;
+  workspaceMemberId: string | null;
+  name: string;
+}
+
 /**
  * Fan out a record mutation to every matching workspace webhook (gap E2). Queries the core webhooks
  * table, then enqueues one `webhook-delivery` job per match — the worker signs + POSTs with retries,
@@ -19,12 +26,24 @@ export async function dispatchRecordWebhooks(
   objectName: string,
   operation: 'created' | 'updated' | 'deleted',
   record: Record<string, unknown>,
+  actor?: WebhookActor,
+  updatedFields?: string[],
 ): Promise<void> {
   try {
     const webhooks = await dataSource.getRepository(WebhookEntity).findBy({ workspaceId }); // soft-deleted excluded
     const eventName = `${objectName}.${operation}`;
     const timestamp = Date.now();
-    const payload = { event: eventName, objectName, operation, recordId: record.id, record, timestamp };
+    const payload = {
+      event: eventName,
+      objectName,
+      operation,
+      workspaceId,
+      recordId: record.id,
+      record,
+      actor: actor ?? null,
+      ...(updatedFields && updatedFields.length > 0 ? { updatedFields } : {}),
+      timestamp,
+    };
 
     await Promise.all(
       webhooks

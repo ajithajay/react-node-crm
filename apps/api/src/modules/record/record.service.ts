@@ -6,7 +6,7 @@ import { applyRecordListQuery } from '../../lib/query-parser.js';
 import { AppError, NotFoundError } from '../../lib/errors.js';
 import { decodeRecord, encodeRecordInput } from './record-field-codec.js';
 import { buildCsvColumns, csvToRecordBodies, recordsToCsv } from './record-csv.js';
-import { dispatchRecordWebhooks } from '../../lib/webhook-events.js';
+import { dispatchRecordWebhooks, type WebhookActor } from '../../lib/webhook-events.js';
 import { dispatchWorkflowTriggers } from '../../lib/workflow-events.js';
 import { logger } from '../../lib/logger.js';
 import {
@@ -105,6 +105,18 @@ function actorStamp(actor: ActorRole): Record<string, unknown> {
   return { source: 'API', workspace_member_id: null, name: actor.apiKeyName ?? 'API Key', context: null };
 }
 
+/** Who performed the mutation, for the webhook payload's `actor` field. */
+function webhookActor(actor: ActorRole): WebhookActor {
+  if (actor.member) {
+    return {
+      userId: actor.member.userId,
+      workspaceMemberId: actor.member.id,
+      name: `${actor.member.firstName} ${actor.member.lastName}`.trim(),
+    };
+  }
+  return { userId: null, workspaceMemberId: null, name: actor.apiKeyName ?? 'API Key' };
+}
+
 /**
  * Auto-logs a timeline activity for objects that are morph targets (have a `timeline_activities`
  * reverse field — Company/Person/Opportunity) on create/update (gap E1). Best-effort: written
@@ -185,7 +197,14 @@ async function afterRecordMutation(
       logger.error({ err, objectId: object.id, recordId }, 'timeline activity write failed');
     }
   }
-  await dispatchRecordWebhooks(workspaceId, object.nameSingular, operation, record);
+  await dispatchRecordWebhooks(
+    workspaceId,
+    object.nameSingular,
+    operation,
+    record,
+    webhookActor(actor),
+    diff ? Object.keys(diff) : undefined,
+  );
   await dispatchWorkflowTriggers(
     workspaceId,
     object.nameSingular,
@@ -276,7 +295,7 @@ export async function deleteRecord(
   if (hard) await repository.remove(existing);
   else await repository.softRemove(existing);
 
-  await dispatchRecordWebhooks(workspaceId, object.nameSingular, 'deleted', { id });
+  await dispatchRecordWebhooks(workspaceId, object.nameSingular, 'deleted', { id }, webhookActor(actor));
   await dispatchWorkflowTriggers(workspaceId, object.nameSingular, 'deleted', { id });
 }
 

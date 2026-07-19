@@ -15,6 +15,8 @@ export const createWebhookRequestSchema = z.object({
   targetUrl: z.string().trim().url().max(2000),
   operations: z.array(z.string().trim().regex(operationPattern)).min(1),
   description: z.string().trim().max(500).nullish(),
+  /** Optional signing secret — if omitted, the server generates one. */
+  secret: z.string().trim().max(200).optional(),
 });
 export type CreateWebhookRequest = z.infer<typeof createWebhookRequestSchema>;
 
@@ -22,5 +24,7 @@ export const updateWebhookRequestSchema = z.object({
   targetUrl: z.string().trim().url().max(2000),
   operations: z.array(z.string().trim().regex(operationPattern)).min(1),
   description: z.string().trim().max(500).nullish(),
+  /** Optional signing secret — omit to leave unchanged, send a value to overwrite it. */
+  secret: z.string().trim().max(200).optional(),
 });
 export type UpdateWebhookRequest = z.infer<typeof updateWebhookRequestSchema>;

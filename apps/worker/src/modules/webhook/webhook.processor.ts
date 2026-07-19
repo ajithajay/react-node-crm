@@ -50,6 +50,18 @@ async function deliver(data: WebhookDeliveryJobData): Promise<void> {
     const res = await ssrfSafeFetch(data.targetUrl, { method: 'POST', headers, body, signal: controller.signal });
     if (!res.ok) throw new Error(`webhook target responded ${res.status}`); // non-2xx → BullMQ retry
     logger.info({ webhookId: data.webhookId, event: data.eventName, status: res.status }, 'webhook delivered');
+  } catch (err) {
+    // `fetch` (undici) wraps the real reason (DNS failure, connection refused, TLS error, timeout)
+    // in a generic "fetch failed" Error with the actual cause nested in `.cause` — surface it so
+    // failures are actionable instead of just "fetch failed".
+    if (controller.signal.aborted) {
+      throw new Error(`webhook POST to ${data.targetUrl} timed out after ${DELIVERY_TIMEOUT_MS}ms`, { cause: err });
+    }
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : undefined;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`webhook POST to ${data.targetUrl} failed: ${message}${cause ? ` (cause: ${cause})` : ''}`, {
+      cause: err,
+    });
   } finally {
     clearTimeout(timer);
   }
@@ -61,8 +73,23 @@ export function startWebhookWorker(): Worker<WebhookDeliveryJobData> {
     connection,
   });
   worker.on('error', (err) => logger.error({ err }, '[worker:webhook] error'));
-  worker.on('failed', (job, err) =>
-    logger.warn({ jobId: job?.id, attempts: job?.attemptsMade, err: err.message }, '[worker:webhook] delivery failed'),
-  );
+  worker.on('failed', (job, err) => {
+    const maxAttempts = job?.opts.attempts ?? 1;
+    const attemptsMade = job?.attemptsMade ?? 0;
+    const isFinalAttempt = attemptsMade >= maxAttempts;
+    const log = isFinalAttempt ? logger.error.bind(logger) : logger.warn.bind(logger);
+    log(
+      {
+        jobId: job?.id,
+        webhookId: job?.data.webhookId,
+        targetUrl: job?.data.targetUrl,
+        attempt: `${attemptsMade}/${maxAttempts}`,
+        err: err.message,
+      },
+      isFinalAttempt
+        ? '[worker:webhook] delivery failed permanently — giving up after final retry'
+        : '[worker:webhook] delivery failed, will retry',
+    );
+  });
   return worker;
 }

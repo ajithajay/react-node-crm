@@ -1,6 +1,6 @@
 import net from 'node:net';
 import dns from 'node:dns';
-import { Agent, buildConnector } from 'undici';
+import { Agent, buildConnector, fetch as undiciFetch } from 'undici';
 
 /**
  * `isBlockedHost`-style checks that only inspect the literal hostname of the *first* request are
@@ -69,10 +69,16 @@ export function getSsrfSafeDispatcher(): Agent {
   return sharedAgent;
 }
 
-/** Drop-in for `fetch()` that blocks requests (and redirects) to private/internal addresses. */
+/**
+ * Drop-in for `fetch()` that blocks requests (and redirects) to private/internal addresses.
+ * Uses `undici`'s own `fetch` (not the Node-global one) so the dispatcher/handler interface always
+ * matches this `Agent` — mixing a `dispatcher` from the `undici` package with Node's built-in global
+ * `fetch` (backed by Node's own internal, possibly different-versioned, undici copy) throws an
+ * "invalid onRequestStart method" error when the two handler-interface versions don't line up.
+ */
 export function ssrfSafeFetch(url: string, init: RequestInit = {}): Promise<Response> {
   if (!/^https?:$/.test(new URL(url).protocol)) {
     return Promise.reject(new Error('Blocked protocol: only http/https are allowed'));
   }
-  return fetch(url, { ...init, dispatcher: getSsrfSafeDispatcher() } as RequestInit);
+  return undiciFetch(url, { ...init, dispatcher: getSsrfSafeDispatcher() } as RequestInit) as unknown as Promise<Response>;
 }

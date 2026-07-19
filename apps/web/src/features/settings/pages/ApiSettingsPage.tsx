@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import {
   WEBHOOK_EVENTS,
   type CreateApiKeyRequest,
   type CreateWebhookRequest,
+  type UpdateWebhookRequest,
 } from '@saasly/shared';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,7 +44,6 @@ function roleLabel(roles: { id: string; label: string }[] | undefined, roleId: s
 }
 
 const NO_ROLE_SELECTED = 'none';
-const ALL_OPERATIONS = ['*.*'];
 
 function CreateApiKeyDialog({ onCreated }: { onCreated: (token: string) => void }) {
   const queryClient = useQueryClient();
@@ -224,34 +224,37 @@ function ApiKeysTab() {
   );
 }
 
-/** Checkbox grid of `object.event` combinations, backed by the real object list (Phase 5h metadata). */
+/**
+ * Checkbox grid of `object.event` combinations, backed by the real object list (Phase 5h metadata).
+ * Every filter is an explicit object + operation pick — no blanket "all objects/all events" shortcut,
+ * so a webhook only ever fires for combinations someone actually selected.
+ */
 function WebhookEventPicker({ value, onChange }: { value: string[]; onChange: (operations: string[]) => void }) {
   const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects });
-  const isAllSelected = value.length === 1 && value[0] === '*.*';
   const activeObjects = (objects ?? []).filter((o: DataModelObject) => o.isActive);
 
+  // Expand legacy `*.*` webhooks (created before the "all" shortcut was removed) into their
+  // concrete object.event set so editing one shows real, individually-uncheckable selections.
+  useEffect(() => {
+    if (value.length === 1 && value[0] === '*.*' && activeObjects.length > 0) {
+      onChange(activeObjects.flatMap((o: DataModelObject) => WEBHOOK_EVENTS.map((event) => `${o.nameSingular}.${event}`)));
+    }
+  }, [activeObjects.length]);
+
   return (
-    <div className="space-y-3 rounded-md border p-3">
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <Checkbox
-          checked={isAllSelected}
-          onCheckedChange={(checked) => onChange(checked === true ? ALL_OPERATIONS : [])}
-        />
-        All objects · all events (<code>*.*</code>)
-      </label>
-      <div className="max-h-64 space-y-2 overflow-y-auto border-t pt-2">
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="max-h-64 space-y-2 overflow-y-auto">
         {activeObjects.length === 0 && <p className="text-xs text-muted-foreground">No objects yet.</p>}
         {activeObjects.map((object: DataModelObject) => (
           <div key={object.id} className="flex items-center gap-4">
             <span className="w-32 shrink-0 truncate text-sm">{object.labelSingular}</span>
             {WEBHOOK_EVENTS.map((event) => {
               const operation = `${object.nameSingular}.${event}`;
-              const checked = isAllSelected || value.includes(operation);
+              const checked = value.includes(operation);
               return (
                 <label key={event} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Checkbox
                     checked={checked}
-                    disabled={isAllSelected}
                     onCheckedChange={(next) =>
                       onChange(next === true ? [...value, operation] : value.filter((v) => v !== operation))
                     }
@@ -267,21 +270,43 @@ function WebhookEventPicker({ value, onChange }: { value: string[]; onChange: (o
   );
 }
 
-function CreateWebhookDialog() {
+/** Shared create/edit form — same fields either way, only the submit handler and defaults differ. */
+function WebhookFormDialog({
+  webhook,
+  open,
+  onOpenChange,
+  trigger,
+}: {
+  webhook?: Webhook;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: ReactElement;
+}) {
+  const isEdit = Boolean(webhook);
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isControlled = open !== undefined;
+  const dialogOpen = isControlled ? open : internalOpen;
+  const setDialogOpen = isControlled ? onOpenChange! : setInternalOpen;
 
   const form = useForm<CreateWebhookRequest>({
     resolver: zodResolver(createWebhookRequestSchema),
-    defaultValues: { targetUrl: '', operations: ALL_OPERATIONS, description: '' },
+    defaultValues: {
+      targetUrl: webhook?.targetUrl ?? '',
+      operations: webhook?.operations ?? [],
+      description: webhook?.description ?? '',
+      secret: webhook?.secret ?? '',
+    },
   });
 
-  const create = useMutation({
-    mutationFn: (values: CreateWebhookRequest) => webhookApi.create(values),
+  const save = useMutation({
+    mutationFn: (values: CreateWebhookRequest) =>
+      isEdit ? webhookApi.update(webhook!.id, values as UpdateWebhookRequest) : webhookApi.create(values),
     onSuccess: () => {
       setError(null);
-      setOpen(false);
+      setDialogOpen(false);
       form.reset();
       void queryClient.invalidateQueries({ queryKey: ['webhooks'] });
     },
@@ -289,14 +314,14 @@ function CreateWebhookDialog() {
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button>Create webhook</Button>} />
-      <DialogContent className="max-w-lg">
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {trigger && <DialogTrigger render={trigger} />}
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create a webhook</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit webhook' : 'Create a webhook'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((values) => create.mutate(values))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((values) => save.mutate(values))} className="space-y-4">
             <FormField
               control={form.control}
               name="targetUrl"
@@ -336,14 +361,31 @@ function CreateWebhookDialog() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="secret"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Secret (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Leave blank to auto-generate" {...field} value={field.value ?? ''} />
+                  </FormControl>
+                  <FormDescription>
+                    Used to HMAC-SHA256-sign delivered payloads (<code>X-Webhook-Signature</code> header). Leave
+                    blank to auto-generate one, or change it here at any time.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             <DialogFooter>
-              <Button type="submit" disabled={create.isPending}>
-                Create
+              <Button type="submit" disabled={save.isPending}>
+                {isEdit ? 'Save changes' : 'Create'}
               </Button>
             </DialogFooter>
           </form>
@@ -381,6 +423,32 @@ function WebhookSecretCell({ webhook }: { webhook: Webhook }) {
   );
 }
 
+function WebhookRow({ webhook, onRemove }: { webhook: Webhook; onRemove: () => void }) {
+  const [editOpen, setEditOpen] = useState(false);
+
+  return (
+    <div className="flex items-center gap-3 p-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{webhook.targetUrl}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {webhook.operations.join(', ')}
+          {webhook.description && ` · ${webhook.description}`}
+        </p>
+        <div className="mt-1">
+          <WebhookSecretCell webhook={webhook} />
+        </div>
+      </div>
+      <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+        Edit
+      </Button>
+      <WebhookFormDialog webhook={webhook} open={editOpen} onOpenChange={setEditOpen} />
+      <Button variant="ghost" size="sm" onClick={onRemove}>
+        Delete
+      </Button>
+    </div>
+  );
+}
+
 function WebhooksTab() {
   const queryClient = useQueryClient();
   const { data: webhooks, isLoading } = useQuery({ queryKey: ['webhooks'], queryFn: webhookApi.list });
@@ -393,33 +461,19 @@ function WebhooksTab() {
   return (
     <div>
       <div className="flex items-center justify-end">
-        <CreateWebhookDialog />
+        <WebhookFormDialog trigger={<Button>Create webhook</Button>} />
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        The signing secret will be used to HMAC-SHA256-sign delivered payloads once webhook delivery ships
-        (Phase 6) — copy it into your receiver now so it&apos;s ready.
+        Deliveries are signed with the secret below (<code>X-Webhook-Signature</code> header) and POSTed to the
+        target URL in real time as matching records are created, updated, or deleted.
       </p>
 
       <div className="mt-4 divide-y rounded-lg border">
         {isLoading && <p className="p-4 text-sm text-muted-foreground">Loading…</p>}
         {webhooks?.length === 0 && <p className="p-4 text-sm text-muted-foreground">No webhooks yet.</p>}
         {webhooks?.map((webhook: Webhook) => (
-          <div key={webhook.id} className="flex items-center gap-3 p-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{webhook.targetUrl}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {webhook.operations.join(', ')}
-                {webhook.description && ` · ${webhook.description}`}
-              </p>
-              <div className="mt-1">
-                <WebhookSecretCell webhook={webhook} />
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => remove.mutate(webhook.id)}>
-              Delete
-            </Button>
-          </div>
+          <WebhookRow key={webhook.id} webhook={webhook} onRemove={() => remove.mutate(webhook.id)} />
         ))}
       </div>
     </div>

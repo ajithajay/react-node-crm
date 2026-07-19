@@ -36,12 +36,6 @@ export async function listWebhooks(workspaceId: string): Promise<WebhookSummary[
   return webhooks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(toSummary);
 }
 
-/**
- * Delivery (actually POSTing to `targetUrl` on matching domain events, via the pre-reserved
- * `webhook-delivery` BullMQ queue) is deferred — there are no domain events to dispatch until
- * generic record CRUD ships in Phase 6. This is CRUD-only, same "stored, not yet enforced" scope
- * cut used for object/field permissions in Phase 5e.
- */
 export async function createWebhook(
   workspaceId: string,
   actorUserId: string,
@@ -52,7 +46,7 @@ export async function createWebhook(
       workspaceId,
       targetUrl: input.targetUrl,
       operations: input.operations,
-      secret: generateSecret(),
+      secret: input.secret || generateSecret(),
       description: input.description ?? null,
     }),
   );
@@ -73,6 +67,7 @@ export async function updateWebhook(
   webhook.targetUrl = input.targetUrl;
   webhook.operations = input.operations;
   webhook.description = input.description ?? null;
+  if (input.secret !== undefined) webhook.secret = input.secret || null;
   await webhookRepo().save(webhook);
 
   await record(workspaceId, actorUserId, 'webhook.updated', { targetUrl: webhook.targetUrl });
@@ -80,10 +75,9 @@ export async function updateWebhook(
 }
 
 /**
- * The secret is used to HMAC-SHA256-sign delivered payloads (an `X-Saasly-Signature` header) so the
- * receiver can verify authenticity — signing itself lands with real delivery in Phase 6 (see
- * `createWebhook`'s note). Regenerating invalidates the old value immediately since it isn't hashed
- * (it's a shared signing secret the operator copies into their receiver, not a login credential).
+ * The secret is used to HMAC-SHA256-sign delivered payloads (an `X-Webhook-Signature` header) so the
+ * receiver can verify authenticity. Regenerating invalidates the old value immediately since it isn't
+ * hashed (it's a shared signing secret the operator copies into their receiver, not a login credential).
  */
 export async function regenerateWebhookSecret(
   workspaceId: string,
