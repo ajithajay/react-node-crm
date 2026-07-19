@@ -101,12 +101,15 @@ function FieldValueDisplay({ field, value }: { field: DataModelField; value: unk
   }
 }
 
-/** Field types edited inline (Enter commits); composite/picker types commit on close only. */
+/** Field types edited inline (Enter commits); multi-input composite/picker types commit on close only. */
 const ENTER_COMMITS: ReadonlySet<string> = new Set([
   FieldMetadataType.TEXT,
   FieldMetadataType.NUMBER,
   FieldMetadataType.RATING,
   FieldMetadataType.UUID,
+  FieldMetadataType.EMAILS,
+  FieldMetadataType.LINKS,
+  FieldMetadataType.PHONES,
 ]);
 
 function normalizeDraft(field: DataModelField, draft: unknown): unknown {
