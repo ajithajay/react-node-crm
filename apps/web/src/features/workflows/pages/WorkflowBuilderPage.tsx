@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Copy, Loader2, Play, Power } from 'lucide-react';
+import { ArrowLeft, Copy, GitBranch, History, Loader2, Play, Power, Trash2 } from 'lucide-react';
 import {
   TRIGGER_STEP_ID,
   WorkflowActionType,
@@ -41,6 +41,8 @@ export function WorkflowBuilderPage() {
   };
   const activateMutation = useMutation({ mutationFn: () => workflowApi.activate(id!), onSuccess: invalidate });
   const deactivateMutation = useMutation({ mutationFn: () => workflowApi.deactivate(id!), onSuccess: invalidate });
+  const newVersionMutation = useMutation({ mutationFn: () => editor.createDraft() });
+  const discardDraftMutation = useMutation({ mutationFn: () => editor.discardDraft() });
   const duplicateMutation = useMutation({
     mutationFn: () => workflowApi.duplicate(id!),
     onSuccess: (copy) => navigate(`/workflows/${copy.id}`),
@@ -59,11 +61,13 @@ export function WorkflowBuilderPage() {
   }
 
   const workflow = editor.workflow;
-  const isActive = workflow.statuses.includes('ACTIVE');
+  const hasActiveVersion = workflow.statuses.includes('ACTIVE');
+  const hasDraftVersion = workflow.statuses.includes('DRAFT');
+  const canDiscardDraft = hasDraftVersion && workflow.versions.length > 1;
 
   const handleSelect = (nodeId: string) => {
     if (nodeId === TRIGGER_STEP_ID && !editor.trigger) {
-      setTriggerPickerOpen(true);
+      if (editor.isEditable) setTriggerPickerOpen(true);
       return;
     }
     setSelectedId(nodeId);
@@ -101,6 +105,12 @@ export function WorkflowBuilderPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/workflows/${id}/versions`)}>
+            <History className="size-4" /> Versions
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/workflows/runs?workflowId=${id}`)}>
+            <GitBranch className="size-4" /> See Runs
+          </Button>
           <Button variant="outline" size="sm" onClick={() => duplicateMutation.mutate()}>
             <Copy className="size-4" /> Duplicate
           </Button>
@@ -112,21 +122,51 @@ export function WorkflowBuilderPage() {
           >
             <Play className="size-4" /> Run
           </Button>
-          {isActive ? (
-            <Button variant="outline" size="sm" onClick={() => deactivateMutation.mutate()}>
-              <Power className="size-4" /> Deactivate
-            </Button>
-          ) : (
-            <Button size="sm" onClick={() => activateMutation.mutate()}>
-              <Play className="size-4" /> Activate
+
+          {hasDraftVersion && (
+            <>
+              {canDiscardDraft && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive"
+                  disabled={discardDraftMutation.isPending}
+                  onClick={() => discardDraftMutation.mutate()}
+                >
+                  <Trash2 className="size-4" /> Discard Draft
+                </Button>
+              )}
+              <Button size="sm" onClick={() => activateMutation.mutate()}>
+                <Play className="size-4" /> Activate
+              </Button>
+            </>
+          )}
+
+          {!hasDraftVersion && hasActiveVersion && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => deactivateMutation.mutate()}>
+                <Power className="size-4" /> Deactivate
+              </Button>
+              <Button size="sm" onClick={() => newVersionMutation.mutate()} disabled={newVersionMutation.isPending}>
+                New Version
+              </Button>
+            </>
+          )}
+
+          {!hasDraftVersion && !hasActiveVersion && (
+            <Button size="sm" onClick={() => newVersionMutation.mutate()} disabled={newVersionMutation.isPending}>
+              New Version
             </Button>
           )}
         </div>
       </div>
 
-      {(activateMutation.isError || deactivateMutation.isError) && (
+      {(activateMutation.isError || deactivateMutation.isError || newVersionMutation.isError || discardDraftMutation.isError) && (
         <p className="px-6 pt-3 text-sm text-destructive">
-          {(activateMutation.error as Error)?.message ?? (deactivateMutation.error as Error)?.message}
+          {(activateMutation.error as Error)?.message ??
+            (deactivateMutation.error as Error)?.message ??
+            (newVersionMutation.error as Error)?.message ??
+            (discardDraftMutation.error as Error)?.message}
         </p>
       )}
 
@@ -135,6 +175,7 @@ export function WorkflowBuilderPage() {
           trigger={editor.trigger}
           steps={editor.steps}
           selectedId={selectedId}
+          readonly={!editor.isEditable}
           onSelect={handleSelect}
           onAddAfter={handleAddAfter}
         />
@@ -192,6 +233,7 @@ export function WorkflowBuilderPage() {
         trigger={editor.trigger}
         steps={editor.steps}
         workflowId={id!}
+        readOnly={!editor.isEditable}
         onClose={() => setSelectedId(null)}
         onUpdateTrigger={editor.updateTrigger}
         onChangeTrigger={() => {

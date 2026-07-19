@@ -52,6 +52,7 @@ export const AUDIT_LOG_ACTIONS = [
   'workflow.activated',
   'workflow.deactivated',
   'workflow.version_created',
+  'workflow.draft_discarded',
   'workflow.run_triggered',
 ] as const;
 export type AuditLogAction = (typeof AUDIT_LOG_ACTIONS)[number];

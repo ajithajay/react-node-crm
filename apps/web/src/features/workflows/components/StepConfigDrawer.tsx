@@ -15,6 +15,8 @@ interface Props {
   trigger: WorkflowTrigger | null;
   steps: WorkflowStep[];
   workflowId: string;
+  /** True while viewing a non-draft (e.g. ACTIVE) version — disables every edit control. */
+  readOnly?: boolean;
   onClose: () => void;
   onUpdateTrigger: (trigger: WorkflowTrigger) => void;
   onChangeTrigger: () => void;
@@ -35,6 +37,7 @@ export function StepConfigDrawer({
   trigger,
   steps,
   workflowId,
+  readOnly = false,
   onClose,
   onUpdateTrigger,
   onChangeTrigger,
@@ -68,7 +71,7 @@ export function StepConfigDrawer({
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-col gap-4 p-4">
+        <fieldset disabled={readOnly} className="m-0 flex flex-col gap-4 border-0 p-4">
           {isTrigger && trigger && (
             <>
               <Field label="Name">
@@ -127,7 +130,7 @@ export function StepConfigDrawer({
               </Button>
             </>
           )}
-        </div>
+        </fieldset>
       </SheetContent>
     </Sheet>
   );

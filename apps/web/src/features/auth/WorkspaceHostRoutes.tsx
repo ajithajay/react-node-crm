@@ -73,8 +73,8 @@ export function WorkspaceHostRoutes() {
           <Route path="/workflows" element={<WorkflowsListPage />} />
           <Route path="/workflows/runs" element={<WorkflowRunsListPage />} />
           <Route path="/workflows/runs/:runId" element={<WorkflowRunPage />} />
-          <Route path="/workflows/versions" element={<WorkflowVersionsListPage />} />
           <Route path="/workflows/:id" element={<WorkflowBuilderPage />} />
+          <Route path="/workflows/:id/versions" element={<WorkflowVersionsListPage />} />
 
           <Route path="/settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="/settings/profile" replace />} />

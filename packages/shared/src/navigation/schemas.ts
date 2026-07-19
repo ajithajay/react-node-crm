@@ -3,12 +3,16 @@ import { z } from 'zod';
 export const NAVIGATION_MENU_ITEM_TYPES = ['FOLDER', 'OBJECT', 'VIEW', 'LINK'] as const;
 export type NavigationMenuItemType = (typeof NAVIGATION_MENU_ITEM_TYPES)[number];
 
-/** `z.string().url()` accepts any scheme, including `javascript:`/`data:` — rendered unsanitized as
- * an anchor href, this would let a `javascript:` link execute when clicked. Only http(s) links. */
-const httpUrlSchema = z
+/**
+ * A LINK item's `link` is either an absolute http(s) URL (external, opens in a new tab) or an
+ * app-relative path starting with `/` (internal, rendered as a client-side route). Rejects
+ * `javascript:`/`data:` and other schemes that would execute unsanitized as an anchor href.
+ */
+const navigationLinkSchema = z
   .string()
-  .url()
-  .refine((value) => /^https?:\/\//i.test(value), { message: 'Link must use http or https' });
+  .refine((value) => /^https?:\/\//i.test(value) || /^\/[\w/-]*$/.test(value), {
+    message: 'Link must be an http(s) URL or an app-relative path starting with /',
+  });
 
 export const createNavigationMenuItemSchema = z.object({
   type: z.enum(NAVIGATION_MENU_ITEM_TYPES),
@@ -18,7 +22,7 @@ export const createNavigationMenuItemSchema = z.object({
   folderId: z.string().uuid().nullish(),
   targetObjectMetadataId: z.string().uuid().nullish(),
   viewId: z.string().uuid().nullish(),
-  link: httpUrlSchema.nullish(),
+  link: navigationLinkSchema.nullish(),
 });
 export type CreateNavigationMenuItemRequest = z.infer<typeof createNavigationMenuItemSchema>;
 

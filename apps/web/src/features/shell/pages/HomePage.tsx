@@ -1,8 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { LayoutDashboard, Workflow } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { meApi } from '@/lib/api-client';
-import { NAV_ITEMS } from '../nav-items';
+
+const HOME_SHORTCUTS = [
+  { label: 'Dashboards', path: '/dashboards', icon: LayoutDashboard },
+  { label: 'Workflows', path: '/workflows', icon: Workflow },
+];
 
 export function HomePage() {
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: meApi.get });
@@ -14,7 +19,7 @@ export function HomePage() {
         <p className="text-muted-foreground">Here's your workspace at a glance.</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {NAV_ITEMS.map((item) => (
+        {HOME_SHORTCUTS.map((item) => (
           <Link key={item.path} to={item.path}>
             <Card className="transition-colors hover:bg-muted/50">
               <CardHeader>

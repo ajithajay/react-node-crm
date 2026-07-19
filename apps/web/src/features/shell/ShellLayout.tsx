@@ -6,6 +6,7 @@ import { meApi } from '@/lib/api-client';
 import { useColorSchemeSync } from '@/lib/theme';
 import { LayoutCustomizationBar } from '@/features/layout-customization/LayoutCustomizationBar';
 import { LayoutCustomizationProvider } from '@/features/layout-customization/LayoutCustomizationContext';
+import { RunWorkflowActions } from '@/features/workflows/components/RunWorkflowActions';
 import { AppSidebar } from './AppSidebar';
 import { GlobalSearch } from './GlobalSearch';
 import { UserMenu } from './UserMenu';
@@ -25,6 +26,7 @@ export function ShellLayout() {
               <SidebarTrigger />
               <Separator orientation="vertical" className="h-4" />
               <div className="flex-1" />
+              <RunWorkflowActions availability="GLOBAL" buildPayload={() => ({})} />
               <GlobalSearch />
               <UserMenu me={me} />
             </header>

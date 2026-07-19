@@ -3,22 +3,15 @@ import { useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/lib/host';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FormFields, type FormFieldDef } from '../components/FormFields';
 
-interface FormField {
-  id: string;
-  name: string;
-  label: string;
-  type: string;
-}
 interface FormDef {
   workflowName: string;
   status: string;
   title: string;
-  fields: FormField[];
+  fields: FormFieldDef[];
 }
 
 /**
@@ -70,29 +63,7 @@ export function WorkflowFormPage() {
               }}
             >
               <h1 className="text-lg font-semibold">{form.title}</h1>
-              {form.fields.map((f) => (
-                <div key={f.id} className="flex flex-col gap-1.5">
-                  {f.type === 'BOOLEAN' ? (
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={!!values[f.name]}
-                        onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.checked }))}
-                      />
-                      {f.label}
-                    </label>
-                  ) : (
-                    <>
-                      <Label>{f.label}</Label>
-                      <Input
-                        type={f.type === 'NUMBER' ? 'number' : 'text'}
-                        value={String(values[f.name] ?? '')}
-                        onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      />
-                    </>
-                  )}
-                </div>
-              ))}
+              <FormFields fields={form.fields} values={values} onChange={setValues} />
               {submit.isError && <p className="text-sm text-destructive">Something went wrong. Try again.</p>}
               <Button type="submit" disabled={submit.isPending}>
                 Submit

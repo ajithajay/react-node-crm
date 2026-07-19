@@ -350,7 +350,9 @@ export function WorkspaceNav() {
 
   function ItemButton({ item, asSub = false }: { item: NavigationMenuItem; asSub?: boolean }): React.ReactElement {
     const Icon = getIcon(item.icon ?? (item.type === 'LINK' ? 'Link' : 'Circle'));
-    const external = item.type === 'LINK';
+    // A LINK item pointing at an app-relative path (e.g. `/dashboards`) is an internal route —
+    // render it as a client-side `Link`, not an external `target="_blank"` anchor.
+    const external = item.type === 'LINK' && !item.link?.startsWith('/');
     const style = item.color ? { color: TAG_COLORS[item.color]?.text } : undefined;
     const content = (
       <>

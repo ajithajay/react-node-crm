@@ -1,3 +1,4 @@
+import { IsNull, Not } from 'typeorm';
 import {
   WorkflowEntity,
   WorkflowVersionEntity,
@@ -7,6 +8,8 @@ import {
 import {
   buildCronPattern,
   buildInitialRunState,
+  ManualTriggerAvailability,
+  parseManualAvailability,
   WorkflowRunStatus,
   WorkflowStatus,
   WorkflowTriggerType,
@@ -15,6 +18,7 @@ import {
   type WorkflowDetail,
   type WorkflowRunDetail,
   type WorkflowRunQuery,
+  type WorkflowRunnableSummary,
   type WorkflowRunSummary,
   type WorkflowStep,
   type WorkflowSummary,
@@ -67,15 +71,25 @@ function toSummary(w: WorkflowEntity): WorkflowSummary {
   };
 }
 
-/** Aggregate workflow-level statuses from its versions (drives the list badge). */
+/**
+ * Aggregate workflow-level statuses from its versions (drives the list badge). Reflects the
+ * *current* meaningful state rather than a raw union — a stale DEACTIVATED/ARCHIVED version must
+ * not keep showing once a fresh DRAFT/ACTIVE version supersedes it.
+ */
 function computeStatuses(versions: WorkflowVersionEntity[]): WorkflowStatus[] {
-  const statuses = new Set<WorkflowStatus>();
-  for (const v of versions) {
-    if (v.status === WorkflowVersionStatus.DRAFT) statuses.add(WorkflowStatus.DRAFT);
-    if (v.status === WorkflowVersionStatus.ACTIVE) statuses.add(WorkflowStatus.ACTIVE);
-    if (v.status === WorkflowVersionStatus.DEACTIVATED) statuses.add(WorkflowStatus.DEACTIVATED);
+  const hasActive = versions.some((v) => v.status === WorkflowVersionStatus.ACTIVE);
+  const hasDraft = versions.some((v) => v.status === WorkflowVersionStatus.DRAFT);
+  const statuses: WorkflowStatus[] = [];
+  if (hasActive) statuses.push(WorkflowStatus.ACTIVE);
+  if (hasDraft) statuses.push(WorkflowStatus.DRAFT);
+  if (
+    !hasActive &&
+    !hasDraft &&
+    versions.some((v) => v.status === WorkflowVersionStatus.DEACTIVATED)
+  ) {
+    statuses.push(WorkflowStatus.DEACTIVATED);
   }
-  return [...statuses];
+  return statuses;
 }
 
 async function refreshStatuses(workflowId: string): Promise<WorkflowEntity> {
@@ -104,6 +118,48 @@ async function nextVersionName(workflowId: string): Promise<string> {
 export async function listWorkflows(workspaceId: string): Promise<WorkflowSummary[]> {
   const workflows = await workflowRepo().findBy({ workspaceId });
   return workflows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(toSummary);
+}
+
+/**
+ * List active workflows whose PUBLISHED version has a MANUAL trigger available on the given surface
+ * (global menu, a single record's action menu, or the bulk-selection bar) — and, for the
+ * SINGLE_RECORD/BULK_RECORDS surfaces, scoped to the given object. Powers "Run workflow" entry
+ * points outside the builder.
+ */
+export async function listRunnableWorkflows(
+  workspaceId: string,
+  availability: ManualTriggerAvailability,
+  objectNameSingular?: string,
+): Promise<WorkflowRunnableSummary[]> {
+  const workflows = await workflowRepo().find({
+    where: { workspaceId, lastPublishedVersionId: Not(IsNull()) },
+  });
+  if (!workflows.length) return [];
+
+  const publishedIds = workflows.map((w) => w.lastPublishedVersionId!).filter(Boolean);
+  const versions = await versionRepo().find({ where: publishedIds.map((id) => ({ id })) });
+  const versionById = new Map(versions.map((v) => [v.id, v]));
+
+  const results: WorkflowRunnableSummary[] = [];
+  for (const workflow of workflows) {
+    const version = versionById.get(workflow.lastPublishedVersionId!);
+    const trigger = version?.trigger as { type?: string; settings?: Record<string, unknown> } | null;
+    if (!trigger || trigger.type !== WorkflowTriggerType.MANUAL) continue;
+
+    const target = parseManualAvailability(trigger.settings);
+    if (target.type !== availability) continue;
+    if (availability !== ManualTriggerAvailability.GLOBAL && target.objectNameSingular !== objectNameSingular) {
+      continue;
+    }
+
+    results.push({
+      id: workflow.id,
+      name: workflow.name,
+      icon: (trigger.settings?.icon as string) ?? null,
+      isPinned: trigger.settings?.isPinned === true,
+    });
+  }
+  return results;
 }
 
 export async function getWorkflow(workspaceId: string, id: string): Promise<WorkflowDetail> {
@@ -225,6 +281,35 @@ export async function updateVersion(
   await versionRepo().save(version);
   await record(workspaceId, actorUserId, 'workflow.updated', { workflowId, versionId });
   return toVersionDetail(version);
+}
+
+/**
+ * Discard the workflow's current DRAFT version (abandoning unpublished edits). Refuses when there's
+ * no draft, or when the draft is the workflow's only version — nothing would remain for the builder
+ * to show.
+ */
+export async function discardDraft(
+  workspaceId: string,
+  workflowId: string,
+  actorUserId: string,
+): Promise<WorkflowDetail> {
+  const workflow = await workflowRepo().findOneBy({ id: workflowId, workspaceId });
+  if (!workflow) throw new NotFoundError('Workflow not found');
+
+  const versions = await versionRepo().findBy({ workflowId });
+  const draft = versions.find((v) => v.status === WorkflowVersionStatus.DRAFT);
+  if (!draft) throw new ConflictError('No draft version to discard');
+  if (versions.length === 1) {
+    throw new ConflictError('Cannot discard the only version of a workflow');
+  }
+
+  await versionRepo().remove(draft);
+  await refreshStatuses(workflowId);
+  await record(workspaceId, actorUserId, 'workflow.draft_discarded', {
+    workflowId,
+    versionId: draft.id,
+  });
+  return getWorkflow(workspaceId, workflowId);
 }
 
 export async function listVersions(

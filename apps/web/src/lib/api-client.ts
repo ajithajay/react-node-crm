@@ -31,6 +31,8 @@ import type {
   WorkflowVersionSummary,
   WorkflowRunSummary,
   WorkflowRunDetail,
+  WorkflowRunnableSummary,
+  ManualTriggerAvailability,
   UpdateWorkflowVersionRequest,
   MergeRecordsRequest,
 } from '@saasly/shared';
@@ -845,6 +847,8 @@ export const workflowApi = {
 
   listVersions: (id: string) => get<WorkflowVersionSummary[]>(`/workflows/${id}/versions`),
 
+  discardDraft: (id: string) => del<WorkflowDetail>(`/workflows/${id}/draft`),
+
   activate: (id: string) => post<WorkflowDetail>(`/workflows/${id}/activate`),
 
   deactivate: (id: string) => post<WorkflowDetail>(`/workflows/${id}/deactivate`),
@@ -854,9 +858,10 @@ export const workflowApi = {
   run: (id: string, payload?: Record<string, unknown>) =>
     post<WorkflowRunSummary>(`/workflows/${id}/run`, { payload: payload ?? {} }),
 
-  listRuns: (params?: { workflowId?: string; page?: number; pageSize?: number }) => {
+  listRuns: (params?: { workflowId?: string; status?: string; page?: number; pageSize?: number }) => {
     const q = new URLSearchParams();
     if (params?.workflowId) q.set('workflowId', params.workflowId);
+    if (params?.status) q.set('status', params.status);
     if (params?.page) q.set('page', String(params.page));
     if (params?.pageSize) q.set('pageSize', String(params.pageSize));
     const qs = q.toString();
@@ -875,7 +880,25 @@ export const workflowApi = {
 
   testCode: (code: string, params: Record<string, unknown>) =>
     post<{ result?: unknown; error?: string; durationMs?: number }>('/workflows/test/code', { code, params }),
+
+  listRunnable: (availability: ManualTriggerAvailability, objectName?: string) => {
+    const q = new URLSearchParams({ availability });
+    if (objectName) q.set('objectName', objectName);
+    return get<WorkflowRunnableSummary[]>(`/workflows/runnable?${q.toString()}`);
+  },
+
+  getPendingForm: (runId: string, stepId: string) => get<PendingForm>(`/workflows/runs/${runId}/form/${stepId}`),
+
+  submitPendingForm: (runId: string, stepId: string, values: Record<string, unknown>) =>
+    post<{ ok: true }>(`/workflows/runs/${runId}/form/${stepId}`, { values }),
 };
+
+export interface PendingForm {
+  workflowName: string;
+  status: string;
+  title: string;
+  fields: { id: string; name: string; label: string; type: string }[];
+}
 
 /** One cross-object match — powers the ⌘K command menu's quick-jump results. */
 export interface SearchResult {

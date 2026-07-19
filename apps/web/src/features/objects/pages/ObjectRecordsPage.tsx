@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { type DataModelField, dataModelApi, recordApi, viewApi } from '@/lib/api-client';
 import { getIcon } from '@/lib/icons';
+import { RunWorkflowActions } from '@/features/workflows/components/RunWorkflowActions';
 import type { CreateViewInput } from '../components/CreateViewDialog';
 import type { FilterCondition } from '../components/FilterBar';
 import { KanbanBoard } from '../components/KanbanBoard';
@@ -336,6 +337,14 @@ export function ObjectRecordsPage({ objectNamePlural }: { objectNamePlural: stri
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <RunWorkflowActions
+              availability="BULK_RECORDS"
+              objectNameSingular={object.nameSingular}
+              buildPayload={() => ({ objectNameSingular: object.nameSingular, recordIds: [...selected] })}
+              onRun={() => setSelected(new Set())}
+            />
+          )}
           {selected.size > 0 && (
             <Button variant="destructive" size="sm" onClick={() => void bulkDelete()}>
               Delete {selected.size}

@@ -29,6 +29,7 @@ import { TabEditPanel } from '../components/record-layout-editor/TabEditPanel';
 import { AddWidgetPanel } from '../components/record-layout-editor/AddWidgetPanel';
 import { getIcon } from '@/lib/icons';
 import { useLayoutCustomization } from '@/features/layout-customization/LayoutCustomizationContext';
+import { RunWorkflowActions } from '@/features/workflows/components/RunWorkflowActions';
 
 /** Activity widgets are singletons (one Timeline/Notes/Tasks/Files per layout); FIELDS and FIELD can
  * both be added any number of times — multiple "Fields group" widgets are allowed. */
@@ -263,6 +264,7 @@ export function RecordDetailPage() {
     enabled: !!objectNamePlural && !!recordId,
   });
 
+
   const isEditingLayout = !!objectId && pageLayout?.objectId === objectId;
   const requestedCustomize = searchParams.get('customize') === '1';
   const enteredRef = useRef(false);
@@ -354,6 +356,13 @@ export function RecordDetailPage() {
             </span>
           )}
         </div>
+
+        <RunWorkflowActions
+          className="ml-auto"
+          availability="SINGLE_RECORD"
+          objectNameSingular={object.nameSingular}
+          buildPayload={() => ({ objectNameSingular: object.nameSingular, recordId })}
+        />
       </div>
 
       <div className="flex min-h-0 flex-1">

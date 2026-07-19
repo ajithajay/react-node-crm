@@ -7,8 +7,6 @@ import { NotFoundError } from '../../lib/errors.js';
 const repo = () => dataSource.getRepository(NavigationMenuItemEntity);
 const objectRepo = () => dataSource.getRepository(ObjectMetadataEntity);
 
-/** Default sidebar order — Dashboards/Workflows have no backing object metadata, so they stay
- * hardcoded UI (not customizable) rather than modeled as nav items. */
 const DEFAULT_SIDEBAR_OBJECT_ORDER = ['company', 'person', 'opportunity', 'task', 'note'];
 
 async function resolveMemberId(userId: string, workspaceId: string): Promise<string> {
@@ -20,7 +18,8 @@ async function resolveMemberId(userId: string, workspaceId: string): Promise<str
 /** Every real object (standard or custom) only appears in the sidebar as an explicit
  * navigation_menu_item — there's no separate "Favorites" bucket. New members get the 5 standard
  * objects seeded once (lazily, on first read), matching this project's synthesize-on-read pattern
- * (e.g. `page-layout.service.ts#getPageLayout`) rather than a provisioning-time write. */
+ * (e.g. `page-layout.service.ts#getPageLayout`) rather than a provisioning-time write. Dashboards and
+ * Workflows have no backing object metadata, so they're seeded as plain LINK/FOLDER items instead. */
 async function seedDefaultItemsIfEmpty(workspaceId: string, workspaceMemberId: string): Promise<void> {
   const existing = await repo().count({ where: { workspaceId, workspaceMemberId } });
   if (existing > 0) return;
@@ -31,22 +30,76 @@ async function seedDefaultItemsIfEmpty(workspaceId: string, workspaceMemberId: s
   const toSeed = DEFAULT_SIDEBAR_OBJECT_ORDER.map((name) => objectByName.get(name)).filter(
     (o): o is ObjectMetadataEntity => !!o,
   );
-  if (!toSeed.length) return;
+
+  let position = 0;
+  if (toSeed.length) {
+    await repo().save(
+      toSeed.map((object) =>
+        repo().create({
+          workspaceId,
+          workspaceMemberId,
+          type: 'OBJECT',
+          label: object.labelPlural,
+          icon: object.icon,
+          color: null,
+          folderId: null,
+          targetObjectMetadataId: object.id,
+          viewId: null,
+          link: null,
+          position: position++,
+        }),
+      ),
+    );
+  }
 
   await repo().save(
-    toSeed.map((object, position) =>
+    repo().create({
+      workspaceId,
+      workspaceMemberId,
+      type: 'LINK',
+      label: 'Dashboards',
+      icon: 'LayoutDashboard',
+      color: null,
+      folderId: null,
+      targetObjectMetadataId: null,
+      viewId: null,
+      link: '/dashboards',
+      position: position++,
+    }),
+  );
+
+  const workflowsFolder = await repo().save(
+    repo().create({
+      workspaceId,
+      workspaceMemberId,
+      type: 'FOLDER',
+      label: 'Workflows',
+      icon: 'Workflow',
+      color: null,
+      folderId: null,
+      targetObjectMetadataId: null,
+      viewId: null,
+      link: null,
+      position: position++,
+    }),
+  );
+  await repo().save(
+    [
+      { label: 'All Workflows', link: '/workflows' },
+      { label: 'All Runs', link: '/workflows/runs' },
+    ].map((child, childPosition) =>
       repo().create({
         workspaceId,
         workspaceMemberId,
-        type: 'OBJECT',
-        label: object.labelPlural,
-        icon: object.icon,
+        type: 'LINK',
+        label: child.label,
+        icon: null,
         color: null,
-        folderId: null,
-        targetObjectMetadataId: object.id,
+        folderId: workflowsFolder.id,
+        targetObjectMetadataId: null,
         viewId: null,
-        link: null,
-        position,
+        link: child.link,
+        position: childPosition,
       }),
     ),
   );

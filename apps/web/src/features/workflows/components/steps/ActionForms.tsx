@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Field, VariableInput } from './fields';
+import { CodeEditor } from './CodeEditor';
 import { RecordFieldValueInput, recordActionFields, recordFieldKey } from './record-fields';
 import { ConditionBuilder } from './ConditionBuilder';
 import { useObjectFields, useStepSources, type ConditionStepSource } from '../../lib/step-sources';
@@ -37,6 +38,21 @@ function getInput(step: WorkflowStep): Input {
 }
 function setInput(step: WorkflowStep, patch: Input): WorkflowStep {
   return { ...step, settings: { ...step.settings, input: { ...getInput(step), ...patch } } };
+}
+
+/**
+ * A body field may contain `{{path}}` variable tokens that aren't resolved until run time, so a
+ * literal `JSON.parse` would reject perfectly valid authored JSON. Substitute each token with `1` —
+ * valid whether the token sits bare (`{{x}}` → a number) or inside quotes (`"{{x}}"` → `"1"`) — then
+ * parse the result to check the surrounding JSON structure is sound.
+ */
+function isValidJsonTemplate(text: string): boolean {
+  try {
+    JSON.parse(text.replace(/\{\{[^{}]+\}\}/g, '1'));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function ActionForm({ step, steps, trigger, onChange }: Props) {
@@ -522,7 +538,16 @@ function HttpRequestForm({ step, onChange, sources }: { step: WorkflowStep; onCh
   const method = (input.method as string) ?? 'POST';
   const bodyType = (input.bodyType as string) ?? 'rawJson';
   const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
-  const set = (patch: Input) => onChange({ ...setInput(step, patch), valid: !!{ ...getInput(step), ...patch }.url });
+  const bodyInvalid = (next: Input) => {
+    if (!hasBody || (next.bodyType ?? bodyType) !== 'rawJson') return false;
+    const body = (next.body as string) ?? '';
+    return !!body && !isValidJsonTemplate(body);
+  };
+  const set = (patch: Input) => {
+    const next = { ...getInput(step), ...patch };
+    onChange({ ...setInput(step, patch), valid: !!next.url && !bodyInvalid(next) });
+  };
+  const bodyError = bodyInvalid(input) ? 'Invalid JSON' : null;
 
   const test = useMutation({
     mutationFn: () =>
@@ -579,6 +604,7 @@ function HttpRequestForm({ step, onChange, sources }: { step: WorkflowStep; onCh
               {bodyType === 'rawJson' && (
                 <Field label="Body (JSON)">
                   <VariableInput value={(input.body as string) ?? ''} onChange={(v) => set({ body: v })} sources={sources} multiline />
+                  {bodyError && <p className="mt-1 text-xs text-destructive">{bodyError}</p>}
                 </Field>
               )}
             </>
@@ -597,7 +623,7 @@ function HttpRequestForm({ step, onChange, sources }: { step: WorkflowStep; onCh
       <TabsContent value="test">
         <div className="flex flex-col gap-3">
           <p className="text-[11px] text-muted-foreground">Runs the request with the literal values above (variables are not resolved in a test).</p>
-          <Button size="sm" onClick={() => test.mutate()} disabled={test.isPending || !input.url}>
+          <Button size="sm" onClick={() => test.mutate()} disabled={test.isPending || !input.url || !!bodyError}>
             <Play className="size-4" /> Run test
           </Button>
           {test.data && <TestResult value={test.data} />}
@@ -717,11 +743,10 @@ function CodeForm({ step, onChange, sources }: { step: WorkflowStep; onChange: (
             </div>
           )}
           <Field label="JavaScript" hint="Sandboxed. `context` holds prior-step outputs + your inputs; `return` a JSON value.">
-            <Textarea
+            <CodeEditor
               value={code}
-              onChange={(e) => onChange({ ...setInput(step, { code: e.target.value }), valid: !!e.target.value })}
-              className="min-h-56 font-mono text-xs"
-              spellCheck={false}
+              onChange={(next) => onChange({ ...setInput(step, { code: next }), valid: !!next })}
+              placeholder="return context;"
             />
           </Field>
           <Field label="Expected output body" hint="Paste a sample output to reference its keys downstream.">

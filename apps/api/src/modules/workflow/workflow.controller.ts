@@ -4,6 +4,7 @@ import type {
   RunWorkflowRequest,
   UpdateWorkflowRequest,
   UpdateWorkflowVersionRequest,
+  WorkflowRunnableQuery,
   WorkflowRunQuery,
 } from '@saasly/shared';
 import * as workflowService from './workflow.service.js';
@@ -14,6 +15,14 @@ const actorUserIdOf = (req: Pick<Request, 'user'>): string => req.user!.id;
 
 export async function index(req: Request, res: Response): Promise<void> {
   res.status(200).json(await workflowService.listWorkflows(req.workspaceId!));
+}
+
+export async function runnable(req: Request, res: Response): Promise<void> {
+  // validate() has already replaced req.query with the parsed WorkflowRunnableQuery at runtime.
+  const query = req.query as unknown as WorkflowRunnableQuery;
+  res
+    .status(200)
+    .json(await workflowService.listRunnableWorkflows(req.workspaceId!, query.availability, query.objectName));
 }
 
 export async function show(req: Request<{ id: string }>, res: Response): Promise<void> {
@@ -69,6 +78,11 @@ export async function updateVersion(
   res.status(200).json(result);
 }
 
+export async function discardDraft(req: Request<{ id: string }>, res: Response): Promise<void> {
+  const result = await workflowService.discardDraft(req.workspaceId!, req.params.id, actorUserIdOf(req));
+  res.status(200).json(result);
+}
+
 export async function listVersions(req: Request<{ id: string }>, res: Response): Promise<void> {
   res.status(200).json(await workflowService.listVersions(req.workspaceId!, req.params.id));
 }
@@ -108,6 +122,23 @@ export async function listRuns(req: Request, res: Response): Promise<void> {
 
 export async function showRun(req: Request<{ runId: string }>, res: Response): Promise<void> {
   res.status(200).json(await workflowService.getRun(req.workspaceId!, req.params.runId));
+}
+
+export async function showPendingForm(
+  req: Request<{ runId: string; stepId: string }>,
+  res: Response,
+): Promise<void> {
+  res
+    .status(200)
+    .json(await workflowService.getPendingForm(req.workspaceId!, req.params.runId, req.params.stepId));
+}
+
+export async function submitPendingForm(
+  req: Request<{ runId: string; stepId: string }, unknown, { values?: Record<string, unknown> }>,
+  res: Response,
+): Promise<void> {
+  await workflowService.submitForm(req.workspaceId!, req.params.runId, req.params.stepId, req.body?.values ?? {});
+  res.status(200).json({ ok: true });
 }
 
 export async function testHttp(req: Request, res: Response): Promise<void> {

@@ -17,8 +17,9 @@ interface Flow {
 }
 
 /**
- * Manages the editable draft of a workflow: local trigger+steps state, lazy fork-on-first-edit (via
- * getDraft), and persistence to the draft version. Structural edits (add/delete/connect/config-save)
+ * Manages the editable draft of a workflow: local trigger+steps state, and persistence to the draft
+ * version. A draft is only forked explicitly via `createDraft()` (the builder's "New Version"
+ * button) — editing never silently forks one. Structural edits (add/delete/connect/config-save)
  * persist immediately — each is a discrete user action, so no debounce is needed.
  */
 export function useWorkflowEditor(workflowId: string) {
@@ -45,27 +46,39 @@ export function useWorkflowEditor(workflowId: string) {
     setDraftVersionId(current?.status === 'DRAFT' ? current.id : null);
   }, [workflow, workflowId]);
 
-  const ensureDraft = useCallback(async (): Promise<string> => {
+  /** Explicit "New Version" action: fork (or reuse) a DRAFT version and switch the editor onto it. */
+  const createDraft = useCallback(async (): Promise<string> => {
     if (draftVersionId) return draftVersionId;
     const draft = await workflowApi.getDraft(workflowId);
     setDraftVersionId(draft.id);
-    // The forked draft mirrors the source content we already hold locally.
+    setFlow({ trigger: draft.trigger, steps: draft.steps });
+    await queryClient.invalidateQueries({ queryKey: ['workflow', workflowId] });
     return draft.id;
-  }, [draftVersionId, workflowId]);
+  }, [draftVersionId, queryClient, workflowId]);
+
+  /** "Discard Draft": delete the in-progress draft and fall back to the workflow's active/last version. */
+  const discardDraft = useCallback(async (): Promise<void> => {
+    if (!draftVersionId) return;
+    const updated = await workflowApi.discardDraft(workflowId);
+    setDraftVersionId(null);
+    setFlow({ trigger: updated.currentVersion?.trigger ?? null, steps: updated.currentVersion?.steps ?? [] });
+    await queryClient.invalidateQueries({ queryKey: ['workflow', workflowId] });
+    await queryClient.invalidateQueries({ queryKey: ['workflows'] });
+  }, [draftVersionId, queryClient, workflowId]);
 
   const persist = useCallback(
     async (next: Flow) => {
+      if (!draftVersionId) return; // editing requires an explicit draft (see createDraft/"New Version")
       setFlow(next);
       setSaving(true);
       try {
-        const vid = await ensureDraft();
-        await workflowApi.updateVersion(workflowId, vid, { trigger: next.trigger, steps: next.steps });
+        await workflowApi.updateVersion(workflowId, draftVersionId, { trigger: next.trigger, steps: next.steps });
         await queryClient.invalidateQueries({ queryKey: ['workflow', workflowId] });
       } finally {
         setSaving(false);
       }
     },
-    [ensureDraft, queryClient, workflowId],
+    [draftVersionId, queryClient, workflowId],
   );
 
   // ── mutations ────────────────────────────────────────────────────────────────
@@ -131,6 +144,9 @@ export function useWorkflowEditor(workflowId: string) {
     trigger: flow.trigger,
     steps: flow.steps,
     saving,
+    isEditable: !!draftVersionId,
+    createDraft,
+    discardDraft,
     setTriggerType,
     updateTrigger,
     deleteTrigger,

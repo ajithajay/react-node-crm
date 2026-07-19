@@ -27,7 +27,8 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 /**
  * Global ⌘K / Ctrl+K quick-jump palette: cross-object full-text search (`GET /search`), grouped by
- * object type, navigating straight to the record on select.
+ * object type, navigating straight to the record on select. Running a GLOBAL workflow lives next to
+ * this button instead (`RunWorkflowActions` in `ShellLayout`), not in this palette.
  */
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);

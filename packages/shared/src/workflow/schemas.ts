@@ -248,6 +248,47 @@ export const workflowRunQuerySchema = z.object({
 });
 export type WorkflowRunQuery = z.infer<typeof workflowRunQuerySchema>;
 
+// ── Manual trigger "availability" (where a MANUAL-trigger workflow can be run from) ───────────────
+export const ManualTriggerAvailability = {
+  GLOBAL: 'GLOBAL',
+  SINGLE_RECORD: 'SINGLE_RECORD',
+  BULK_RECORDS: 'BULK_RECORDS',
+} as const;
+export type ManualTriggerAvailability =
+  (typeof ManualTriggerAvailability)[keyof typeof ManualTriggerAvailability];
+
+/** Parse a MANUAL trigger's `settings.availability` (an informal bag written by the builder's UI). */
+export function parseManualAvailability(
+  settings: Record<string, unknown> | undefined,
+): { type: ManualTriggerAvailability; objectNameSingular?: string } {
+  const raw = (settings?.availability ?? null) as { type?: string; objectNameSingular?: string } | null;
+  const type =
+    raw?.type === ManualTriggerAvailability.SINGLE_RECORD || raw?.type === ManualTriggerAvailability.BULK_RECORDS
+      ? raw.type
+      : ManualTriggerAvailability.GLOBAL;
+  return type === ManualTriggerAvailability.GLOBAL ? { type } : { type, objectNameSingular: raw?.objectNameSingular };
+}
+
+export const workflowRunnableQuerySchema = z.object({
+  availability: z.enum([
+    ManualTriggerAvailability.GLOBAL,
+    ManualTriggerAvailability.SINGLE_RECORD,
+    ManualTriggerAvailability.BULK_RECORDS,
+  ]),
+  objectName: z.string().optional(),
+});
+export type WorkflowRunnableQuery = z.infer<typeof workflowRunnableQuerySchema>;
+
+/** A MANUAL-trigger workflow runnable from a given surface (global menu, record page, bulk bar).
+ * `isPinned` drives the UI split: pinned workflows render as an always-visible one-click button,
+ * unpinned ones live inside a "Run workflow" dropdown. */
+export interface WorkflowRunnableSummary {
+  id: string;
+  name: string;
+  icon: string | null;
+  isPinned: boolean;
+}
+
 // Response shapes (not request-validated — plain interfaces, per shared conventions).
 export interface WorkflowVersionSummary {
   id: string;
