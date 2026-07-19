@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Eye, Flame, Pencil, Search, Trash, type LucideIcon } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { deriveOverridableCheckbox, OverridableCheckbox } from '@/components/OverridableCheckbox';
+import { RowLevelPermissionBuilder } from '@/components/RowLevelPermissionBuilder';
 import { getIcon } from '@/lib/icons';
 
 const FIELD_TYPE_LABEL: Record<string, string> = {
@@ -34,8 +36,10 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
 };
 import {
   ApiError,
+  dataModelApi,
   type FieldPermission,
   type RoleDetail,
+  type RowLevelPermissionCondition,
   roleApi,
 } from '@/lib/api-client';
 
@@ -72,11 +76,39 @@ export function RoleObjectPermissionPage() {
     queryFn: () => roleApi.listFieldPermissions(id!, objectMetadataId!),
     enabled: !!id && !!objectMetadataId,
   });
+  const { data: objectDetail } = useQuery({
+    queryKey: ['data-model-object', objectMetadataId],
+    queryFn: () => dataModelApi.getObject(objectMetadataId!),
+    enabled: !!objectMetadataId,
+  });
+  const { data: rowLevelPermissions } = useQuery({
+    queryKey: ['row-level-permissions', id, objectMetadataId],
+    queryFn: () => roleApi.listRowLevelPermissions(id!, objectMetadataId!),
+    enabled: !!id && !!objectMetadataId,
+  });
+
+  const [rowLevelDraft, setRowLevelDraft] = useState<RowLevelPermissionCondition[] | null>(null);
+  useEffect(() => {
+    setRowLevelDraft(null);
+  }, [id, objectMetadataId]);
+  const rowLevelConditions = rowLevelDraft ?? rowLevelPermissions ?? [];
+  const rowLevelDirty =
+    rowLevelDraft !== null && JSON.stringify(rowLevelDraft) !== JSON.stringify(rowLevelPermissions ?? []);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['object-permissions', id] });
     void queryClient.invalidateQueries({ queryKey: ['field-permissions', id, objectMetadataId] });
   };
+
+  const saveRowLevelPermissions = useMutation({
+    mutationFn: () => roleApi.replaceRowLevelPermissions(id!, objectMetadataId!, rowLevelConditions),
+    onSuccess: () => {
+      setRowLevelDraft(null);
+      void queryClient.invalidateQueries({ queryKey: ['row-level-permissions', id, objectMetadataId] });
+      setError(null);
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Something went wrong'),
+  });
 
   const patchObject = useMutation({
     mutationFn: (patch: Partial<Record<ObjectLevelKey, boolean | null>>) =>
@@ -299,6 +331,36 @@ export function RoleObjectPermissionPage() {
         <p className="text-sm text-muted-foreground">
           Field permissions are hidden because this role can't see records on this object.
         </p>
+      )}
+
+      {resolvedRead && objectDetail && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Row-Level Permission</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Restrict which {object.objectLabel.toLowerCase()} records this role can see, edit, or delete. Applies to
+              workspace members and API keys with this role; leave empty to allow all records this role can otherwise
+              access.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <RowLevelPermissionBuilder
+              fields={objectDetail.fields}
+              conditions={rowLevelConditions}
+              onChange={setRowLevelDraft}
+            />
+            {rowLevelDirty && (
+              <div className="flex items-center gap-2 pt-1">
+                <Button size="sm" onClick={() => saveRowLevelPermissions.mutate()} disabled={saveRowLevelPermissions.isPending}>
+                  Save rule
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setRowLevelDraft(null)}>
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

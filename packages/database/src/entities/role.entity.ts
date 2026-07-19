@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import type { LogicalOperator, RowLevelPermissionValueMode, ViewFilterOperand } from '@saasly/shared';
 
 @Entity({ name: 'roles' })
 @Index(['workspaceId', 'name'], { unique: true })
@@ -107,4 +108,41 @@ export class FieldPermissionEntity {
 
   @Column({ type: 'boolean', name: 'can_update', nullable: true })
   canUpdate!: boolean | null;
+}
+
+/**
+ * One condition of a role+object's row-level permission rule — a flat, ordered list combined with
+ * AND/OR (no nested groups, v1 scope). Applies uniformly to read/update/delete (no per-operation
+ * split) and to both workspace members and API keys. `valueMode: CURRENT_USER` resolves `value`
+ * against the caller's workspace-member id at query time instead of using the stored literal.
+ */
+@Entity({ name: 'row_level_permissions' })
+@Index(['roleId', 'objectMetadataId'])
+export class RowLevelPermissionEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'uuid', name: 'role_id' })
+  roleId!: string;
+
+  @Column({ type: 'uuid', name: 'object_metadata_id' })
+  objectMetadataId!: string;
+
+  @Column({ type: 'uuid', name: 'field_metadata_id' })
+  fieldMetadataId!: string;
+
+  @Column({ type: 'varchar' })
+  operand!: ViewFilterOperand;
+
+  @Column({ type: 'varchar', name: 'value_mode', default: 'LITERAL' })
+  valueMode!: RowLevelPermissionValueMode;
+
+  @Column({ type: 'jsonb', nullable: true })
+  value!: unknown;
+
+  @Column({ type: 'varchar', name: 'logical_operator', default: 'AND' })
+  logicalOperator!: LogicalOperator;
+
+  @Column({ type: 'int', default: 0 })
+  position!: number;
 }

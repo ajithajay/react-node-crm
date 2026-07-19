@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { PermissionFlagType } from '../metadata/permission-flag.js';
+import { ViewFilterOperand } from '../metadata/view-type.js';
+import { LogicalOperator, RowLevelPermissionValueMode } from './row-level-permission-type.js';
 
 /** Just a label — the internal `name` slug is derived server-side. */
 export const createRoleRequestSchema = z.object({
@@ -51,6 +53,31 @@ export const updateFieldPermissionRequestSchema = z.object({
   canUpdate: z.literal(false).nullable().optional(),
 });
 export type UpdateFieldPermissionRequest = z.infer<typeof updateFieldPermissionRequestSchema>;
+
+/**
+ * One condition in a row-level permission rule: "<field> <operand> <value>", where value is
+ * either a literal or the CURRENT_USER token (resolved against the caller's workspace member at
+ * query time). `logicalOperator` says how this condition joins the *previous* one in the rule's
+ * ordered list — ignored on the first condition. Flat list only, no nested AND/OR groups (v1 scope).
+ */
+const operandValues = Object.values(ViewFilterOperand) as [string, ...string[]];
+const valueModeValues = Object.values(RowLevelPermissionValueMode) as [string, ...string[]];
+const logicalOperatorValues = Object.values(LogicalOperator) as [string, ...string[]];
+
+export const rowLevelPermissionConditionSchema = z.object({
+  fieldMetadataId: z.string().uuid(),
+  operand: z.enum(operandValues),
+  valueMode: z.enum(valueModeValues).default(RowLevelPermissionValueMode.LITERAL),
+  value: z.unknown().optional(),
+  logicalOperator: z.enum(logicalOperatorValues).default(LogicalOperator.AND),
+});
+export type RowLevelPermissionCondition = z.infer<typeof rowLevelPermissionConditionSchema>;
+
+/** Replaces the full rule (ordered condition list) for a role+object in one call. Empty array clears it. */
+export const replaceRowLevelPermissionsRequestSchema = z.object({
+  conditions: z.array(rowLevelPermissionConditionSchema).max(20),
+});
+export type ReplaceRowLevelPermissionsRequest = z.infer<typeof replaceRowLevelPermissionsRequestSchema>;
 
 export const reassignMemberRoleRequestSchema = z.object({
   roleId: z.string().uuid(),

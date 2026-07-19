@@ -21,3 +21,5 @@ export * from './workspace-manager/standard-roles.seed.js';
 export * from './workspace-manager/page-layout.seed.js';
 export * from './workspace-manager/dashboard.seed.js';
 export * from './workspace-manager/workspace-manager.service.js';
+export * from './workspace-manager/backfill-search-vector.js';
+export * from './ddl/workspace-schema-manager.js';

@@ -5,6 +5,7 @@ import type {
   UpdateSettingsPermissionsRequest,
   UpdateObjectPermissionRequest,
   UpdateFieldPermissionRequest,
+  ReplaceRowLevelPermissionsRequest,
 } from '@saasly/shared';
 import * as roleService from './role.service.js';
 
@@ -95,6 +96,28 @@ export async function updateFieldPermission(
     req.workspaceId!,
     req.params.id,
     req.params.fieldMetadataId,
+    req.user!.id,
+    req.body,
+  );
+  res.status(200).json({ ok: true });
+}
+
+export async function listRowLevelPermissions(
+  req: Request<{ id: string; objectMetadataId: string }>,
+  res: Response,
+): Promise<void> {
+  const result = await roleService.listRowLevelPermissions(req.workspaceId!, req.params.id, req.params.objectMetadataId);
+  res.status(200).json(result);
+}
+
+export async function replaceRowLevelPermissions(
+  req: Request<{ id: string; objectMetadataId: string }, unknown, ReplaceRowLevelPermissionsRequest>,
+  res: Response,
+): Promise<void> {
+  await roleService.replaceRowLevelPermissions(
+    req.workspaceId!,
+    req.params.id,
+    req.params.objectMetadataId,
     req.user!.id,
     req.body,
   );

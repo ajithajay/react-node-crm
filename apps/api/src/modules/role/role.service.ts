@@ -6,26 +6,33 @@ import {
   ObjectPermissionEntity,
   RoleEntity,
   RolePermissionFlagEntity,
+  RowLevelPermissionEntity,
   UserEntity,
   WorkspaceEntity,
   WorkspaceMemberEntity,
 } from '@saasly/database';
 import {
   FieldMetadataType,
+  RowLevelPermissionValueMode,
+  ViewFilterOperand,
   type CreateRoleRequest,
   type UpdateRoleRequest,
   type UpdateSettingsPermissionsRequest,
   type UpdateObjectPermissionRequest,
   type UpdateFieldPermissionRequest,
+  type ReplaceRowLevelPermissionsRequest,
+  type LogicalOperator,
 } from '@saasly/shared';
 import { dataSource } from '../../lib/db.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors.js';
+import { buildFilterableFieldIndex } from '../../lib/query-parser.js';
 import { record } from '../audit-log/audit-log.service.js';
 
 const roleRepo = () => dataSource.getRepository(RoleEntity);
 const flagRepo = () => dataSource.getRepository(RolePermissionFlagEntity);
 const objectPermissionRepo = () => dataSource.getRepository(ObjectPermissionEntity);
 const fieldPermissionRepo = () => dataSource.getRepository(FieldPermissionEntity);
+const rowLevelPermissionRepo = () => dataSource.getRepository(RowLevelPermissionEntity);
 const memberRepo = () => dataSource.getRepository(WorkspaceMemberEntity);
 const workspaceRepo = () => dataSource.getRepository(WorkspaceEntity);
 
@@ -167,6 +174,7 @@ export async function deleteRole(workspaceId: string, roleId: string, actorUserI
   await flagRepo().delete({ roleId });
   await objectPermissionRepo().delete({ roleId });
   await fieldPermissionRepo().delete({ roleId });
+  await rowLevelPermissionRepo().delete({ roleId });
   await roleRepo().delete({ id: roleId });
 
   await record(workspaceId, actorUserId, 'role.deleted', { roleId, name: role.name });
@@ -277,6 +285,7 @@ export async function removeObjectPermission(
       ),
     ),
   });
+  await rowLevelPermissionRepo().delete({ roleId, objectMetadataId });
   await record(workspaceId, actorUserId, 'role.permissions_updated', { roleId, objectMetadataId, removed: true });
 }
 
@@ -429,6 +438,111 @@ export async function updateFieldPermission(
   }
 
   await record(workspaceId, actorUserId, 'role.permissions_updated', { roleId, fieldMetadataId });
+}
+
+// ---- Row-level permissions ----
+//
+// A single, flat, ordered list of conditions per role+object combined with each condition's own
+// AND/OR (no nested groups) — applies uniformly to read/update/delete and to both workspace
+// members and API keys (no per-operation split, no agent/AI applicability). Replaced as a whole
+// on every save; see apps/api/src/modules/record/row-level-permission.ts for enforcement.
+
+export interface RowLevelPermissionConditionSummary {
+  fieldMetadataId: string;
+  fieldLabel: string;
+  operand: string;
+  valueMode: string;
+  value: unknown;
+  logicalOperator: string;
+}
+
+export async function listRowLevelPermissions(
+  workspaceId: string,
+  roleId: string,
+  objectMetadataId: string,
+): Promise<RowLevelPermissionConditionSummary[]> {
+  const [role, object] = await Promise.all([
+    roleRepo().findOneBy({ id: roleId, workspaceId }),
+    dataSource.getRepository(ObjectMetadataEntity).findOneBy({ id: objectMetadataId, workspaceId }),
+  ]);
+  if (!role) throw new NotFoundError('Role not found');
+  if (!object) throw new NotFoundError('Object not found');
+
+  const [rules, fields] = await Promise.all([
+    rowLevelPermissionRepo().find({ where: { roleId, objectMetadataId }, order: { position: 'ASC' } }),
+    dataSource.getRepository(FieldMetadataEntity).findBy({ workspaceId, objectMetadataId, isActive: true }),
+  ]);
+  const labelByFieldId = new Map(fields.map((f) => [f.id, f.label]));
+
+  return rules.map((rule) => ({
+    fieldMetadataId: rule.fieldMetadataId,
+    fieldLabel: labelByFieldId.get(rule.fieldMetadataId) ?? 'Unknown field',
+    operand: rule.operand,
+    valueMode: rule.valueMode,
+    value: rule.value,
+    logicalOperator: rule.logicalOperator,
+  }));
+}
+
+export async function replaceRowLevelPermissions(
+  workspaceId: string,
+  roleId: string,
+  objectMetadataId: string,
+  actorUserId: string,
+  input: ReplaceRowLevelPermissionsRequest,
+): Promise<void> {
+  const [role, object] = await Promise.all([
+    roleRepo().findOneBy({ id: roleId, workspaceId }),
+    dataSource.getRepository(ObjectMetadataEntity).findOneBy({ id: objectMetadataId, workspaceId }),
+  ]);
+  if (!role) throw new NotFoundError('Role not found');
+  if (!object) throw new NotFoundError('Object not found');
+
+  const fields = await dataSource
+    .getRepository(FieldMetadataEntity)
+    .findBy({ workspaceId, objectMetadataId, isActive: true });
+  const filterable = buildFilterableFieldIndex(fields);
+  const filterableFieldIds = new Set([...filterable.values()].map((f) => f.field.id));
+
+  for (const condition of input.conditions) {
+    if (!filterableFieldIds.has(condition.fieldMetadataId)) {
+      throw new ConflictError('One or more conditions reference a field that cannot be used in a row-level rule');
+    }
+    if (condition.valueMode === RowLevelPermissionValueMode.CURRENT_USER) {
+      const isEqualityOperand =
+        condition.operand === ViewFilterOperand.IS || condition.operand === ViewFilterOperand.IS_NOT;
+      if (!isEqualityOperand) {
+        throw new ConflictError('"Current user" conditions only support the "is"/"is not" operators');
+      }
+    }
+  }
+
+  await dataSource.transaction(async (manager) => {
+    await manager.delete(RowLevelPermissionEntity, { roleId, objectMetadataId });
+    if (input.conditions.length > 0) {
+      await manager.save(
+        RowLevelPermissionEntity,
+        input.conditions.map((condition, position) =>
+          manager.create(RowLevelPermissionEntity, {
+            roleId,
+            objectMetadataId,
+            fieldMetadataId: condition.fieldMetadataId,
+            operand: condition.operand as ViewFilterOperand,
+            valueMode: condition.valueMode as RowLevelPermissionValueMode,
+            value: condition.valueMode === RowLevelPermissionValueMode.CURRENT_USER ? null : (condition.value ?? null),
+            logicalOperator: (position === 0 ? 'AND' : condition.logicalOperator) as LogicalOperator,
+            position,
+          }),
+        ),
+      );
+    }
+  });
+
+  await record(workspaceId, actorUserId, 'role.permissions_updated', {
+    roleId,
+    objectMetadataId,
+    rowLevelPermission: true,
+  });
 }
 
 // ---- Assignment ----

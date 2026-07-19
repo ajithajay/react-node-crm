@@ -6,6 +6,7 @@ import {
   RolePermissionFlagEntity,
   ObjectPermissionEntity,
   FieldPermissionEntity,
+  RowLevelPermissionEntity,
 } from './role.entity.js';
 import { ObjectMetadataEntity } from './object-metadata.entity.js';
 import { FieldMetadataEntity } from './field-metadata.entity.js';
@@ -69,6 +70,7 @@ export const CORE_ENTITIES = [
   RolePermissionFlagEntity,
   ObjectPermissionEntity,
   FieldPermissionEntity,
+  RowLevelPermissionEntity,
   ObjectMetadataEntity,
   FieldMetadataEntity,
   IndexMetadataEntity,

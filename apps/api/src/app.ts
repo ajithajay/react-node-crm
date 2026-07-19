@@ -29,6 +29,7 @@ import { navigationRouter } from './modules/navigation/navigation.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { workflowRouter } from './modules/workflow/workflow.routes.js';
 import { workflowTriggerRouter } from './modules/workflow/workflow-trigger.routes.js';
+import { searchRouter } from './modules/search/search.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -54,6 +55,7 @@ export function createApp(): Application {
   app.use('/webhooks', webhookRouter);
   app.use('/open-api', openApiRouter);
   app.use('/rest', recordRouter);
+  app.use('/search', searchRouter);
 
   // External REST API (v1) — API-key auth only, workspace-level rate limit. Specific resource
   // routers are mounted before the generic `recordApiV1Router` catch-all (`/:objectNamePlural`)

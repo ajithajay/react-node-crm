@@ -16,6 +16,8 @@ import {
   type ActorRole,
   type Principal,
 } from './record-permission.js';
+import { applyRowLevelPermission } from './row-level-permission.js';
+import { updateSearchVector } from './search-vector.js';
 
 const objectRepo = () => dataSource.getRepository(ObjectMetadataEntity);
 const fieldRepo = () => dataSource.getRepository(FieldMetadataEntity);
@@ -61,6 +63,7 @@ export async function listRecords(
   const repository = await getRepository(workspaceId, object);
   const alias = object.nameSingular;
   const qb = repository.createQueryBuilder(alias);
+  await applyRowLevelPermission(qb, alias, actor, object.id, fields);
   const { page, pageSize } = applyRecordListQuery(qb, alias, fields, query);
 
   const [rows, total] = await qb.getManyAndCount();
@@ -89,7 +92,10 @@ export async function getRecord(
   );
 
   const repository = await getRepository(workspaceId, object);
-  const row = await repository.findOneBy({ id });
+  const alias = object.nameSingular;
+  const qb = repository.createQueryBuilder(alias).where(`"${alias}"."id" = :id`, { id });
+  await applyRowLevelPermission(qb, alias, actor, object.id, fields);
+  const row = await qb.getOne();
   if (!row) throw new NotFoundError('Record not found');
 
   return decodeRecord(fields, row as Record<string, unknown>, restrictedForRead);
@@ -239,6 +245,7 @@ export async function createRecord(
 
   const repository = await getRepository(workspaceId, object);
   const saved = await repository.save(repository.create(data));
+  await updateSearchVector(repository, fields, saved as Record<string, unknown>);
   const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
   await afterRecordMutation(workspaceId, object, fields, decoded.id as string, 'created', actor, decoded);
   return decoded;
@@ -262,7 +269,10 @@ export async function updateRecord(
   );
 
   const repository = await getRepository(workspaceId, object);
-  const existing = await repository.findOneBy({ id });
+  const alias = object.nameSingular;
+  const findQb = repository.createQueryBuilder(alias).where(`"${alias}"."id" = :id`, { id });
+  await applyRowLevelPermission(findQb, alias, actor, object.id, fields);
+  const existing = await findQb.getOne();
   if (!existing) throw new NotFoundError('Record not found');
   const before = decodeRecord(fields, existing as Record<string, unknown>, restrictedForRead);
 
@@ -271,6 +281,7 @@ export async function updateRecord(
   for (const [suffix, value] of Object.entries(stamp)) data[`updated_by_${suffix}`] = value;
 
   const saved = await repository.save(repository.merge(existing, data));
+  await updateSearchVector(repository, fields, saved as Record<string, unknown>);
   const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
   const diff = computeFieldDiff(fields, body, before, decoded);
   await afterRecordMutation(workspaceId, object, fields, id, 'updated', actor, decoded, diff);
@@ -288,8 +299,12 @@ export async function deleteRecord(
   const actor = await resolveActorRole(principal, workspaceId);
   await assertObjectAccess(actor, object.id, hard ? 'destroy' : 'softDelete');
 
+  const fields = await resolveActiveFields(workspaceId, object.id);
   const repository = await getRepository(workspaceId, object);
-  const existing = await repository.findOneBy({ id });
+  const alias = object.nameSingular;
+  const qb = repository.createQueryBuilder(alias).where(`"${alias}"."id" = :id`, { id });
+  await applyRowLevelPermission(qb, alias, actor, object.id, fields);
+  const existing = await qb.getOne();
   if (!existing) throw new NotFoundError('Record not found');
 
   if (hard) await repository.remove(existing);
@@ -329,6 +344,7 @@ export async function exportRecordsCsv(
   const repository = await getRepository(workspaceId, object);
   const alias = object.nameSingular;
   const qb = repository.createQueryBuilder(alias);
+  await applyRowLevelPermission(qb, alias, actor, object.id, fields);
   applyRecordListQuery(qb, alias, fields, { ...query, page: 1, pageSize: CSV_EXPORT_MAX_ROWS });
 
   const rows = await qb.getMany();
@@ -378,6 +394,7 @@ export async function importRecordsCsv(
         data[`updated_by_${suffix}`] = value;
       }
       const saved = await repository.save(repository.create(data));
+      await updateSearchVector(repository, fields, saved as Record<string, unknown>);
       const decoded = decodeRecord(fields, saved as Record<string, unknown>, restrictedForRead);
       await afterRecordMutation(workspaceId, object, fields, decoded.id as string, 'created', actor, decoded);
       summary.created += 1;

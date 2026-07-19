@@ -7,6 +7,7 @@ import { useColorSchemeSync } from '@/lib/theme';
 import { LayoutCustomizationBar } from '@/features/layout-customization/LayoutCustomizationBar';
 import { LayoutCustomizationProvider } from '@/features/layout-customization/LayoutCustomizationContext';
 import { AppSidebar } from './AppSidebar';
+import { GlobalSearch } from './GlobalSearch';
 import { UserMenu } from './UserMenu';
 
 export function ShellLayout() {
@@ -24,6 +25,7 @@ export function ShellLayout() {
               <SidebarTrigger />
               <Separator orientation="vertical" className="h-4" />
               <div className="flex-1" />
+              <GlobalSearch />
               <UserMenu me={me} />
             </header>
             <div className="flex-1 overflow-auto p-6">

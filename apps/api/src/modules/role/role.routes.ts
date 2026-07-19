@@ -5,6 +5,7 @@ import {
   updateSettingsPermissionsRequestSchema,
   updateObjectPermissionRequestSchema,
   updateFieldPermissionRequestSchema,
+  replaceRowLevelPermissionsRequestSchema,
   PermissionFlagType,
 } from '@saasly/shared';
 import { authGuard } from '../../middleware/auth-guard.js';
@@ -80,6 +81,21 @@ roleRouter.put(
   requireRolesPermission,
   validate({ body: updateFieldPermissionRequestSchema }),
   roleController.updateFieldPermission,
+);
+
+roleRouter.get(
+  '/:id/objects/:objectMetadataId/row-level-permissions',
+  authGuard,
+  workspaceGuard,
+  roleController.listRowLevelPermissions,
+);
+roleRouter.put(
+  '/:id/objects/:objectMetadataId/row-level-permissions',
+  authGuard,
+  workspaceGuard,
+  requireRolesPermission,
+  validate({ body: replaceRowLevelPermissionsRequestSchema }),
+  roleController.replaceRowLevelPermissions,
 );
 
 roleRouter.get('/:id/members', authGuard, workspaceGuard, roleController.listRoleMembers);

@@ -1,4 +1,4 @@
-import type { SelectQueryBuilder } from 'typeorm';
+import { Brackets, type SelectQueryBuilder } from 'typeorm';
 import type { FieldMetadataEntity } from '@saasly/database';
 import {
   FieldMetadataType,
@@ -99,8 +99,16 @@ function resolveRelativeRange(value: unknown): { from: Date | null; to: Date | n
   }
 }
 
+/** Adds one WHERE fragment — `qb.andWhere`, or a `Brackets` sub-builder's `where`/`andWhere`/`orWhere`. */
+export type ConditionSink = (sql: string, params?: Record<string, unknown>) => void;
+
+/**
+ * Builds one condition's SQL fragment and hands it to `add` (instead of calling `qb.andWhere`
+ * directly), so callers can combine multiple conditions with AND *or* OR (row-level permission
+ * rules) as well as the simple AND-only case (view/record filters).
+ */
 function applyCondition(
-  qb: SelectQueryBuilder<object>,
+  add: ConditionSink,
   alias: string,
   filterable: FilterableField,
   operand: ViewFilterOperand,
@@ -114,54 +122,54 @@ function applyCondition(
   switch (operand) {
     case ViewFilterOperand.IS: {
       const name = p();
-      qb.andWhere(`${col} = :${name}`, { [name]: value });
+      add(`${col} = :${name}`, { [name]: value });
       return;
     }
     case ViewFilterOperand.IS_NOT: {
       const name = p();
-      qb.andWhere(`${col} != :${name}`, { [name]: value });
+      add(`${col} != :${name}`, { [name]: value });
       return;
     }
     case ViewFilterOperand.IS_EMPTY:
-      qb.andWhere(`${col} IS NULL`);
+      add(`${col} IS NULL`);
       return;
     case ViewFilterOperand.IS_NOT_EMPTY:
-      qb.andWhere(`${col} IS NOT NULL`);
+      add(`${col} IS NOT NULL`);
       return;
     case ViewFilterOperand.CONTAINS: {
       if (!TEXT_LIKE_TYPES.has(field.type)) throw new AppError('CONTAINS only supports text fields', 400);
       const name = p();
-      qb.andWhere(`${col} ILIKE :${name}`, { [name]: `%${String(value)}%` });
+      add(`${col} ILIKE :${name}`, { [name]: `%${String(value)}%` });
       return;
     }
     case ViewFilterOperand.DOES_NOT_CONTAIN: {
       if (!TEXT_LIKE_TYPES.has(field.type)) throw new AppError('DOES_NOT_CONTAIN only supports text fields', 400);
       const name = p();
-      qb.andWhere(`(${col} NOT ILIKE :${name} OR ${col} IS NULL)`, { [name]: `%${String(value)}%` });
+      add(`(${col} NOT ILIKE :${name} OR ${col} IS NULL)`, { [name]: `%${String(value)}%` });
       return;
     }
     case ViewFilterOperand.LESS_THAN_OR_EQUAL: {
       if (!COMPARABLE_TYPES.has(field.type)) throw new AppError('Operand not supported for this field type', 400);
       const name = p();
-      qb.andWhere(`${col} <= :${name}`, { [name]: value });
+      add(`${col} <= :${name}`, { [name]: value });
       return;
     }
     case ViewFilterOperand.GREATER_THAN_OR_EQUAL: {
       if (!COMPARABLE_TYPES.has(field.type)) throw new AppError('Operand not supported for this field type', 400);
       const name = p();
-      qb.andWhere(`${col} >= :${name}`, { [name]: value });
+      add(`${col} >= :${name}`, { [name]: value });
       return;
     }
     case ViewFilterOperand.IS_BEFORE: {
       if (!DATE_LIKE_TYPES.has(field.type)) throw new AppError('IS_BEFORE only supports date fields', 400);
       const name = p();
-      qb.andWhere(`${col} < :${name}`, { [name]: value });
+      add(`${col} < :${name}`, { [name]: value });
       return;
     }
     case ViewFilterOperand.IS_AFTER: {
       if (!DATE_LIKE_TYPES.has(field.type)) throw new AppError('IS_AFTER only supports date fields', 400);
       const name = p();
-      qb.andWhere(`${col} > :${name}`, { [name]: value });
+      add(`${col} > :${name}`, { [name]: value });
       return;
     }
     case ViewFilterOperand.IS_RELATIVE: {
@@ -169,11 +177,11 @@ function applyCondition(
       const { from, to } = resolveRelativeRange(value);
       if (from) {
         const name = p();
-        qb.andWhere(`${col} >= :${name}`, { [name]: from });
+        add(`${col} >= :${name}`, { [name]: from });
       }
       if (to) {
         const name = p();
-        qb.andWhere(`${col} < :${name}`, { [name]: to });
+        add(`${col} < :${name}`, { [name]: to });
       }
       return;
     }
@@ -198,8 +206,46 @@ export function applyFilterConditions(
   for (const condition of conditions) {
     const target = filterable.get(condition.field);
     if (!target) throw new AppError(`Unknown or unfilterable field "${condition.field}"`, 400);
-    applyCondition(qb, alias, target, condition.operand as ViewFilterOperand, condition.value, paramSeq);
+    applyCondition(
+      (sql, params) => qb.andWhere(sql, params),
+      alias,
+      target,
+      condition.operand as ViewFilterOperand,
+      condition.value,
+      paramSeq,
+    );
   }
+}
+
+/**
+ * Applies a flat, ordered list of conditions combined with each condition's own AND/OR to the
+ * *previous* one (the first condition's operator is ignored) — used by row-level permission rules,
+ * which unlike view/record filters aren't AND-only. Wraps the whole thing in one `Brackets` group
+ * so it composes safely as a single `qb.andWhere(...)` alongside any other WHERE clauses.
+ */
+export function applyLogicalConditions(
+  qb: SelectQueryBuilder<object>,
+  alias: string,
+  filterable: Map<string, FilterableField>,
+  conditions: { fieldMetadataId: string; columnKey: string; operand: ViewFilterOperand; value: unknown; logicalOperator: 'AND' | 'OR' }[],
+  paramSeq: { n: number } = { n: 0 },
+): void {
+  if (conditions.length === 0) return;
+
+  qb.andWhere(
+    new Brackets((bqb) => {
+      conditions.forEach((condition, index) => {
+        const target = filterable.get(condition.columnKey);
+        if (!target) throw new AppError(`Unknown or unfilterable field "${condition.columnKey}"`, 400);
+        const sink: ConditionSink = (sql, params) => {
+          if (index === 0) bqb.where(sql, params);
+          else if (condition.logicalOperator === 'OR') bqb.orWhere(sql, params);
+          else bqb.andWhere(sql, params);
+        };
+        applyCondition(sink, alias, target, condition.operand, condition.value, paramSeq);
+      });
+    }),
+  );
 }
 
 /**

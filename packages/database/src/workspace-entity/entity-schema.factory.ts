@@ -9,6 +9,9 @@ const SYSTEM_COLUMNS: Record<string, EntitySchemaColumnOptions> = {
   createdAt: { type: 'timestamptz', createDate: true, name: 'created_at' },
   updatedAt: { type: 'timestamptz', updateDate: true, name: 'updated_at' },
   deletedAt: { type: 'timestamptz', deleteDate: true, name: 'deleted_at', nullable: true },
+  /** Maintained app-side (see apps/api/src/modules/record/search-vector.ts) — excluded from normal
+   *  SELECTs (`select: false`) since it's never surfaced to the API; global search selects it explicitly. */
+  searchVector: { type: 'tsvector', name: 'search_vector', nullable: true, select: false },
 };
 
 /**

@@ -21,8 +21,14 @@ const SYSTEM_COLUMNS_SQL = `
   "updated_by_source" text,
   "updated_by_workspace_member_id" uuid,
   "updated_by_name" text,
-  "updated_by_context" jsonb
+  "updated_by_context" jsonb,
+  "search_vector" tsvector
 `;
+
+/** GIN index name for a table's `search_vector` column — shared by table creation and backfill. */
+export function searchVectorIndexName(tableName: string): string {
+  return `${tableName}_search_vector_idx`;
+}
 
 function columnSql(column: FieldColumnDefinition): string {
   const parts = [quoteIdent(column.name), column.sqlType];
@@ -45,6 +51,10 @@ export const WorkspaceSchemaManager = {
       CREATE TABLE IF NOT EXISTS ${quoteIdent(schemaName)}.${quoteIdent(tableName)} (
         ${SYSTEM_COLUMNS_SQL.trim()}${extra}
       );
+    `);
+    await runner.query(`
+      CREATE INDEX IF NOT EXISTS ${quoteIdent(searchVectorIndexName(tableName))}
+      ON ${quoteIdent(schemaName)}.${quoteIdent(tableName)} USING gin ("search_vector");
     `);
   },
 

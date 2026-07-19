@@ -331,6 +331,21 @@ export interface RoleMember {
   lastName: string;
 }
 
+/**
+ * One condition of a row-level permission rule: `<field> <operand> <value>`, where
+ * `valueMode: 'CURRENT_USER'` ignores `value` and resolves against the caller's workspace member
+ * at query time instead (e.g. "Owner is current user"). `logicalOperator` joins this condition
+ * with the *previous* one in the list (ignored on the first condition) — flat AND/OR, no nesting.
+ */
+export interface RowLevelPermissionCondition {
+  fieldMetadataId: string;
+  fieldLabel?: string;
+  operand: string;
+  valueMode: 'LITERAL' | 'CURRENT_USER';
+  value?: unknown;
+  logicalOperator: 'AND' | 'OR';
+}
+
 export const roleApi = {
   list: () => get<Role[]>('/roles'),
 
@@ -360,6 +375,12 @@ export const roleApi = {
 
   updateFieldPermission: (id: string, fieldMetadataId: string, input: UpdateFieldPermissionRequest) =>
     put<{ ok: true }>(`/roles/${id}/field-permissions/${fieldMetadataId}`, input),
+
+  listRowLevelPermissions: (id: string, objectMetadataId: string) =>
+    get<RowLevelPermissionCondition[]>(`/roles/${id}/objects/${objectMetadataId}/row-level-permissions`),
+
+  replaceRowLevelPermissions: (id: string, objectMetadataId: string, conditions: RowLevelPermissionCondition[]) =>
+    put<{ ok: true }>(`/roles/${id}/objects/${objectMetadataId}/row-level-permissions`, { conditions }),
 
   listMembers: (id: string) => get<RoleMember[]>(`/roles/${id}/members`),
 };
@@ -841,4 +862,19 @@ export const workflowApi = {
 
   testCode: (code: string, params: Record<string, unknown>) =>
     post<{ result?: unknown; error?: string; durationMs?: number }>('/workflows/test/code', { code, params }),
+};
+
+/** One cross-object match — powers the ⌘K command menu's quick-jump results. */
+export interface SearchResult {
+  objectMetadataId: string;
+  objectNamePlural: string;
+  objectLabel: string;
+  icon: string | null;
+  recordId: string;
+  label: string;
+  rank: number;
+}
+
+export const searchApi = {
+  search: (q: string) => get<SearchResult[]>(`/search?q=${encodeURIComponent(q)}`),
 };
