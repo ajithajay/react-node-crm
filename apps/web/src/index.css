@@ -81,7 +81,7 @@
   --sidebar-accent-foreground: oklch(0.6171 0.1375 39.0427);
   --sidebar-border: oklch(0.6171 0.1375 39.0427 / 10%);
   --sidebar-ring: oklch(0.6171 0.1375 39.0427 / 40%);
-  --sidebar-gradient: linear-gradient(165deg, oklch(1 0 0 / 90%) 0%, oklch(0.975 0.012 39.0427 / 88%) 45%, oklch(0.94 0.025 39.0427 / 85%) 100%);
+  --sidebar-gradient:linear-gradient(165deg, oklch(1 0 0 / 90%) 0%, oklch(0.975 0.012 39.0427 / 88%) 45%, oklch(0.91 0.04 39.11 / 0.85) 100%);
   --header-gradient: linear-gradient(90deg, oklch(1 0 0 / 90%) 0%, oklch(0.96 0.015 39.0427 / 88%) 100%);
   --card-gradient: linear-gradient(165deg, oklch(1 0 0) 0%, oklch(0.99 0.006 39.0427) 100%);
 }

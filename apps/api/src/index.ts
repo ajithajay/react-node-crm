@@ -1,4 +1,9 @@
-import { backfillSearchVectorColumn, ensureCoreSchema, runCoreMigrations } from '@saasly/database';
+import {
+  backfillDuplicateCriteria,
+  backfillSearchVectorColumn,
+  ensureCoreSchema,
+  runCoreMigrations,
+} from '@saasly/database';
 import { env } from './lib/config.js';
 import { logger } from './lib/logger.js';
 import { dataSource } from './lib/db.js';
@@ -9,6 +14,7 @@ async function main(): Promise<void> {
   await ensureCoreSchema(dataSource);
   await runCoreMigrations(dataSource);
   await backfillSearchVectorColumn(dataSource);
+  await backfillDuplicateCriteria(dataSource);
   logger.info('core datasource ready (schema: core)');
 
   const app = createApp();

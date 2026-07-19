@@ -22,6 +22,7 @@ export * from './queue/queue-name.js';
 export * from './queue/email-job.js';
 export * from './queue/webhook-job.js';
 export * from './queue/workflow-job.js';
+export * from './queue/housekeeping-job.js';
 export * from './user/schemas.js';
 export * from './workspace/schemas.js';
 export * from './audit-log/schemas.js';

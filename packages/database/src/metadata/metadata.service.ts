@@ -449,6 +449,21 @@ export function createMetadataService(coreDataSource: DataSource) {
       });
     },
 
+    async setDuplicateCriteria(
+      workspaceId: string,
+      objectMetadataId: string,
+      duplicateCriteria: string[][] | null,
+    ): Promise<ObjectMetadataEntity> {
+      return coreDataSource.transaction(async (manager) => {
+        const repo = manager.getRepository(ObjectMetadataEntity);
+        const object = await repo.findOneByOrFail({ id: objectMetadataId, workspaceId });
+        object.duplicateCriteria = duplicateCriteria && duplicateCriteria.length > 0 ? duplicateCriteria : null;
+        await repo.save(object);
+        await bumpMetadataVersion(manager, workspaceId);
+        return object;
+      });
+    },
+
     async createIndex(input: CreateIndexInput): Promise<IndexMetadataEntity> {
       return coreDataSource.transaction(async (manager) => {
         const repo = manager.getRepository(IndexMetadataEntity);

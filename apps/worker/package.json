@@ -12,6 +12,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1001.0",
     "@saasly/database": "workspace:*",
     "@saasly/emails": "workspace:*",
     "@saasly/shared": "workspace:*",

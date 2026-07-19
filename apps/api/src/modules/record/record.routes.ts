@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
-import { PermissionFlagType, recordListQuerySchema } from '@saasly/shared';
+import { PermissionFlagType, mergeRecordsRequestSchema, recordListQuerySchema } from '@saasly/shared';
 import { authGuard, apiKeyGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { permissionGuard } from '../../middleware/permission-guard.js';
@@ -36,6 +36,14 @@ recordRouter.post(
   upload.single('file'),
   recordController.importCsv,
 );
+recordRouter.post(
+  '/:objectNamePlural/merge',
+  authGuard,
+  workspaceGuard,
+  validate({ body: mergeRecordsRequestSchema }),
+  recordController.merge,
+);
+recordRouter.get('/:objectNamePlural/:id/duplicates', authGuard, workspaceGuard, recordController.duplicates);
 
 /**
  * Shared CRUD route table for both the internal (session, `/rest`) and external (API-key only,

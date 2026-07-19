@@ -32,6 +32,7 @@ import type {
   WorkflowRunSummary,
   WorkflowRunDetail,
   UpdateWorkflowVersionRequest,
+  MergeRecordsRequest,
 } from '@saasly/shared';
 export type {
   PageLayoutDto as PageLayout,
@@ -695,7 +696,19 @@ export const recordApi = {
     form.set('file', file);
     return postForm<ImportSummary>(`/rest/${objectNamePlural}/import`, form);
   },
+
+  duplicates: (objectNamePlural: string, id: string) =>
+    get<DuplicateMatch[]>(`/rest/${objectNamePlural}/${id}/duplicates`),
+
+  merge: (objectNamePlural: string, input: MergeRecordsRequest) =>
+    post<Record<string, unknown>>(`/rest/${objectNamePlural}/merge`, input),
 };
+
+/** One possible-duplicate match — powers the record detail page's "Possible Duplicates" section. */
+export interface DuplicateMatch {
+  recordId: string;
+  label: string;
+}
 
 export interface ImportSummary {
   created: number;

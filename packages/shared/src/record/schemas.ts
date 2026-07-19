@@ -33,3 +33,15 @@ export const recordListQuerySchema = z.object({
   filter: z.string().optional(),
 });
 export type RecordListQuery = z.infer<typeof recordListQuerySchema>;
+
+/**
+ * `POST /rest/:objectNamePlural/merge` — merges `loserRecordIds` into `targetRecordId`: relations
+ * pointing at any loser are reassigned to the target, `fieldOverrides` (fieldMetadataId -> which
+ * record's value wins) are applied, then the losers are soft-deleted.
+ */
+export const mergeRecordsRequestSchema = z.object({
+  targetRecordId: z.string().uuid(),
+  loserRecordIds: z.array(z.string().uuid()).min(1).max(20),
+  fieldOverrides: z.record(z.string().uuid(), z.string().uuid()).optional(),
+});
+export type MergeRecordsRequest = z.infer<typeof mergeRecordsRequestSchema>;

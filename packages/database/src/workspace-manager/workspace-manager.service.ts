@@ -67,6 +67,7 @@ export async function provisionWorkspace(
     });
 
     let labelFieldId: string | null = null;
+    const fieldIdByName = new Map<string, string>();
     for (const field of def.fields) {
       const created = await metadataService.createField({
         workspaceId,
@@ -84,6 +85,7 @@ export async function provisionWorkspace(
         isSystem: true,
       });
       if (def.labelField === field.name) labelFieldId = created.id;
+      fieldIdByName.set(field.name, created.id);
     }
 
     await fieldRepo.save(
@@ -107,6 +109,17 @@ export async function provisionWorkspace(
 
     if (labelFieldId) {
       await metadataService.setObjectIdentifiers(workspaceId, object.id, labelFieldId, null);
+    }
+
+    if (def.duplicateCriteria && def.duplicateCriteria.length > 0) {
+      const resolvedCriteria = def.duplicateCriteria.map((group) =>
+        group.map((name) => {
+          const id = fieldIdByName.get(name);
+          if (!id) throw new Error(`duplicateCriteria references unknown field "${name}" on ${def.nameSingular}`);
+          return id;
+        }),
+      );
+      await metadataService.setDuplicateCriteria(workspaceId, object.id, resolvedCriteria);
     }
 
     const view = await coreDataSource.getRepository(ViewEntity).save(

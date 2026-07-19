@@ -6,5 +6,6 @@ export const QueueName = {
   CRON: 'cron',
   CSV_IMPORT: 'csv-import',
   CSV_EXPORT: 'csv-export',
+  HOUSEKEEPING: 'housekeeping',
 } as const;
 export type QueueName = (typeof QueueName)[keyof typeof QueueName];

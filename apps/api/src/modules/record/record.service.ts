@@ -29,17 +29,17 @@ export interface RecordListResult {
   total: number;
 }
 
-async function resolveObject(workspaceId: string, objectNamePlural: string): Promise<ObjectMetadataEntity> {
+export async function resolveObject(workspaceId: string, objectNamePlural: string): Promise<ObjectMetadataEntity> {
   const object = await objectRepo().findOneBy({ workspaceId, namePlural: objectNamePlural, isActive: true });
   if (!object) throw new NotFoundError('Object not found');
   return object;
 }
 
-async function resolveActiveFields(workspaceId: string, objectMetadataId: string): Promise<FieldMetadataEntity[]> {
+export async function resolveActiveFields(workspaceId: string, objectMetadataId: string): Promise<FieldMetadataEntity[]> {
   return fieldRepo().findBy({ workspaceId, objectMetadataId, isActive: true });
 }
 
-async function getRepository(workspaceId: string, object: ObjectMetadataEntity) {
+export async function getRepository(workspaceId: string, object: ObjectMetadataEntity) {
   const workspaceDataSource = await workspaceDataSourceCache.getWorkspaceDataSource(workspaceId);
   return workspaceDataSource.getRepository(object.nameSingular);
 }

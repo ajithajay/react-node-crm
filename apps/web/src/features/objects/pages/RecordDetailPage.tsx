@@ -19,6 +19,7 @@ import { formatRelativeDate } from '../lib/format-relative-date';
 import * as draft from '../lib/page-layout-draft';
 import { RecordAttachmentsWidget } from '../components/RecordAttachmentsWidget';
 import { RecordDocumentField, RecordField, RecordNameHeader, Section } from '../components/RecordFieldRows';
+import { RecordDuplicatesWidget } from '../components/RecordDuplicatesWidget';
 import { RecordJunctionWidget } from '../components/RecordJunctionWidget';
 import { RecordRelationWidget } from '../components/RecordRelationWidget';
 import { RecordTargetsWidget } from '../components/RecordTargetsWidget';
@@ -398,6 +399,9 @@ export function RecordDetailPage() {
                 forwardKey={TARGET_RELATIONS_CONFIG[object.nameSingular]!.forwardKey}
                 sourceRecordId={recordId!}
               />
+            )}
+            {!isEditingLayout && (
+              <RecordDuplicatesWidget objectNamePlural={objectNamePlural!} recordId={recordId!} fields={detail.fields} />
             )}
             {isEditingLayout && homeTab && (
               <Button variant="outline" size="sm" className="w-full" onClick={() => setAddingWidgetTab(homeTab.id)}>

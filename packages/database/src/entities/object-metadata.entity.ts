@@ -37,6 +37,15 @@ export class ObjectMetadataEntity {
   @Column({ type: 'uuid', name: 'image_identifier_field_metadata_id', nullable: true })
   imageIdentifierFieldMetadataId!: string | null;
 
+  /**
+   * An OR of AND-groups of `fieldMetadataId`s: two records are flagged as possible duplicates if
+   * ALL fields in any one group have equal values on both. `null`/`[]` disables detection for this
+   * object. Mirrors Twenty's `duplicateCriteria` (`string[][]`), just keyed by field id instead of
+   * physical column name so it survives field renames.
+   */
+  @Column({ type: 'jsonb', name: 'duplicate_criteria', nullable: true })
+  duplicateCriteria!: string[][] | null;
+
   @Column({ type: 'boolean', name: 'is_custom', default: true })
   isCustom!: boolean;
 

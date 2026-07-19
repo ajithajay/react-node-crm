@@ -26,7 +26,7 @@ export interface SearchResult {
 }
 
 /** Renders a decoded field value (string, or a FULL_NAME composite) down to a display label. */
-function displayValue(value: unknown): string {
+export function displayValue(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value;
   if (typeof value === 'object' && ('firstName' in (value as object) || 'lastName' in (value as object))) {

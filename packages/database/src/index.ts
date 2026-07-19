@@ -22,4 +22,5 @@ export * from './workspace-manager/page-layout.seed.js';
 export * from './workspace-manager/dashboard.seed.js';
 export * from './workspace-manager/workspace-manager.service.js';
 export * from './workspace-manager/backfill-search-vector.js';
+export * from './workspace-manager/backfill-duplicate-criteria.js';
 export * from './ddl/workspace-schema-manager.js';

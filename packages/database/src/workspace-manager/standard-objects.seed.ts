@@ -33,6 +33,13 @@ export interface StandardObjectDef {
   /** A RICH_TEXT field excluded from the Fields groups and instead surfaced as a dedicated "Note"
    * tab (full-document editor, no icon/label) — used for Task/Note's body. */
   richTextTabField?: string;
+  /**
+   * An OR of AND-groups of field names: two records are possible duplicates if all fields in any
+   * one group have equal values (resolved to fieldMetadataIds at seed time — see
+   * `ObjectMetadataEntity.duplicateCriteria`). E.g. `[['name'], ['domain_name']]` flags a match on
+   * name alone OR domain alone.
+   */
+  duplicateCriteria?: string[][];
 }
 
 /** A regular (single-target) relation seeded between two standard objects. */
@@ -95,6 +102,7 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       { label: 'Business', fieldNames: ['annual_revenue'] },
       { label: 'Contact', fieldNames: ['address'] },
     ],
+    duplicateCriteria: [['name'], ['domain_name']],
   },
   {
     nameSingular: 'person',
@@ -118,6 +126,7 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       { label: 'Social', fieldNames: ['emails', 'phones', 'linkedin', 'city'] },
     ],
     widgetRelationFields: ['company'],
+    duplicateCriteria: [['name'], ['emails']],
   },
   {
     nameSingular: 'opportunity',
@@ -152,6 +161,7 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
       { label: 'Deal', fieldNames: ['amount', 'stage', 'close_date'] },
     ],
     widgetRelationFields: ['company', 'point_of_contact', 'owner'],
+    duplicateCriteria: [['name']],
   },
   {
     nameSingular: 'task',
