@@ -379,7 +379,7 @@ export function RecordTableToolbar({
                   <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 text-xs" onClick={onExport}>
                     Export CSV
                   </Button>
-                  <ImportCsvDialog onImport={onImport} />
+                  <ImportCsvDialog fields={fields} onImport={onImport} />
                   <div className="my-1 border-t" />
                   <Button
                     variant="ghost"
