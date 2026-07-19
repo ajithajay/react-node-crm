@@ -11,8 +11,8 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-[image:var(--sidebar-gradient)] p-4">
+      <Card className="w-full max-w-sm bg-card/90 shadow-lg shadow-primary/5 backdrop-blur-xl">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}

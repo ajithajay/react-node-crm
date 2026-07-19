@@ -19,7 +19,7 @@ export function ShellLayout() {
         <SidebarProvider className="min-h-0 flex-1">
           <AppSidebar />
           <SidebarInset>
-            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+            <header className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-[image:var(--header-gradient)] px-3 backdrop-blur-xl">
               <SidebarTrigger />
               <Separator orientation="vertical" className="h-4" />
             </header>

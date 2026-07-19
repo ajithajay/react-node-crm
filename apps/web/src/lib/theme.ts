@@ -16,7 +16,7 @@ export function applyColorScheme(scheme: ColorSchemeValue): void {
 /** Read before first render so there's no flash of the wrong theme while `me` is still loading. */
 export function getCachedColorScheme(): ColorSchemeValue {
   const cached = localStorage.getItem(STORAGE_KEY);
-  return cached === 'LIGHT' || cached === 'DARK' || cached === 'SYSTEM' ? cached : 'SYSTEM';
+  return cached === 'LIGHT' || cached === 'DARK' || cached === 'SYSTEM' ? cached : 'LIGHT';
 }
 
 /** Keeps <html>.dark in sync with the authoritative server value, including live OS-theme changes. */

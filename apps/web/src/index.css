@@ -73,14 +73,17 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
+  --sidebar: oklch(0.99 0.006 39.0427);
   --sidebar-foreground: oklch(0.3590 0.0051 106.6524);
   --sidebar-primary: oklch(0.6171 0.1375 39.0427);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.94 0.025 39.0427 / 70%);
+  --sidebar-accent-foreground: oklch(0.6171 0.1375 39.0427);
+  --sidebar-border: oklch(0.6171 0.1375 39.0427 / 10%);
+  --sidebar-ring: oklch(0.6171 0.1375 39.0427 / 40%);
+  --sidebar-gradient: linear-gradient(165deg, oklch(1 0 0 / 90%) 0%, oklch(0.975 0.012 39.0427 / 88%) 45%, oklch(0.94 0.025 39.0427 / 85%) 100%);
+  --header-gradient: linear-gradient(90deg, oklch(1 0 0 / 90%) 0%, oklch(0.96 0.015 39.0427 / 88%) 100%);
+  --card-gradient: linear-gradient(165deg, oklch(1 0 0) 0%, oklch(0.99 0.006 39.0427) 100%);
 }
 
 .dark {
@@ -108,14 +111,17 @@
   --chart-3: oklch(0.213 0.0078 95.4245);
   --chart-4: oklch(0.3074 0.0516 289.323);
   --chart-5: oklch(0.5608 0.1348 42.0584);
-  --sidebar: oklch(0.2357 0.0024 67.7077);
+  --sidebar: oklch(0.2953 0.0075 67.7077);
   --sidebar-foreground: oklch(0.8074 0.0142 93.0137);
-  --sidebar-primary: oklch(0.325 0 0);
-  --sidebar-primary-foreground: oklch(0.9881 0 0);
-  --sidebar-accent: oklch(0.168 0.002 106.6177);
-  --sidebar-accent-foreground: oklch(0.8074 0.0142 93.0137);
-  --sidebar-border: oklch(0.9401 0 0);
-  --sidebar-ring: oklch(0.7731 0 0);
+  --sidebar-primary: oklch(0.6724 0.1308 38.7559);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.6724 0.1308 38.7559 / 18%);
+  --sidebar-accent-foreground: oklch(0.9663 0.008 98.8792);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.6724 0.1308 38.7559 / 40%);
+  --sidebar-gradient: linear-gradient(165deg, oklch(0.3085 0.0035 106.6039 / 90%) 0%, oklch(0.2679 0.0036 106.6427 / 88%) 45%, oklch(0.2213 0.02 38.7559 / 88%) 100%);
+  --header-gradient: linear-gradient(90deg, oklch(0.3085 0.0035 106.6039 / 90%) 0%, oklch(0.2679 0.015 38.7559 / 88%) 100%);
+  --card-gradient: linear-gradient(165deg, oklch(0.2679 0.0036 106.6427) 0%, oklch(0.2213 0.015 38.7559) 100%);
   --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
   --font-serif: Inter, ui-sans-serif, sans-serif, system-ui;
   --font-mono: Inter, ui-sans-serif, sans-serif, system-ui;

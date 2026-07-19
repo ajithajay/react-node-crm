@@ -45,7 +45,7 @@ export class WorkspaceMemberEntity {
   @Column({ type: 'varchar', name: 'avatar_url', nullable: true })
   avatarUrl!: string | null;
 
-  @Column({ type: 'varchar', name: 'color_scheme', default: ColorScheme.SYSTEM })
+  @Column({ type: 'varchar', name: 'color_scheme', default: ColorScheme.LIGHT })
   colorScheme!: ColorScheme;
 
   @Column({ type: 'varchar', default: 'en' })

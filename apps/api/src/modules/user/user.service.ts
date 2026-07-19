@@ -49,7 +49,7 @@ export async function getMe(userId: string, workspaceId: string): Promise<MeResp
     lastName: member?.lastName || user.lastName,
     avatarUrl: member?.avatarUrl ?? null,
     roleId: member?.roleId ?? null,
-    colorScheme: member?.colorScheme ?? 'SYSTEM',
+    colorScheme: member?.colorScheme ?? 'LIGHT',
     timeZone: member?.timeZone ?? 'UTC',
     dateFormat: member?.dateFormat ?? 'MM/DD/YYYY',
     timeFormat: member?.timeFormat ?? 'HH:mm',
