@@ -448,10 +448,71 @@ export class InitialCoreSchema1700000000000 implements MigrationInterface {
         ADD COLUMN "page_layout_widget_id" uuid REFERENCES "core"."page_layout_widgets"("id") ON DELETE CASCADE,
         ADD COLUMN "is_visible" boolean NOT NULL DEFAULT true;
     `);
+
+    // Workflows (Phase 8): a workflow container → many versions (each holds the trigger + steps DAG as
+    // JSON) → many runs (snapshot the flow + per-step state). `workflow_automated_triggers` registers
+    // DATABASE_EVENT / CRON listeners on activation. All control-plane (core schema), not workspace
+    // objects — gated by the WORKFLOWS settings permission flag.
+    await queryRunner.query(`
+      CREATE TABLE "core"."workflows" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "name" varchar NOT NULL,
+        "statuses" jsonb NOT NULL DEFAULT '[]',
+        "last_published_version_id" uuid,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now(),
+        "deleted_at" timestamptz
+      );
+      CREATE INDEX "IDX_workflows_workspace" ON "core"."workflows" ("workspace_id");
+
+      CREATE TABLE "core"."workflow_versions" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "workflow_id" uuid NOT NULL REFERENCES "core"."workflows"("id") ON DELETE CASCADE,
+        "name" varchar NOT NULL,
+        "status" varchar NOT NULL DEFAULT 'DRAFT',
+        "trigger" jsonb,
+        "steps" jsonb NOT NULL DEFAULT '[]',
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_workflow_versions_workflow" ON "core"."workflow_versions" ("workflow_id");
+
+      CREATE TABLE "core"."workflow_runs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "workflow_id" uuid NOT NULL REFERENCES "core"."workflows"("id") ON DELETE CASCADE,
+        "workflow_version_id" uuid NOT NULL REFERENCES "core"."workflow_versions"("id") ON DELETE CASCADE,
+        "status" varchar NOT NULL DEFAULT 'NOT_STARTED',
+        "state" jsonb NOT NULL DEFAULT '{}',
+        "created_by" uuid,
+        "enqueued_at" timestamptz,
+        "started_at" timestamptz,
+        "ended_at" timestamptz,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_workflow_runs_workspace_created" ON "core"."workflow_runs" ("workspace_id", "created_at");
+      CREATE INDEX "IDX_workflow_runs_workflow" ON "core"."workflow_runs" ("workflow_id");
+
+      CREATE TABLE "core"."workflow_automated_triggers" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "workspace_id" uuid NOT NULL REFERENCES "core"."workspaces"("id") ON DELETE CASCADE,
+        "workflow_id" uuid NOT NULL REFERENCES "core"."workflows"("id") ON DELETE CASCADE,
+        "type" varchar NOT NULL,
+        "settings" jsonb NOT NULL DEFAULT '{}',
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX "IDX_workflow_automated_triggers_ws_type" ON "core"."workflow_automated_triggers" ("workspace_id", "type");
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const tables = [
+      'workflow_automated_triggers',
+      'workflow_runs',
+      'workflow_versions',
+      'workflows',
       'page_layout_widgets',
       'page_layout_tabs',
       'page_layouts',

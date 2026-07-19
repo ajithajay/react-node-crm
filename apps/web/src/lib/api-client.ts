@@ -25,6 +25,13 @@ import type {
   SaveDashboardLayoutRequest,
   ChartDataRequest,
   ChartDataResponse,
+  WorkflowSummary,
+  WorkflowDetail,
+  WorkflowVersionDetail,
+  WorkflowVersionSummary,
+  WorkflowRunSummary,
+  WorkflowRunDetail,
+  UpdateWorkflowVersionRequest,
 } from '@saasly/shared';
 export type {
   PageLayoutDto as PageLayout,
@@ -783,4 +790,55 @@ export const dashboardApi = {
     put<DashboardDetail>(`/dashboards/${id}/layout`, input),
 
   chartData: (input: ChartDataRequest) => post<ChartDataResponse>('/dashboards/chart-data', input),
+};
+
+export const workflowApi = {
+  list: () => get<WorkflowSummary[]>('/workflows'),
+
+  get: (id: string) => get<WorkflowDetail>(`/workflows/${id}`),
+
+  create: (name: string) => post<WorkflowDetail>('/workflows', { name }),
+
+  update: (id: string, name: string) => patch<WorkflowDetail>(`/workflows/${id}`, { name }),
+
+  remove: (id: string) => del<{ ok: true }>(`/workflows/${id}`),
+
+  // Returns the editable DRAFT version (forking one from the active version if needed).
+  getDraft: (id: string) => get<WorkflowVersionDetail>(`/workflows/${id}/draft`),
+
+  updateVersion: (id: string, versionId: string, input: UpdateWorkflowVersionRequest) =>
+    patch<WorkflowVersionDetail>(`/workflows/${id}/versions/${versionId}`, input),
+
+  listVersions: (id: string) => get<WorkflowVersionSummary[]>(`/workflows/${id}/versions`),
+
+  activate: (id: string) => post<WorkflowDetail>(`/workflows/${id}/activate`),
+
+  deactivate: (id: string) => post<WorkflowDetail>(`/workflows/${id}/deactivate`),
+
+  duplicate: (id: string) => post<WorkflowDetail>(`/workflows/${id}/duplicate`),
+
+  run: (id: string, payload?: Record<string, unknown>) =>
+    post<WorkflowRunSummary>(`/workflows/${id}/run`, { payload: payload ?? {} }),
+
+  listRuns: (params?: { workflowId?: string; page?: number; pageSize?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.workflowId) q.set('workflowId', params.workflowId);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.pageSize) q.set('pageSize', String(params.pageSize));
+    const qs = q.toString();
+    return get<{ items: WorkflowRunSummary[]; total: number; page: number; pageSize: number }>(
+      `/workflows/runs${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  getRun: (runId: string) => get<WorkflowRunDetail>(`/workflows/runs/${runId}`),
+
+  testHttp: (input: { url?: string; method?: string; headers?: Record<string, string>; body?: string }) =>
+    post<{ status?: number; ok?: boolean; body?: unknown; durationMs?: number; error?: string }>(
+      '/workflows/test/http',
+      input,
+    ),
+
+  testCode: (code: string, params: Record<string, unknown>) =>
+    post<{ result?: unknown; error?: string; durationMs?: number }>('/workflows/test/code', { code, params }),
 };

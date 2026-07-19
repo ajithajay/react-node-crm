@@ -2,7 +2,6 @@ import { Navigate, Outlet, Route, Routes, useParams } from 'react-router';
 import { useAuthSession } from '@/lib/auth-session';
 import { ShellLayout } from '@/features/shell/ShellLayout';
 import { HomePage } from '@/features/shell/pages/HomePage';
-import { ComingSoonPage } from '@/features/shell/pages/ComingSoonPage';
 import { SettingsLayout } from '@/features/settings/SettingsLayout';
 import { LayoutPage } from '@/features/settings/pages/LayoutPage';
 import { MembersPage } from '@/features/settings/pages/MembersPage';
@@ -21,6 +20,12 @@ import { ObjectRecordsPage } from '@/features/objects/pages/ObjectRecordsPage';
 import { RecordDetailPage } from '@/features/objects/pages/RecordDetailPage';
 import { DashboardsListPage } from '@/features/dashboards/pages/DashboardsListPage';
 import { DashboardPage } from '@/features/dashboards/pages/DashboardPage';
+import { WorkflowsListPage } from '@/features/workflows/pages/WorkflowsListPage';
+import { WorkflowRunsListPage } from '@/features/workflows/pages/WorkflowRunsListPage';
+import { WorkflowVersionsListPage } from '@/features/workflows/pages/WorkflowVersionsListPage';
+import { WorkflowBuilderPage } from '@/features/workflows/pages/WorkflowBuilderPage';
+import { WorkflowRunPage } from '@/features/workflows/pages/WorkflowRunPage';
+import { WorkflowFormPage } from '@/features/workflows/pages/WorkflowFormPage';
 import { LoginPage } from './pages/LoginPage';
 import { ExchangePage } from './pages/ExchangePage';
 import { TwoFactorChallengePage } from './pages/TwoFactorChallengePage';
@@ -47,6 +52,8 @@ export function WorkspaceHostRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/exchange" element={<ExchangePage />} />
       <Route path="/2fa" element={<TwoFactorChallengePage />} />
+      {/* Public FORM step page — no auth (scoped by the ids in the URL). */}
+      <Route path="/forms/:workspaceId/:runId/:stepId" element={<WorkflowFormPage />} />
 
       <Route element={<ProtectedLayout />}>
         {/* Full-screen — mounted outside ShellLayout/SettingsLayout so Scalar owns the viewport. */}
@@ -63,9 +70,11 @@ export function WorkspaceHostRoutes() {
           <Route path="/objects/:objectNamePlural/:recordId" element={<RecordDetailPage />} />
           <Route path="/dashboards" element={<DashboardsListPage />} />
           <Route path="/dashboards/:id" element={<DashboardPage />} />
-          <Route path="/workflows" element={<ComingSoonPage title="Workflows" phase="Phase 8" />} />
-          <Route path="/workflows/runs" element={<ComingSoonPage title="Workflow Runs" phase="Phase 8" />} />
-          <Route path="/workflows/versions" element={<ComingSoonPage title="Workflow Versions" phase="Phase 8" />} />
+          <Route path="/workflows" element={<WorkflowsListPage />} />
+          <Route path="/workflows/runs" element={<WorkflowRunsListPage />} />
+          <Route path="/workflows/runs/:runId" element={<WorkflowRunPage />} />
+          <Route path="/workflows/versions" element={<WorkflowVersionsListPage />} />
+          <Route path="/workflows/:id" element={<WorkflowBuilderPage />} />
 
           <Route path="/settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="/settings/profile" replace />} />

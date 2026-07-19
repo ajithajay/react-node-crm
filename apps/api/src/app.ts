@@ -22,6 +22,8 @@ import { recordRouter } from './modules/record/record.routes.js';
 import { viewRouter } from './modules/view/view.routes.js';
 import { navigationRouter } from './modules/navigation/navigation.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
+import { workflowRouter } from './modules/workflow/workflow.routes.js';
+import { workflowTriggerRouter } from './modules/workflow/workflow-trigger.routes.js';
 
 export function createApp(): Application {
   const app = express();
@@ -50,6 +52,8 @@ export function createApp(): Application {
   app.use('/views', viewRouter);
   app.use('/navigation', navigationRouter);
   app.use('/dashboards', dashboardRouter);
+  app.use('/workflows', workflowRouter);
+  app.use('/triggers', workflowTriggerRouter);
 
   app.use(errorHandler);
 

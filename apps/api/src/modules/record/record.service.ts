@@ -7,6 +7,7 @@ import { AppError, NotFoundError } from '../../lib/errors.js';
 import { decodeRecord, encodeRecordInput } from './record-field-codec.js';
 import { buildCsvColumns, csvToRecordBodies, recordsToCsv } from './record-csv.js';
 import { dispatchRecordWebhooks } from '../../lib/webhook-events.js';
+import { dispatchWorkflowTriggers } from '../../lib/workflow-events.js';
 import { logger } from '../../lib/logger.js';
 import {
   assertObjectAccess,
@@ -185,6 +186,13 @@ async function afterRecordMutation(
     }
   }
   await dispatchRecordWebhooks(workspaceId, object.nameSingular, operation, record);
+  await dispatchWorkflowTriggers(
+    workspaceId,
+    object.nameSingular,
+    operation,
+    record,
+    diff ? Object.keys(diff) : undefined,
+  );
 }
 
 export async function createRecord(
@@ -269,6 +277,7 @@ export async function deleteRecord(
   else await repository.softRemove(existing);
 
   await dispatchRecordWebhooks(workspaceId, object.nameSingular, 'deleted', { id });
+  await dispatchWorkflowTriggers(workspaceId, object.nameSingular, 'deleted', { id });
 }
 
 /**

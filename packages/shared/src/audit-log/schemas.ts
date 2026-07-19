@@ -46,5 +46,12 @@ export const AUDIT_LOG_ACTIONS = [
   'dashboard.updated',
   'dashboard.deleted',
   'dashboard.layout_updated',
+  'workflow.created',
+  'workflow.updated',
+  'workflow.deleted',
+  'workflow.activated',
+  'workflow.deactivated',
+  'workflow.version_created',
+  'workflow.run_triggered',
 ] as const;
 export type AuditLogAction = (typeof AUDIT_LOG_ACTIONS)[number];

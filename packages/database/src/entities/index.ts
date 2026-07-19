@@ -28,6 +28,10 @@ import { PageLayoutEntity } from './page-layout.entity.js';
 import { PageLayoutTabEntity } from './page-layout-tab.entity.js';
 import { PageLayoutWidgetEntity } from './page-layout-widget.entity.js';
 import { NavigationMenuItemEntity } from './navigation-menu-item.entity.js';
+import { WorkflowEntity } from './workflow.entity.js';
+import { WorkflowVersionEntity } from './workflow-version.entity.js';
+import { WorkflowRunEntity } from './workflow-run.entity.js';
+import { WorkflowAutomatedTriggerEntity } from './workflow-automated-trigger.entity.js';
 
 export * from './user.entity.js';
 export * from './workspace.entity.js';
@@ -48,6 +52,10 @@ export * from './page-layout.entity.js';
 export * from './page-layout-tab.entity.js';
 export * from './page-layout-widget.entity.js';
 export * from './navigation-menu-item.entity.js';
+export * from './workflow.entity.js';
+export * from './workflow-version.entity.js';
+export * from './workflow-run.entity.js';
+export * from './workflow-automated-trigger.entity.js';
 
 /** Every core-schema entity, registered on the core DataSource. */
 export const CORE_ENTITIES = [
@@ -81,4 +89,8 @@ export const CORE_ENTITIES = [
   PageLayoutTabEntity,
   PageLayoutWidgetEntity,
   NavigationMenuItemEntity,
+  WorkflowEntity,
+  WorkflowVersionEntity,
+  WorkflowRunEntity,
+  WorkflowAutomatedTriggerEntity,
 ];
