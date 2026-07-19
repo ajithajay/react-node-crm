@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-/** Widget types on a record page (Twenty parity, reduced to our built surfaces). FIELDS renders a
+/** Widget types on a record page (reduced to our built surfaces). FIELDS renders a
  * group of the object's fields; FIELD renders a single field with a chosen display mode; the rest
  * render the record's activity relations and carry no config. */
 export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'FIELD', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'] as const;
 export type PageLayoutWidgetType = (typeof PAGE_LAYOUT_WIDGET_TYPES)[number];
 
-/** How a single FIELD widget renders its value — matches Twenty's Field / Card / Table, plus our
+/** How a single FIELD widget renders its value — Field / Card / Table, plus our
  * DOCUMENT mode (a Task/Note's rich-text body as a full-width, always-editable document). */
 export const FIELD_DISPLAY_MODES = ['PLAIN', 'CARD', 'TABLE', 'DOCUMENT'] as const;
 export type FieldDisplayMode = (typeof FIELD_DISPLAY_MODES)[number];
@@ -14,10 +14,10 @@ export type FieldDisplayMode = (typeof FIELD_DISPLAY_MODES)[number];
 /** Polymorphic per-widget-type settings, stored as the widget's `configuration` jsonb. */
 export const pageLayoutWidgetConfigurationSchema = z
   .object({
-    // FIELDS widget (Twenty's FieldsConfigurationDto)
+    // FIELDS widget configuration
     showMoreFieldsButton: z.boolean().optional(),
     autoVisibleNewFields: z.boolean().optional(),
-    // FIELD widget (Twenty's FieldConfigurationDto)
+    // FIELD widget configuration
     fieldMetadataId: z.string().uuid().optional(),
     displayMode: z.enum(FIELD_DISPLAY_MODES).optional(),
   })
@@ -25,7 +25,7 @@ export const pageLayoutWidgetConfigurationSchema = z
   .passthrough();
 export type PageLayoutWidgetConfiguration = z.infer<typeof pageLayoutWidgetConfigurationSchema>;
 
-// ---- Save request (nested replace, mirroring Twenty's updatePageLayoutWithTabsAndWidgets) ----
+// ---- Save request (nested replace of tabs and widgets) ----
 
 /** A field inside a FIELDS-widget group. `isVisible` writes `field_metadata.is_visible_in_record_page`. */
 export const pageLayoutFieldSchema = z.object({
@@ -57,7 +57,7 @@ export const pageLayoutTabSchema = z.object({
   title: z.string().trim().min(1).max(100),
   icon: z.string().trim().max(50).nullish(),
   isVisible: z.boolean().default(true),
-  /** The layout's default-to-focus tab (Twenty's "pin tab"). Only one tab should carry this. */
+  /** The layout's default-to-focus tab ("pin tab"). Only one tab should carry this. */
   isPinned: z.boolean().default(false),
   widgets: z.array(pageLayoutWidgetSchema),
 });

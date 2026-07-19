@@ -17,7 +17,7 @@ const DESCRIPTIONS: Record<OpenApiSchemaName, string> = {
 const SERVER_PATHS: Record<OpenApiSchemaName, string> = { core: '/', metadata: '/', v1: '/api/v1' };
 
 /**
- * Three schemas: Core / Metadata (mirroring Twenty's split) plus v1 (the external, API-key-only
+ * Three schemas: Core / Metadata plus v1 (the external, API-key-only
  * REST surface). The document is hand-registered per route (see open-api.registry.ts) since this
  * project is plain Express, not decorator-driven NestJS. Core/Metadata are static across
  * workspaces; v1 documents the one generic per-object CRUD shape rather than a route per object,

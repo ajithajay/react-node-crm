@@ -11,7 +11,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Right-side panel for a tab (Twenty parity — matches the sidebar item panel's structure).
+ * Right-side panel for a tab, matching the sidebar item panel's structure.
  * The Home tab (holding the FIELDS widget) is rendered as a static left column, not a switchable
  * tab, so it gets only Rename + Reset here — Placement/Pin/Move have no visible effect on it.
  */

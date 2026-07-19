@@ -209,7 +209,7 @@ export async function createObject(
     isSystem: false,
   });
 
-  // Seed the standard starter fields (Name + system/audit fields), matching Twenty.
+  // Seed the standard starter fields (Name + system/audit fields).
   await metadataService.seedNewObjectDefaults({
     workspaceId,
     schemaName: workspace.databaseSchema!,
@@ -217,7 +217,7 @@ export async function createObject(
     tableName: object.namePlural,
   });
 
-  // Auto-create the locked "All <Object>" default index view (Twenty parity) — also makes the new
+  // Auto-create the locked "All <Object>" default index view — also makes the new
   // object's records page usable immediately (it resolves the object's first view).
   await dataSource.getRepository(ViewEntity).save(
     dataSource.getRepository(ViewEntity).create({
@@ -367,7 +367,7 @@ export async function updateField(
   return toFieldSummary(updated);
 }
 
-/** Core fields that can never be deactivated (mirrors Twenty's fieldNamesThatCannotBeDeactivated). */
+/** Core fields that can never be deactivated. */
 const NON_DEACTIVATABLE_FIELD_NAMES = new Set(['created_at', 'updated_at', 'deleted_at', 'created_by']);
 
 export async function setFieldActive(
@@ -393,7 +393,7 @@ export async function setFieldActive(
 }
 
 /**
- * Settings → Layout (BRD §7.2): hides a field from a record's Overview tab without deactivating it
+ * Settings → Layout: hides a field from a record's Overview tab without deactivating it
  * or touching the physical schema — no DDL, no metadata-version bump, just a display flag.
  */
 export async function setFieldRecordPageVisibility(

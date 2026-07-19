@@ -172,8 +172,8 @@ export function RecordField({
 }
 
 /**
- * The record's label-identifier field, rendered as an editable title (Twenty parity — the name isn't
- * a normal Fields-section row; it lives in the header, click-to-edit, same for create and edit).
+ * The record's label-identifier field, rendered as an editable title — the name isn't
+ * a normal Fields-section row; it lives in the header, click-to-edit, same for create and edit.
  * Pass `onChange` to redirect the commit into local draft state (create/edit sheet) instead of an
  * immediate self-save (full page).
  */
@@ -253,7 +253,7 @@ export function RecordNameHeader({
 
 /**
  * A Task/Note's rich-text body rendered as a full-width, always-editable document — no icon, no
- * label, no popover (Twenty parity: the "Note" tab's `FieldRichTextCard`, not a compact inline cell).
+ * label, no popover (the "Note" tab's own field card, not a compact inline cell).
  * Pass `onChange` to redirect the commit into local draft state (create sheet) instead of self-saving.
  */
 export function RecordDocumentField({

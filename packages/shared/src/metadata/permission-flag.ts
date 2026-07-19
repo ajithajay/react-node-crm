@@ -1,4 +1,4 @@
-/** Fine-grained settings/tool permission flags assignable to a role (BRD §8). */
+/** Fine-grained settings/tool permission flags assignable to a role. */
 export const PermissionFlagType = {
   DATA_MODEL: 'DATA_MODEL',
   WORKSPACE: 'WORKSPACE',

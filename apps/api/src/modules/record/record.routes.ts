@@ -8,12 +8,12 @@ import { validate } from '../../middleware/validate.js';
 import * as recordController from './record.controller.js';
 
 /**
- * Generic record CRUD, metadata-driven (solution-approach.md §5): one router handles every object.
+ * Generic record CRUD, metadata-driven: one router handles every object.
  * Object- and field-level permission checks happen inside record.service.ts (per-action, per-field),
  * not via the settings-only `permissionGuard` used elsewhere — that middleware only knows about
- * workspace settings flags, not the record-access tri-state model (Phase 5e). CSV import/export are
- * the exception: they're additionally gated by the settings-level IMPORT_CSV/EXPORT_CSV flags (BRD
- * §4 "permission-gated"), on top of the same object/field checks every other record route enforces.
+ * workspace settings flags, not the record-access tri-state model. CSV import/export are
+ * the exception: they're additionally gated by the settings-level IMPORT_CSV/EXPORT_CSV flags
+ * ("permission-gated"), on top of the same object/field checks every other record route enforces.
  */
 export const recordRouter: Router = Router();
 

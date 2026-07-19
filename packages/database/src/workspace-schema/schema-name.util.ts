@@ -3,7 +3,6 @@ export const WORKSPACE_SCHEMA_NAME_REGEX = /^workspace_[0-9a-z]+$/;
 
 /**
  * Deterministic per-workspace schema name: `workspace_<base36(uuid)>`.
- * (solution-approach.md §4.1 — mirrors Twenty's `getWorkspaceSchemaName`.)
  */
 export function getWorkspaceSchemaName(workspaceId: string): string {
   const hex = workspaceId.replace(/-/g, '');

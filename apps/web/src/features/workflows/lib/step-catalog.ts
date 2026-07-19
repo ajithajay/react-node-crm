@@ -6,7 +6,7 @@ import {
 } from '@saasly/shared';
 
 // Catalog metadata for triggers and actions — label, lucide icon name, menu group, and the default
-// settings a freshly-added node starts with. Mirrors Twenty's constants/actions + trigger definitions.
+// settings a freshly-added node starts with.
 
 export interface TriggerCatalogEntry {
   type: WorkflowTriggerType;

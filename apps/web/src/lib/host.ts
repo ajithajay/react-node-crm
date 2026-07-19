@@ -8,7 +8,7 @@ export function getCurrentSubdomain(): string | null {
 }
 
 /**
- * The API resolves the workspace from the request's Host header (solution-approach.md §6), so the
+ * The API resolves the workspace from the request's Host header, so the
  * frontend must call it on the *same hostname* the page is on — just on the API's port — rather
  * than a fixed host. `VITE_API_URL` remains a full override for setups where that doesn't hold
  * (e.g. a single API domain behind a reverse proxy in production).

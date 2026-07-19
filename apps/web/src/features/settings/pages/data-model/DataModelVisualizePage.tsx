@@ -7,7 +7,7 @@ import '@xyflow/react/dist/style.css';
 import { dataModelApi } from '@/lib/api-client';
 
 /**
- * Settings → Data Model → Visualize (Twenty's data-model overview graph, gap F3). Nodes are objects
+ * Settings → Data Model → Visualize: a data-model overview graph. Nodes are objects
  * (label + field list), edges are relations: a forward MANY_TO_ONE points at its target object, and a
  * MORPH_RELATION fans out to each of its targets. Frontend-only over existing metadata.
  */

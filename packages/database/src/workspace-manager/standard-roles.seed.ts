@@ -13,7 +13,7 @@ export interface StandardRoleDef {
   canAccessAllTools: boolean;
 }
 
-/** Default roles seeded into every new workspace (BRD §8). */
+/** Default roles seeded into every new workspace. */
 export const STANDARD_ROLES: StandardRoleDef[] = [
   {
     name: StandardRoleName.ADMIN,

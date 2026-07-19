@@ -2,10 +2,7 @@
 
 Subdomain-based, multi-tenant CRM. Turborepo + pnpm monorepo.
 
-> **Docs / source of truth** live one level up in [`../docs/`](../docs):
-> [`brd.md`](../docs/brd.md) (scope), [`solution-approach.md`](../docs/solution-approach.md)
-> (architecture), [`task-list.md`](../docs/task-list.md) (phased tracker).
-> The [`../twenty/`](../twenty) folder is the reference implementation.
+> **Docs / source of truth** live one level up in [`../docs/`](../docs).
 
 ## Getting started
 

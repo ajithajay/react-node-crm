@@ -8,7 +8,7 @@ import { resolveActorRole } from '../modules/record/record-permission.js';
 
 /**
  * Requires the caller's role to either have `canUpdateAllSettings` (the Admin superset flag) or
- * hold the given fine-grained settings flag (BRD §8). Must run after `authGuard`/`apiKeyGuard` +
+ * hold the given fine-grained settings flag. Must run after `authGuard`/`apiKeyGuard` +
  * `workspaceGuard`. Resolves the role from `req.workspaceMember` for a session user or from
  * `req.apiKey.roleId` for an API key (falling back to the workspace default role), via the same
  * `resolveActorRole` the record engine uses — an API key is scoped by exactly the same

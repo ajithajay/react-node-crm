@@ -9,7 +9,7 @@ import { PageLayoutWidgetEntity, PageLayoutWidgetType } from '../entities/page-l
 import { STANDARD_OBJECTS } from './standard-objects.seed.js';
 
 /**
- * Default record-page layout builder (Twenty parity). The record page is 100% widget-driven:
+ * Default record-page layout builder. The record page is 100% widget-driven:
  *   - Home tab → a FIELDS widget whose groups (page_layout_sections) hold scalar + forward-relation
  *     fields plus a dedicated "System" group for the audit fields — and one FIELD widget per
  *     collection/reverse relation (e.g. People, Opportunities), rendered after the FIELDS widget.
@@ -19,9 +19,9 @@ import { STANDARD_OBJECTS } from './standard-objects.seed.js';
  */
 
 /** The base audit columns on every workspace table. `deleted_at` is intentionally NOT shown on the
- * record page (Twenty excludes it); the other four form the System group. */
+ * record page; the other four form the System group. */
 const SYSTEM_GROUP_FIELD_NAMES = ['created_at', 'created_by', 'updated_at', 'updated_by'] as const;
-/** Which System-group fields are visible by default (Twenty: created shown, updated hidden). */
+/** Which System-group fields are visible by default (created shown, updated hidden). */
 const SYSTEM_GROUP_VISIBLE = new Set<string>(['created_at', 'created_by']);
 const BASE_SYSTEM_FIELD_NAMES = new Set(['created_at', 'updated_at', 'deleted_at', 'created_by', 'updated_by']);
 
@@ -167,7 +167,7 @@ export async function seedPageLayoutForObject(
   const groups = computeFieldsWidgetGroups(object, fields);
   const seedDef = STANDARD_OBJECTS.find((d) => d.nameSingular === object.nameSingular);
   const fieldByName = new Map(fields.map((f) => [f.name, f]));
-  // Forward (MANY_TO_ONE) relations promoted to their own widget (Twenty parity — e.g. Person's
+  // Forward (MANY_TO_ONE) relations promoted to their own widget (e.g. Person's
   // Company, Opportunity's Company/Point of Contact/Owner), in the object def's declared order,
   // followed by the reverse/collection relation widgets (People, Opportunities, …).
   const forwardRelationWidgets = (seedDef?.widgetRelationFields ?? [])
@@ -241,7 +241,7 @@ export async function seedPageLayoutForObject(
   }
 
   // "Note" tab — a Task/Note's rich-text body as a dedicated full-document tab, before the activity
-  // tabs (Twenty parity: Note, Timeline, Files).
+  // tabs (Note, Timeline, Files).
   let nextTabPosition = 1;
   const richTextField = seedDef?.richTextTabField ? fieldByName.get(seedDef.richTextTabField) : undefined;
   if (richTextField) {

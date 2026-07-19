@@ -42,7 +42,7 @@ import { ApiError, type DataModelField, type DataModelObjectDetail, dataModelApi
 import { getIcon, ROLE_ICON_OPTIONS } from '@/lib/icons';
 import { FIELD_TYPE_ICON, FIELD_TYPE_LABEL, FieldFormDialog } from './field-config';
 
-/** System fields that can't be deactivated (mirrors the API guard + Twenty). Still editable. */
+/** System fields that can't be deactivated (mirrors the API guard). Still editable. */
 const NON_DEACTIVATABLE_FIELD_NAMES = new Set(['created_at', 'updated_at', 'deleted_at', 'created_by']);
 
 function relationTypeOf(field: DataModelField): RelationType | null {
@@ -212,7 +212,7 @@ function RelationRow({
   );
 }
 
-/** Utility objects whose relations Twenty hides from the Data Model Relations table unless Advanced. */
+/** Utility objects whose relations are hidden from the Data Model Relations table unless Advanced. */
 const UTILITY_OBJECT_PLURALS: ReadonlySet<string> = new Set([
   'workspace_members',
   'attachments',
@@ -236,8 +236,8 @@ function FieldsTab({ detail }: { detail: DataModelObjectDetail }) {
     return target?.labelPlural ?? null;
   };
 
-  // Twenty hides relations that are morph reverses or point at a system/utility object, unless
-  // Advanced mode is on (gap: Data Model relations).
+  // Hide relations that are morph reverses or point at a system/utility object, unless
+  // Advanced mode is on.
   const isSystemRelation = (field: DataModelField): boolean => {
     const settings = field.settings as { isMorphReverse?: boolean; relationTargetObjectMetadataId?: string; morphTargetObjectMetadataIds?: string[] } | null;
     if (settings?.isMorphReverse) return true;
@@ -386,8 +386,8 @@ function AddRelationDialog({ objectId }: { objectId: string }) {
   const { data: objects } = useQuery({ queryKey: ['data-model-objects'], queryFn: dataModelApi.listObjects, enabled: open });
 
   const selectedTargets = (objects ?? []).filter((o) => targetIds.includes(o.id));
-  // Twenty's model: the *number of destinations* decides the type — one target = a plain relation,
-  // more than one = a polymorphic (morph) relation. No separate "polymorphic" checkbox (gap C4).
+  // The *number of destinations* decides the type — one target = a plain relation,
+  // more than one = a polymorphic (morph) relation. No separate "polymorphic" checkbox.
   const isMorph = targetIds.length > 1;
 
   function reset(): void {
@@ -919,7 +919,7 @@ function SettingsTab({ detail }: { detail: DataModelObjectDetail }) {
 }
 
 /**
- * Object Layout tab (Twenty parity): launches the full record-page layout customizer (edit mode)
+ * Object Layout tab: launches the full record-page layout customizer (edit mode)
  * on a real record of this object, and a "Reset to default" action. Field-group editing itself
  * (rename/add/delete groups, per-field visibility) happens inside that customizer, not here.
  */

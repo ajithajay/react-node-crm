@@ -5,8 +5,8 @@ import { spawn } from 'node:child_process';
  * `vm` shares the host V8 realm with the caller, so a constructor-chain escape
  * (`params.constructor.constructor('return process.env')()`) reaches the API/worker process's
  * own globals and secrets. A child process has its own V8 isolate and, with its env stripped down
- * to just PATH, nothing sensitive to escape to — matching the isolation twenty gets from its LOCAL
- * logic-function driver's `spawn` + IPC + stripped-env + hard-timeout pattern.
+ * to just PATH, nothing sensitive to escape to — the same `spawn` + IPC + stripped-env +
+ * hard-timeout pattern used to isolate untrusted logic-function code.
  */
 
 const CHILD_TIMEOUT_MS = 2000;

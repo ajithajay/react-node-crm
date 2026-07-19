@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 /**
- * A user-customizable left-sidebar entry (Twenty's `navigationMenuItem`). Per workspace member.
+ * A user-customizable left-sidebar entry. Per workspace member.
  * A FOLDER groups children (which point back via `folderId`); the other types are leaf links to an
  * object list, a saved view, or an external URL. `position` orders siblings.
  */

@@ -182,7 +182,7 @@ async function httpRequest(input: Record<string, unknown>): Promise<ActionOutput
  * locked-down `node:vm` context (no `require`/`process`/`globalThis`, deep-cloned inputs) with a compile
  * timeout; `main` is called with the step's (variable-resolved) `params` and its return is captured.
  * NOTE: `node:vm` is a soft isolation boundary, not a hardened sandbox — acceptable for v1's
- * self-service automations; documented in task-list.md.
+ * self-service automations.
  */
 export async function runCode(
   step: WorkflowStep,

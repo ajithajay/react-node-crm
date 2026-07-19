@@ -3,7 +3,7 @@ import { dashboardApi, type DashboardWidgetConfiguration } from '@/lib/api-clien
 
 /** Fetches a GRAPH widget's computed chart data. Requires both an object and a group-by/aggregate
  * choice to be selected — an unconfigured freshly-added widget shows a "configure this widget"
- * empty state instead of querying (mirrors Twenty's `hasMinimalRequiredConfigForGraph` gate). */
+ * empty state instead of querying. */
 export function useChartData(objectMetadataId: string | null, configuration: DashboardWidgetConfiguration) {
   const isAggregateOnly = configuration.configurationType === 'AGGREGATE_CHART';
   const isConfigured = !!objectMetadataId && (isAggregateOnly || !!configuration.groupByFieldMetadataId);

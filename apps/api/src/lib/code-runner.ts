@@ -5,8 +5,8 @@ import { spawn } from 'node:child_process';
  * `vm` shares the host V8 realm with the caller, so a constructor-chain escape
  * (`params.constructor.constructor('return process.env')()`) reaches the API process's own
  * globals and secrets. A child process has its own V8 isolate and, with its env stripped down to
- * just PATH, nothing sensitive to escape to — matching the isolation twenty gets from its LOCAL
- * logic-function driver's `spawn` + IPC + stripped-env + hard-timeout pattern.
+ * just PATH, nothing sensitive to escape to — the same isolation gained by a `spawn` + IPC +
+ * stripped-env + hard-timeout pattern.
  * Duplicated in `apps/worker/src/lib/code-runner.ts`: this is a Node-only helper and can't live in
  * `@saasly/shared`, which is also bundled into the browser build.
  */

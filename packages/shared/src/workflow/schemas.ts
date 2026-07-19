@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Workflow contracts (Phase 8). Modelled on Twenty's workflow module but simplified for our REST
+ * Workflow contracts (Phase 8). A simplified workflow module for our REST
  * stack: a Workflow is a thin container of WorkflowVersions; each version holds a single `trigger`
  * plus a flat array of `steps` forming a DAG (the trigger is the root; every node carries
  * `nextStepIds`). A WorkflowRun snapshots a version's flow and tracks per-step execution state.
@@ -90,7 +90,7 @@ export const RecordEventAction = {
 } as const;
 export type RecordEventAction = (typeof RecordEventAction)[keyof typeof RecordEventAction];
 
-// ── Step filters (for FILTER / IF_ELSE), mirroring Twenty's StepFilter shape ──
+// ── Step filters (for FILTER / IF_ELSE) ──
 export const stepFilterOperandSchema = z.enum([
   'eq',
   'ne',

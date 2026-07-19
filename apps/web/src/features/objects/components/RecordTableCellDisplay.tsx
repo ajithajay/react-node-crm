@@ -7,7 +7,7 @@ import { RecordRelationCell } from './RecordRelationCell';
 import { Tag } from './Tag';
 
 /**
- * Read-only cell content — mirrors Twenty's per-type field displays (Tag for SELECT/MULTI_SELECT,
+ * Read-only cell content — per-type field displays (Tag for SELECT/MULTI_SELECT,
  * check/x + text for BOOLEAN, an avatar+name chip for the record's label-identifier field). Every
  * other type falls back to `formatFieldValue`'s plain text (see that file's doc comment for the
  * full list of types this doesn't attempt to prettify further, e.g. CURRENCY/ADDRESS/RELATION).

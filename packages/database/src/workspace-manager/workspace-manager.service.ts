@@ -27,7 +27,7 @@ export interface ProvisionWorkspaceResult {
 }
 
 /**
- * Provision a newly-created workspace (solution-approach.md §4.8): create its Postgres schema,
+ * Provision a newly-created workspace: create its Postgres schema,
  * seed the standard objects/fields/relations/views through the metadata→DDL engine, and seed
  * default roles. Relations are seeded in a second/third pass because they reference other objects.
  * The `workspaces` row must already exist before calling this.
@@ -168,7 +168,7 @@ export async function provisionWorkspace(
     });
   }
 
-  // Pass 3.5 — curated default TABLE-view columns (Twenty parity), now that relation fields exist.
+  // Pass 3.5 — curated default TABLE-view columns, now that relation fields exist.
   // Every column-eligible field gets an explicit row (curated ones first, then any leftover
   // column-eligible field hidden) so the Fields picker never shows a field as "shown" that isn't
   // actually seeded as a column, and vice versa.

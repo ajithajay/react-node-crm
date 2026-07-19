@@ -27,7 +27,7 @@ export class ViewEntity {
   @Column({ type: 'boolean', name: 'is_compact', default: false })
   isCompact!: boolean;
 
-  /** The auto-created "All <Object>" index view — locked from rename/delete (Twenty's ViewKey.INDEX). */
+  /** The auto-created "All <Object>" index view — locked from rename/delete. */
   @Column({ type: 'boolean', name: 'is_default', default: false })
   isDefault!: boolean;
 

@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 /**
- * An ordered tab on a record page (Twenty's `pageLayoutTab`) — e.g. Home / Timeline / Notes /
+ * An ordered tab on a record page — e.g. Home / Timeline / Notes /
  * Tasks / Files. `position` orders tabs; `isVisible` hides a tab without deleting it. Each tab owns
  * ordered widgets.
  */
@@ -29,7 +29,7 @@ export class PageLayoutTabEntity {
   @Column({ type: 'boolean', name: 'is_visible', default: true })
   isVisible!: boolean;
 
-  /** The layout's default-to-focus tab (Twenty's "pin tab"). At most one per layout. */
+  /** The layout's default-to-focus ("pinned") tab. At most one per layout. */
   @Column({ type: 'boolean', name: 'is_pinned', default: false })
   isPinned!: boolean;
 

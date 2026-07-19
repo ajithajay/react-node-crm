@@ -3,7 +3,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { TokenType } from '@saasly/shared';
 import { env } from './config.js';
 
-/** Per-type secret, derived from the base JWT_SECRET (solution-approach.md §6). */
+/** Per-type secret, derived from the base JWT_SECRET. */
 function deriveSecret(type: TokenType): string {
   return createHmac('sha256', env.JWT_SECRET).update(type).digest('hex');
 }

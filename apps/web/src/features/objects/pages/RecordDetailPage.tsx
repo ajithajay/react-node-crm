@@ -30,11 +30,11 @@ import { getIcon } from '@/lib/icons';
 import { useLayoutCustomization } from '@/features/layout-customization/LayoutCustomizationContext';
 
 /** Activity widgets are singletons (one Timeline/Notes/Tasks/Files per layout); FIELDS and FIELD can
- * both be added any number of times (Twenty parity — multiple "Fields group" widgets are allowed). */
+ * both be added any number of times — multiple "Fields group" widgets are allowed. */
 const SINGLETON_WIDGET_TYPES: PageLayoutWidgetType[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES'];
 
 /** Task/Note's own junction → the "Relations" widget resolving which Company/Person/Opportunity
- * they're about (Twenty's `ActivityTargetsInlineCell`), replacing the raw junction reverse-relation
+ * they're about, replacing the raw junction reverse-relation
  * widget that page-layout.seed.ts now excludes. */
 const TARGET_RELATIONS_CONFIG: Record<string, { junctionObjectNamePlural: string; forwardKey: string }> = {
   task: { junctionObjectNamePlural: 'task_targets', forwardKey: 'taskId' },
@@ -140,7 +140,7 @@ function ActivityWidget({
 /**
  * The FIELDS widget: named field groups from the page layout. Each field is a self-saving inline
  * cell (or a forward-relation picker, or a read-only system row). When "Display more fields" is on,
- * fields hidden from the record page appear under a collapsed "More (n)" disclosure (Twenty parity).
+ * fields hidden from the record page appear under a collapsed "More (n)" disclosure.
  */
 function FieldsWidget({
   widget,
@@ -223,7 +223,7 @@ function EditableWidget({ isEditing, onClick, children }: { isEditing: boolean; 
 }
 
 /**
- * Full-page record view (Twenty's record show page): a static left column (Fields/Field widgets +
+ * Full-page record view: a static left column (Fields/Field widgets +
  * relation widgets) and a right-side tab strip (Timeline/Notes/Tasks/Files + any custom tabs). The
  * layout customizer edits this page's tabs/widgets/field-groups in place: clicking a widget or tab
  * (while customizing) opens its right-side settings panel — the same pattern as sidebar customization.

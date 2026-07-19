@@ -74,6 +74,6 @@ function createS3StorageDriver(): StorageDriver {
   };
 }
 
-/** Selected by STORAGE_TYPE: `local` (filesystem) or `s3` (MinIO/AWS) — solution-approach.md §9. */
+/** Selected by STORAGE_TYPE: `local` (filesystem) or `s3` (MinIO/AWS). */
 export const storageDriver: StorageDriver =
   env.STORAGE_TYPE === 's3' ? createS3StorageDriver() : createLocalStorageDriver();

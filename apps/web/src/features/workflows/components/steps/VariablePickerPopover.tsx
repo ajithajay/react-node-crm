@@ -14,7 +14,7 @@ interface Frame {
 /**
  * The step→field picker: choose a step (trigger or a prior step), then drill into its known output
  * fields to any depth — a field with its own `fields` (e.g. a Search step's "First Company") pushes
- * another level, matching Twenty's nested output-schema navigation. Falls back to a free-text path
+ * another level, so navigation of nested output schemas can go arbitrarily deep. Falls back to a free-text path
  * when a step/field has no known shape. Produces a `{{step.a.b.c}}` template.
  *
  * Shared by BOTH sides of a condition row (left = field-to-compare, right = value/variable) and by

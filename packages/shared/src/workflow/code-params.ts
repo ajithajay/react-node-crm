@@ -1,7 +1,7 @@
 /**
  * Infer the typed input parameters of a Code step from its `main(params: { a: string; b: number })`
- * signature. A lightweight regex parser (Twenty uses the TS compiler API); good enough for the flat
- * `{ key: type }` param objects our Code steps use. Powers the "a/b" input fields above the editor.
+ * signature. A lightweight regex parser (rather than a full TS compiler API parse); good enough for
+ * the flat `{ key: type }` param objects our Code steps use. Powers the "a/b" input fields above the editor.
  */
 export interface CodeParam {
   name: string;

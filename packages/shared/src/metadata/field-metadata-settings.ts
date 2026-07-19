@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** The 8 selectable address sub-fields, mirroring Twenty's AddressFieldsType. */
+/** The 8 selectable address sub-fields. */
 export const ADDRESS_SUB_FIELDS = [
   'street1',
   'street2',
@@ -13,7 +13,7 @@ export const ADDRESS_SUB_FIELDS = [
 ] as const;
 export type AddressSubField = (typeof ADDRESS_SUB_FIELDS)[number];
 
-/** Address sub-fields shown by default (lat/lng hidden), mirroring Twenty. */
+/** Address sub-fields shown by default (lat/lng hidden). */
 export const DEFAULT_VISIBLE_ADDRESS_SUB_FIELDS: AddressSubField[] = [
   'street1',
   'street2',
@@ -33,7 +33,7 @@ export const selectOptionSchema = z.object({
 export type SelectOption = z.infer<typeof selectOptionSchema>;
 
 /**
- * Per-type configuration (BRD §5.2). Kept as one loose-but-typed union stored as jsonb —
+ * Per-type configuration. Kept as one loose-but-typed union stored as jsonb —
  * new optional keys can be added without a migration.
  */
 export const fieldMetadataSettingsSchema = z

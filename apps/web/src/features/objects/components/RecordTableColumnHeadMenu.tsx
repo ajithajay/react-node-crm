@@ -10,9 +10,9 @@ import type { DataModelField } from '@/lib/api-client';
 import { fieldIcon } from '../lib/field-icon';
 
 /**
- * Column header dropdown (Twenty parity): Sort/Filter/Move left/right/Hide. The label-identifier
- * column can't be moved or hidden — guarded here the same way Twenty guards its own header menu
- * (`isLabelIdentifier` disables Move/Hide), not via any structural "pinning" in the data model.
+ * Column header dropdown: Sort/Filter/Move left/right/Hide. The label-identifier
+ * column can't be moved or hidden — guarded here via `isLabelIdentifier` disabling Move/Hide,
+ * not via any structural "pinning" in the data model.
  */
 export function RecordTableColumnHeadMenu({
   field,

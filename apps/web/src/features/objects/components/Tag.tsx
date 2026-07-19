@@ -1,6 +1,6 @@
 import { tagColor } from '../lib/table-tokens';
 
-/** Colored pill for SELECT/MULTI_SELECT values — mirrors Twenty's Tag component (pastel bg, saturated text, 20px tall). */
+/** Colored pill for SELECT/MULTI_SELECT values (pastel bg, saturated text, 20px tall). */
 export function Tag({ label, color }: { label: string; color?: string }) {
   const { bg, text } = tagColor(color);
   return (

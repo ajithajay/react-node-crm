@@ -2,7 +2,7 @@ import { FieldMetadataType, toCamelCase, ViewFilterOperand, type SelectOption } 
 import type { DataModelField } from '@/lib/api-client';
 import { formatRelativeDate } from './format-relative-date';
 
-/** Audit-timestamp fields display as relative time everywhere (Twenty parity); other date fields stay absolute. */
+/** Audit-timestamp fields display as relative time everywhere; other date fields stay absolute. */
 const RELATIVE_DATE_FIELD_NAMES: ReadonlySet<string> = new Set(['created_at', 'updated_at']);
 
 /** Field types whose value lives under a single friendly JSON key (mirrors record-field-codec.ts). */
@@ -84,14 +84,14 @@ export function resolveRecordLabel(
   return `Unnamed ${objectLabelSingular ?? 'record'}`;
 }
 
-/** Prepend https:// when a URL has no scheme (Twenty's ensureAbsoluteUrl). */
+/** Prepend https:// when a URL has no scheme. */
 export function ensureAbsoluteUrl(raw: string): string {
   const t = raw.trim();
   if (!t) return t;
   return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 }
 
-/** Twenty's absolute-URL rule: empty ok (clears the field); reject pure-numeric hosts; must parse. */
+/** Absolute-URL rule: empty ok (clears the field); reject pure-numeric hosts; must parse. */
 export function isValidUrl(raw: string): boolean {
   const t = raw.trim();
   if (!t) return true;
@@ -105,7 +105,7 @@ export function isValidUrl(raw: string): boolean {
 }
 
 /**
- * Whether a per-field draft value is persistable (mirrors Twenty's per-input `skipPersist` gate).
+ * Whether a per-field draft value is persistable (a per-input `skipPersist` gate).
  * Returns false to block the save and keep the editor in an error state.
  */
 export function isFieldDraftValid(field: DataModelField, draft: unknown): boolean {

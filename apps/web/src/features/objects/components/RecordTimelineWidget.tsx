@@ -74,7 +74,7 @@ function TimelineEntry({ activity, fieldByName }: { activity: Record<string, unk
  * Timeline tab — a real query against `timeline_activities` filtered by the MORPH_RELATION
  * target_type/target_id pair. Rows are auto-logged on create/update by the record API
  * (`writeTimelineActivity` in record.service.ts) for Company/Person/Opportunity, with a field-level
- * before/after diff on updates (Twenty parity — see `computeFieldDiff`).
+ * before/after diff on updates (see `computeFieldDiff`).
  */
 export function RecordTimelineWidget({
   sourceObjectNameSingular,

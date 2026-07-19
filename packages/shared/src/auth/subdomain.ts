@@ -1,4 +1,4 @@
-/** Pure subdomain-resolution + validation logic (solution-approach.md §14 unit-test target). */
+/** Pure subdomain-resolution + validation logic. */
 
 export const RESERVED_SUBDOMAINS = [
   'app',

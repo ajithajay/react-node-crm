@@ -79,7 +79,7 @@ export async function createInvitation(
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
 
   // Re-inviting an existing (e.g. revoked or pending) row also lets the inviter change its role —
-  // Twenty requires delete-then-resend for that; upserting here is simpler and equivalent.
+  // upserting here is simpler and equivalent to a delete-then-resend.
   let invitation = await invitationRepo().findOneBy({ workspaceId, email: normalizedEmail });
   if (invitation) {
     invitation.tokenHash = sha256Hex(rawToken);

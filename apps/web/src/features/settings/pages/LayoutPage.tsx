@@ -32,7 +32,7 @@ function useLayoutStats() {
 }
 
 /**
- * Settings → Layout landing page (Twenty parity): an overview + a single "Customize" entry point
+ * Settings → Layout landing page: an overview + a single "Customize" entry point
  * into the global layout-customization mode, which edits the sidebar in place (record-page layouts
  * are customized per-object, from Data Model → Object → Layout).
  */

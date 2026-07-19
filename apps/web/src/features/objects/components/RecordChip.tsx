@@ -6,7 +6,7 @@ function colorForName(name: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]!;
 }
 
-/** Avatar-circle + name chip — Twenty's record-label rendering (RecordChip), used for the label-identifier column and resolved relations. */
+/** Avatar-circle + name chip used for the label-identifier column and resolved relations. */
 export function RecordChip({ name }: { name: string }) {
   const label = name.trim() || '—';
   const initial = label.charAt(0).toUpperCase();

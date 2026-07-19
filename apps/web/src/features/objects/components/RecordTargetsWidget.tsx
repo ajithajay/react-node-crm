@@ -13,7 +13,7 @@ import { RecordChip } from './RecordChip';
 const TARGET_OBJECT_NAMES = ['company', 'person', 'opportunity'] as const;
 
 /**
- * A Task's/Note's own "Relations" widget (Twenty's `ActivityTargetsInlineCell`) — shows which
+ * A Task's/Note's own "Relations" widget — shows which
  * Company/Person/Opportunity it's about, resolved from the junction object's morph `target`
  * (targetType/targetId), not the raw junction rows themselves.
  */

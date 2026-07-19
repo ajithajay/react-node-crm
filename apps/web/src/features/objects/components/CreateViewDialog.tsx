@@ -20,7 +20,7 @@ export interface CreateViewInput {
   groupByFieldMetadataId?: string;
 }
 
-/** BRD: "Kanban view (grouped by a Select field)" — only SELECT fields are offered as the group-by. */
+/** Kanban view is grouped by a Select field — only SELECT fields are offered as the group-by. */
 export function CreateViewDialog({
   fields,
   onCreate,

@@ -1,8 +1,7 @@
 import type { WorkflowRunStepInfos } from './schemas.js';
 
 /**
- * Variable interpolation for workflow action inputs — a simplified take on Twenty's resolver
- * (`packages/twenty-shared/src/utils/variable-resolver.ts`). Twenty compiles `{{...}}` via Handlebars;
+ * Variable interpolation for workflow action inputs. Rather than compiling `{{...}}` via Handlebars,
  * we resolve a plain dot-path (`trigger.record.name`, `<stepId>.result.field`) against the run context.
  * Pure — no ORM/React (fits the @saasly/shared constraint).
  */
@@ -60,7 +59,7 @@ export function resolveInput(unresolved: unknown, context: Record<string, unknow
 
 /**
  * Build the context object consumed by `resolveInput`: `{ [stepId]: stepResult }` for every step that
- * has produced a result (the trigger is keyed under `trigger`). Mirrors Twenty's `getWorkflowRunContext`.
+ * has produced a result (the trigger is keyed under `trigger`).
  */
 export function getWorkflowRunContext(
   stepInfos: WorkflowRunStepInfos,

@@ -4,8 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DASHBOARD_WIDGET_TYPES, GRAPH_TYPES } from '@saasly/shared';
 import { GRAPH_TYPE_ICONS, GRAPH_TYPE_LABELS, WIDGET_TYPE_ICONS, WIDGET_TYPE_LABELS } from '../lib/widget-defaults';
 
-/** Two-step "Add widget" flow — pick a widget type, then (for GRAPH) a chart sub-type. Mirrors
- * Twenty's `SidePanelPageLayoutDashboardWidgetTypeSelect` → `ChartTypeSelectionSection`. Controlled
+/** Two-step "Add widget" flow — pick a widget type, then (for GRAPH) a chart sub-type. Controlled
  * (`open`/`onOpenChange`) so it can be triggered either from the toolbar's "Add widget" button or
  * from a drag-selected empty area on the grid. */
 export function AddWidgetDialog({

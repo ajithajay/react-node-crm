@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { PermissionFlagType } from '../metadata/permission-flag.js';
 
-/** Just a label, matching Twenty — the internal `name` slug is derived server-side. */
+/** Just a label — the internal `name` slug is derived server-side. */
 export const createRoleRequestSchema = z.object({
   label: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).nullish(),
@@ -31,7 +31,7 @@ export type UpdateSettingsPermissionsRequest = z.infer<typeof updateSettingsPerm
 
 /**
  * Partial patch — omitted keys are left untouched, `null` resets that permission back to
- * "inherit the role's blanket flag" (matches Twenty's tri-state object-permission model).
+ * "inherit the role's blanket flag" (a tri-state object-permission model).
  */
 export const updateObjectPermissionRequestSchema = z.object({
   canRead: z.boolean().nullable().optional(),

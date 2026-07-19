@@ -1,5 +1,5 @@
 /**
- * All field types selectable in the data-model builder (BRD §5.1 — all types are v1).
+ * All field types selectable in the data-model builder (all types are v1).
  * Grouped as the UI groups them: Basic (simple), Basic (composite), Relation, Advanced.
  */
 export const FieldMetadataType = {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Widget types a dashboard's page_layout can hold (Phase 7, Twenty parity subset). */
+/** Widget types a dashboard's page_layout can hold (Phase 7). */
 export const DASHBOARD_WIDGET_TYPES = ['GRAPH', 'IFRAME', 'RECORD_TABLE', 'STANDALONE_RICH_TEXT'] as const;
 export type DashboardWidgetType = (typeof DASHBOARD_WIDGET_TYPES)[number];
 

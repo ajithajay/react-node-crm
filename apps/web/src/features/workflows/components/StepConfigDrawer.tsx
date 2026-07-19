@@ -23,7 +23,7 @@ interface Props {
   onDeleteStep: (id: string) => void;
 }
 
-// Control-flow steps have no external side effect to retry/continue past — no error-handling UI (Twenty parity).
+// Control-flow steps have no external side effect to retry/continue past — no error-handling UI.
 const NO_ERROR_HANDLING: ReadonlySet<string> = new Set([
   WorkflowActionType.FILTER,
   WorkflowActionType.IF_ELSE,

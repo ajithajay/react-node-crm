@@ -8,8 +8,8 @@ import { Agent, buildConnector, fetch as undiciFetch } from 'undici';
  * host is never re-checked. This validates the actual IP at connection time instead — for a
  * literal-IP target directly, and via a custom DNS lookup for a hostname target — so every hop
  * (including redirects, which each open a fresh connection through this same dispatcher) is
- * re-validated. Mirrors twenty's connection-level `SecureHttpClientService` pattern, adapted to
- * undici's connector hook instead of a Node `http.Agent`'s `lookup` event.
+ * re-validated. This follows the same connection-level revalidation pattern as other SSRF-safe
+ * HTTP clients, adapted to undici's connector hook instead of a Node `http.Agent`'s `lookup` event.
  */
 
 const ALLOW_PRIVATE = process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS === 'true';

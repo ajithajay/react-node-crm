@@ -239,7 +239,7 @@ async function insertFieldWithDdl(manager: EntityManager, input: CreateFieldInpu
 }
 
 /**
- * The metadata→DDL engine (solution-approach.md §4.4). Each call writes the metadata row(s) in
+ * The metadata→DDL engine. Each call writes the metadata row(s) in
  * `core` AND runs the matching DDL against the workspace schema, atomically, then bumps the
  * workspace's metadata version so cached dynamic entities are invalidated.
  */
@@ -308,7 +308,7 @@ export function createMetadataService(coreDataSource: DataSource) {
     },
 
     /**
-     * Give a newly-created custom object the standard starter fields Twenty seeds: a required `name`
+     * Give a newly-created custom object standard starter fields: a required `name`
      * TEXT field (set as the record label) plus the system/audit fields. Runs in one transaction.
      */
     async seedNewObjectDefaults(input: {
@@ -431,7 +431,7 @@ export function createMetadataService(coreDataSource: DataSource) {
       });
     },
 
-    /** Set/clear an object's record-label + record-image identifier fields (Twenty's "Options" card). */
+    /** Set/clear an object's record-label + record-image identifier fields. */
     async setObjectIdentifiers(
       workspaceId: string,
       objectMetadataId: string,
@@ -518,7 +518,7 @@ export function createMetadataService(coreDataSource: DataSource) {
      * Creates both sides of a to-one relation in one transaction: the forward field (physical
      * `<name>_id` FK column, `MANY_TO_ONE`) on the source object, and a metadata-only reverse field
      * (`ONE_TO_MANY`, no physical column — it's a virtual "list of records that point back at me")
-     * on the target object. Mirrors Twenty's model; see `relationTargetFieldName` in the shared
+     * on the target object; see `relationTargetFieldName` in the shared
      * settings schema, which anticipated this but had no creator implementation until now.
      */
     async createRelation(input: CreateRelationInput): Promise<{ forward: FieldMetadataEntity; reverse: FieldMetadataEntity }> {

@@ -20,7 +20,7 @@ export function recordFieldKey(field: DataModelField): string {
 
 /**
  * A record-field value input that can hold either a literal (rendered with the CRM's own per-type
- * `FieldInput`, so every field type gets its proper editor — Twenty's approach) OR a `{{...}}` variable
+ * `FieldInput`, so every field type gets its proper editor) OR a `{{...}}` variable
  * from a previous step (toggled by the {x} button). Variable mode is detected by a leading `{{`.
  */
 export function RecordFieldValueInput({

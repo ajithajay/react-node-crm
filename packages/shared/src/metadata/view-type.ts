@@ -1,4 +1,4 @@
-/** BRD §4 — v1 supports Table + Kanban; Calendar is v2. */
+/** v1 supports Table + Kanban; Calendar is v2. */
 export const ViewType = {
   TABLE: 'TABLE',
   KANBAN: 'KANBAN',

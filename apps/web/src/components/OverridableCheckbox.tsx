@@ -6,7 +6,7 @@ export type OverridableCheckboxVisual = 'default' | 'override' | 'no_cta';
 
 /**
  * Resolves the tri-state (blanket flag + nullable per-item override) into what the checkbox
- * should show, matching Twenty's role-permission UX:
+ * should show:
  * - blanket=true, override !== false -> force-checked, disabled, offer an "X" to revoke it here
  * - blanket=true, override === false -> force-unchecked, disabled, offer a reload to un-revoke
  * - blanket=false -> a plain, freely-toggleable checkbox (override true/false directly)

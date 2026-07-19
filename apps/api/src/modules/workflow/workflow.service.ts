@@ -173,8 +173,8 @@ export async function deleteWorkflow(
 // ── version / draft model ─────────────────────────────────────────────────────
 /**
  * Return the DRAFT version the builder can edit. If the current version is already a DRAFT, reuse it;
- * otherwise clone the current (active/newest) version into a fresh DRAFT — Twenty's "editing an active
- * workflow silently forks a draft" behavior.
+ * otherwise clone the current (active/newest) version into a fresh DRAFT — editing an active
+ * workflow silently forks a draft.
  */
 export async function getUpdatableVersion(
   workspaceId: string,

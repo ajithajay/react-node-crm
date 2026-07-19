@@ -24,7 +24,7 @@ const COMPARABLE_TYPES: ReadonlySet<FieldMetadataType> = new Set([
 /**
  * Simple, single-column fields the parser can filter/sort/search on — composite types (CURRENCY,
  * EMAILS, ADDRESS, …) and the ONE_TO_MANY reverse side of RELATION are excluded (querying their
- * sub-fields needs more modeling; see task-list.md's Phase 6 follow-ups). MORPH_RELATION exposes
+ * sub-fields needs more modeling — a documented follow-up). MORPH_RELATION exposes
  * its `${key}Type`/`${key}Id` pair as two filterable pseudo-columns, matching the codec's shape.
  */
 export interface FilterableField {
@@ -203,7 +203,7 @@ export function applyFilterConditions(
 }
 
 /**
- * Applies filter/search/sort/pagination (solution-approach.md §5's "shared query parser") to a
+ * Applies filter/search/sort/pagination (the shared query parser) to a
  * QueryBuilder scoped to one workspace object table. Mutates and returns the same builder.
  * v1 scope: a flat AND-of-conditions filter list (nested AND/OR groups are a documented follow-up)
  * over the "simple" field types listed in `buildFilterableFieldIndex`.

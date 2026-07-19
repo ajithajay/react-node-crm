@@ -6,7 +6,7 @@ import { LineChartWidget } from './LineChartWidget';
 import { WidgetEmptyState } from '../WidgetStates';
 
 /** A GRAPH widget's second-level type switch — dispatches on `configuration.configurationType`
- * (Twenty parity: the widget's own `type` is just GRAPH; the chart sub-type lives in its config). */
+ * (the widget's own `type` is just GRAPH; the chart sub-type lives in its config). */
 export function GraphWidget({
   objectMetadataId,
   configuration,

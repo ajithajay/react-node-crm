@@ -27,7 +27,7 @@ export interface FieldMetadataLike {
 }
 
 /**
- * Field type → Postgres column(s), per solution-approach.md §4.5. Composite types produce
+ * Field type → Postgres column(s). Composite types produce
  * multiple columns; SELECT additionally requires an enum type created first (see `enumType`).
  * Unique/nullable apply to the field's primary column only (composite sub-columns are never unique).
  */

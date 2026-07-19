@@ -103,7 +103,7 @@ export function isFieldWidgetPickable(field: DataModelField): boolean {
 }
 
 /**
- * Which FIELD-widget display modes a field type supports (Twenty parity): a scalar field only has
+ * Which FIELD-widget display modes a field type supports: a scalar field only has
  * "Field"; a to-one relation adds "Card"; a to-many relation adds "Card" and "Table".
  */
 export function displayModesForField(field: DataModelField): ('PLAIN' | 'CARD' | 'TABLE')[] {

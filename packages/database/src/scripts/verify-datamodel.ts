@@ -98,7 +98,7 @@ async function main(): Promise<void> {
   const fieldRepo = coreDataSource.getRepository(FieldMetadataEntity);
   const company = await objectRepo.findOneByOrFail({ workspaceId: workspace.id, nameSingular: 'company' });
 
-  console.log('\n2. Company field parity (Twenty = 17)');
+  console.log('\n2. Company field count (expected 17)');
   const companyFields = await fieldRepo.findBy({ objectMetadataId: company.id });
   assert(companyFields.length === 17, `expected 17 Company fields, got ${companyFields.length}: ${companyFields.map((f) => f.name).join(', ')}`);
   ok(`Company has 17 fields: ${companyFields.map((f) => f.name).join(', ')}`);

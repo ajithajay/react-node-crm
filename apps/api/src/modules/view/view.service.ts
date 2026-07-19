@@ -131,7 +131,7 @@ export async function getView(workspaceId: string, viewId: string): Promise<View
   // No explicit column config yet — default to every active "column-shaped" field, in creation order,
   // all visible. Reverse relations (People/Opportunities-style ONE_TO_MANY fields, including morph
   // reverses like Notes/Tasks/Attachments) and MORPH_RELATION forward fields have no meaningful table
-  // cell (record-field-codec.ts doesn't decode them at all) — matches Twenty, which surfaces those as
+  // cell (record-field-codec.ts doesn't decode them at all) — they surface as
   // record-detail relation widgets instead of table columns, never as default columns.
   const fieldConfig =
     fields.length > 0
@@ -203,7 +203,7 @@ export async function updateView(
     await assertFieldsBelongToObject(workspaceId, view.objectMetadataId, [input.kanbanFieldMetadataId]);
   }
 
-  // The default "All <Object>" view is locked from renaming (Twenty's ViewKey.INDEX). Filters/sorts/
+  // The default "All <Object>" view is locked from renaming. Filters/sorts/
   // fields/compact/group-by can still be changed — only its name/deletion are protected.
   if (view.isDefault && input.name !== undefined && input.name !== view.name) {
     throw new ConflictError('The default view cannot be renamed');

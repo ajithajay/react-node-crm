@@ -20,18 +20,18 @@ export interface StandardObjectDef {
   /** The scalar field whose value is the record's display label (record-label identifier). */
   labelField?: string;
   fields: StandardFieldDef[];
-  /** Default named record-page sections (Twenty parity), by field name. Optional — objects with
+  /** Default named record-page sections, by field name. Optional — objects with
    * none get a single implicit "General" section at render time. */
   sections?: { label: string; fieldNames: string[] }[];
   /** Forward (MANY_TO_ONE) relation field names promoted to their own FIELD widget on the record
-   * page instead of being inlined in a FIELDS-widget section (Twenty parity — e.g. Person's
+   * page instead of being inlined in a FIELDS-widget section (e.g. Person's
    * `company`, Opportunity's `company`/`point_of_contact`/`owner`). Order here is the widget order. */
   widgetRelationFields?: string[];
   /** Which activity tabs to seed on the record page; defaults to all four when omitted. Task/Note
    * override this — a task/note doesn't have its own sub-notes/sub-tasks. */
   activityWidgetTypes?: ('TIMELINE' | 'NOTES' | 'TASKS' | 'FILES')[];
   /** A RICH_TEXT field excluded from the Fields groups and instead surfaced as a dedicated "Note"
-   * tab (full-document editor, no icon/label) — Twenty parity for Task/Note's body. */
+   * tab (full-document editor, no icon/label) — used for Task/Note's body. */
   richTextTabField?: string;
 }
 
@@ -65,14 +65,14 @@ export interface StandardMorphRelationDef {
 }
 
 /**
- * Standard objects seeded into every new workspace (BRD §3, §4), modelled on Twenty's default
- * data model. Split into three passes because relations reference other objects' ids:
+ * Standard objects seeded into every new workspace. Split into three passes because relations
+ * reference other objects' ids:
  *   1. objects + their scalar fields (below),
  *   2. STANDARD_RELATIONS (regular to-one/to-many),
  *   3. STANDARD_MORPH_RELATIONS (polymorphic activity/attachment links).
  * The activity-link junction objects (note/task targets, attachments, timeline activities) and the
- * workspace-member object exist so Company/Person/Opportunity carry the same relation fields Twenty
- * shows; record UIs to populate them arrive in Phase 6+.
+ * workspace-member object exist so Company/Person/Opportunity carry the expected relation fields;
+ * record UIs to populate them arrive in Phase 6+.
  */
 export const STANDARD_OBJECTS: StandardObjectDef[] = [
   {
@@ -243,8 +243,8 @@ export const STANDARD_OBJECTS: StandardObjectDef[] = [
     fields: [],
   },
   {
-    // A dashboard record just holds a title + a pointer to its DASHBOARD-type page_layout (Twenty
-    // parity — the widget/tab tree lives in the page_layout* tables, not on this object). It's
+    // A dashboard record just holds a title + a pointer to its DASHBOARD-type page_layout
+    // (the widget/tab tree lives in the page_layout* tables, not on this object). It's
     // deliberately excluded from the record-page-layout seed pass (Phase 7 dashboards render via
     // their own page_layout, not a record page) — see `PAGE_LAYOUT_EXCLUDED_SINGULARS` in
     // `workspace-manager.service.ts`.
@@ -367,8 +367,7 @@ export const STANDARD_RELATIONS: StandardRelationDef[] = [
 const MORPH_TARGETS = ['company', 'person', 'opportunity'];
 
 /**
- * Default TABLE-view column order/visibility per standard object (Twenty parity — see
- * `compute-standard-<object>-view-fields.util.ts` in the Twenty reference clone). Seeded as
+ * Default TABLE-view column order/visibility per standard object. Seeded as
  * `ViewFieldEntity` rows on workspace provisioning so the default "All X" view starts curated
  * instead of showing every column unsorted. Fields not listed here fall back to the
  * synthesize-on-read behavior in `view.service.ts` (shown, in DB order) — used for objects below

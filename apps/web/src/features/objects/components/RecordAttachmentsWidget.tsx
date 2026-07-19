@@ -13,8 +13,8 @@ import { fileIdFromUrl, filesApi, recordApi, resolveFileUrl } from '@/lib/api-cl
 
 /**
  * Files tab — attachments carry their own MORPH_RELATION target directly (no junction object, unlike
- * Notes/Tasks). Upload → `/files/upload` → an attachment record pointing at the file URL. Matching
- * Twenty's AttachmentRow: inline image preview, rename, download, and a per-file actions menu; delete
+ * Notes/Tasks). Upload → `/files/upload` → an attachment record pointing at the file URL. Renders
+ * an inline image preview, rename, download, and a per-file actions menu; delete
  * now removes BOTH the attachment record and the underlying stored file (via `DELETE /files/:id`).
  */
 export function RecordAttachmentsWidget({

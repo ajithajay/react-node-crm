@@ -20,7 +20,7 @@ export class UserWorkspaceEntity {
 export const ColorScheme = { LIGHT: 'LIGHT', DARK: 'DARK', SYSTEM: 'SYSTEM' } as const;
 export type ColorScheme = (typeof ColorScheme)[keyof typeof ColorScheme];
 
-/** The workspace-scoped profile: name, avatar, role assignment, preferences (BRD §6). */
+/** The workspace-scoped profile: name, avatar, role assignment, preferences. */
 @Entity({ name: 'workspace_members' })
 @Index(['workspaceId', 'userId'], { unique: true })
 export class WorkspaceMemberEntity {

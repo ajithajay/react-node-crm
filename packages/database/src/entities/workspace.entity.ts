@@ -45,7 +45,7 @@ export class WorkspaceEntity {
   @Column({ type: 'boolean', name: 'is_two_factor_authentication_enforced', default: false })
   isTwoFactorAuthenticationEnforced!: boolean;
 
-  /** Which profile fields a member may edit on their own profile (Twenty's Editable Profile Fields). */
+  /** Which profile fields a member may edit on their own profile. */
   @Column({
     type: 'jsonb',
     name: 'editable_profile_fields',

@@ -11,7 +11,7 @@ import { RecordSheet } from './RecordSheet';
 /**
  * Notes/Tasks tabs on a record's detail sheet — a two-hop widget: query the junction object
  * (note_targets/task_targets) by the MORPH_RELATION target_type/target_id pair, then resolve each
- * junction row's forward relation to the actual note/task. Matching Twenty: "Create" opens the full
+ * junction row's forward relation to the actual note/task. "Create" opens the full
  * note/task record in a side sheet (rich body + all fields) with this record pre-attached; tasks get
  * a mark-as-done checkbox; removing a row unlinks the junction without deleting the note/task.
  */

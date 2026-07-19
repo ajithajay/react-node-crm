@@ -1,5 +1,5 @@
-/** Curated ISO 4217 currency list for the CURRENCY field's code picker (Twenty parity, trimmed to
- * the common set rather than porting all ~150 codes + per-currency icons). */
+/** Curated ISO 4217 currency list for the CURRENCY field's code picker, trimmed to
+ * the common set rather than supporting all ~150 codes + per-currency icons. */
 export interface CurrencyOption {
   code: string;
   label: string;

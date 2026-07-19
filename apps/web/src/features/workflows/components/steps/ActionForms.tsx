@@ -188,7 +188,7 @@ function RecordWriteForm({ step, onChange, sources }: { step: WorkflowStep; onCh
   );
 }
 
-/** Update-record: pick which fields to change (Twenty's "Fields to update"), then edit only those. */
+/** Update-record: pick which fields to change ("Fields to update"), then edit only those. */
 function UpdateFieldsEditor({
   fields,
   selected,

@@ -21,12 +21,12 @@ import { RecordField } from './RecordFieldRows';
 
 type RelationDisplayMode = 'PLAIN' | 'CARD' | 'TABLE';
 
-/** Only ever show 5 linked records inline (Twenty parity — "All (N)" links out beyond that; we just
- * note the overflow count instead of building a filtered-index link-out for this pass). */
+/** Only ever show 5 linked records inline — "All (N)" links out beyond that; we just
+ * note the overflow count instead of building a filtered-index link-out for this pass. */
 const MAX_VISIBLE = 5;
 
 /**
- * A reverse (ONE_TO_MANY) relation shown as a linked-records widget (Twenty's People/Opportunities
+ * A reverse (ONE_TO_MANY) relation shown as a linked-records widget (e.g. People/Opportunities
  * sections). Each linked record is a chip that navigates to that record's own page. In CARD mode, a
  * chevron expands one record at a time (accordion) to show essentially all of its other fields — the
  * same `RecordField` renderer the record's own page uses — and a "⋮" menu offers Detach (clears the
@@ -61,7 +61,7 @@ export function RecordRelationWidget({
 
   // Fields shown when a linked record is expanded: everything except the label (already the chip),
   // the back-reference relation itself (avoid a circular field), and any reverse/morph relation
-  // (avoid nested relation widgets inside the accordion) — matches Twenty's expansion rule.
+  // (avoid nested relation widgets inside the accordion).
   const expandableFields = (targetDetail?.fields ?? []).filter(
     (f) =>
       f.id !== labelField?.id &&

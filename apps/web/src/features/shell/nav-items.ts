@@ -9,7 +9,7 @@ export interface NavItem {
 
 /**
  * Hardcoded, non-customizable sidebar entries — Companies/People/Opportunities/Tasks/Notes moved to
- * real `navigation_menu_items` rows (Twenty parity: every real object is an explicit sidebar item,
+ * real `navigation_menu_items` rows (every real object is an explicit sidebar item,
  * seeded by default, editable in layout-customization mode; see `navigation.service.ts`). Dashboards
  * and Workflows have no backing object metadata (Phase 7/8 placeholders), so they stay here.
  */

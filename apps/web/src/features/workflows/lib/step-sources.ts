@@ -7,7 +7,7 @@ import { recordActionFields, recordFieldKey } from '../components/steps/record-f
  * One selectable field on a step's output. `key` is the path segment relative to its PARENT (not the
  * full `{{...}}` path) — the picker joins segments as it drills. `fields` lets a leaf drill further
  * (e.g. a Search step's "First <Object>" nests that object's own fields), so the picker supports
- * arbitrary depth, matching Twenty's nested output-schema navigation.
+ * arbitrary depth of nested output-schema navigation.
  */
 export interface StepSourceField {
   key: string;
@@ -86,7 +86,7 @@ const RECORD_ACTION_TYPES: ReadonlySet<string> = new Set([
  * Build the picker sources for every step preceding `currentStepId` (+ the trigger). Each source
  * exposes the known output fields for its type — record fields for record actions (from object
  * metadata), a small static schema for flow/core actions, and fields parsed out of the "Expected
- * output body" sample for CODE/HTTP_REQUEST (the same mechanism Twenty uses — a sample response is
+ * output body" sample for CODE/HTTP_REQUEST (a sample response is
  * how the variable picker learns an otherwise-arbitrary step's shape). Used for BOTH the left
  * (field-to-compare) and right (value/variable) sides of the condition builder, and for every
  * VariableInput in the drawer.

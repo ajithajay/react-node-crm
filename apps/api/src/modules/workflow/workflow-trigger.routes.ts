@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import * as workflowService from './workflow.service.js';
 
 /**
- * Public webhook trigger endpoint (no auth) — mirrors Twenty's `/webhooks/workflows/:id`. Calling it
+ * Public webhook trigger endpoint (no auth). Calling it
  * starts a run of the workflow's published version (if it has an ACTIVE WEBHOOK trigger), with the
  * request body (GET: query params) as the trigger payload.
  */

@@ -19,8 +19,8 @@ import { RecordTargetsWidget } from './RecordTargetsWidget';
 import { RecordTimelineWidget } from './RecordTimelineWidget';
 
 /**
- * Record detail (BRD §4: "tabbed layout of widgets — Fields, Timeline, Tasks, Notes, Files"),
- * presented as a right-side sheet rather than a centered modal, matching Twenty's "open in side
+ * Record detail: a tabbed layout of widgets — Fields, Timeline, Tasks, Notes, Files —
+ * presented as a right-side sheet rather than a centered modal, an "open in side
  * panel" record view. Used for both create (Overview tab only — the other tabs need a saved
  * record id) and edit (all tabs).
  *
@@ -109,8 +109,8 @@ function OverviewTab({
     return !targetObject || !ACTIVITY_PLUMBING_OBJECTS.has(targetObject.nameSingular);
   });
 
-  // Named record-page sections (Twenty parity — e.g. Company's General/Business/Contact). Falls back
-  // to a single "Fields" section when the object has none configured (gap D1/D2).
+  // Named record-page sections (e.g. Company's General/Business/Contact). Falls back
+  // to a single "Fields" section when the object has none configured.
   const { data: sections } = useQuery({
     queryKey: ['object-sections', objectMetadataId],
     queryFn: () => dataModelApi.getSections(objectMetadataId!),
@@ -231,13 +231,13 @@ export function RecordSheet({
 
   const sourceRecordId = initialValues?.id as string | undefined;
   // Task/Note's rich-text body is excluded from the compact Fields list and shown as its own
-  // full-width document block (create) / "Note" tab (edit) instead — see (C) in the plan.
+  // full-width document block (create) / "Note" tab (edit) instead.
   const documentFieldName = LIMITED_ACTIVITY_OBJECTS.has(objectNameSingular) ? 'body' : undefined;
   const documentField = fields.find((f) => f.name === documentFieldName);
   const targetRelations = TARGET_RELATIONS_CONFIG[objectNameSingular];
 
-  // Every real object gets Timeline/Notes/Tasks/Files (Twenty parity — its generic record layout
-  // hardcodes these tabs). The junction/activity widgets query the *global* note_targets/task_targets/
+  // Every real object gets Timeline/Notes/Tasks/Files — the generic record layout
+  // hardcodes these tabs. The junction/activity widgets query the *global* note_targets/task_targets/
   // attachments/timeline_activities objects by targetType/targetId, so they work for any object
   // (incl. custom) without that object carrying a reverse field. Only the activity/junction plumbing
   // objects themselves are excluded (they're never opened as user-facing records).

@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-/** Security-relevant event trail for Settings → General → Logs (BRD §7.1). */
+/** Security-relevant event trail for Settings → General → Logs. */
 @Entity({ name: 'audit_logs' })
 @Index(['workspaceId', 'createdAt'])
 export class AuditLogEntity {

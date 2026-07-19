@@ -101,7 +101,7 @@ function actorStamp(actor: ActorRole): Record<string, unknown> {
     const name = `${actor.member.firstName} ${actor.member.lastName}`.trim();
     return { source: 'WORKSPACE_MEMBER', workspace_member_id: actor.member.id, name, context: null };
   }
-  // API-key actor (no workspace member) — Twenty's ACTOR source 'API' (gap E3).
+  // API-key actor (no workspace member) — attributed to the ACTOR source 'API'.
   return { source: 'API', workspace_member_id: null, name: actor.apiKeyName ?? 'API Key', context: null };
 }
 
@@ -148,7 +148,7 @@ async function writeTimelineActivity(
 }
 
 /**
- * Field-level before/after diff for an update (Twenty parity — the timeline shows "updated Field →
+ * Field-level before/after diff for an update (the timeline shows "updated Field →
  * value" rather than a generic verb). Only fields the caller actually attempted to change (present in
  * `body`) are compared; ACTOR/reverse-relation fields are never diffed (system-managed / no own value).
  */
@@ -301,7 +301,7 @@ export async function deleteRecord(
 
 /**
  * Synchronous CSV export/import (no `csv-export`/`csv-import` worker job, despite the queue names
- * being reserved in solution-approach.md §7) — a deliberate v1 scope cut, not an oversight: a queued
+ * being reserved for future use) — a deliberate v1 scope cut, not an oversight: a queued
  * job needs a place to deliver the result (a file the user downloads once it's ready, notifications,
  * etc.), which is real additional infrastructure this pass didn't need to justify for reasonably-sized
  * CSVs. Both directions are capped and documented below; revisit with the queue if a real workspace's

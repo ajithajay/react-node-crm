@@ -10,12 +10,12 @@ interface CacheEntry {
 }
 
 /**
- * LRU cache of per-workspace TypeORM DataSources (solution-approach.md §4.6). Each entry is
+ * LRU cache of per-workspace TypeORM DataSources. Each entry is
  * rebuilt whenever the workspace's `workspace_metadata_versions.version` changes — i.e. whenever
  * an object/field is created, updated, or deleted (see metadata.service.ts).
  *
- * Tradeoff (documented): one connection pool per active workspace. Fine at v1 scale; Twenty's
- * single-pool + schema-qualified-metadata approach is the v2 optimization if pool count bites.
+ * Tradeoff (documented): one connection pool per active workspace. Fine at v1 scale; a single
+ * shared pool with schema-qualified metadata is the v2 optimization if pool count bites.
  */
 export function createWorkspaceDataSourceCache(
   coreDataSource: DataSource,

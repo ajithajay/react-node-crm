@@ -7,7 +7,7 @@ import { NotFoundError } from '../../lib/errors.js';
 const repo = () => dataSource.getRepository(NavigationMenuItemEntity);
 const objectRepo = () => dataSource.getRepository(ObjectMetadataEntity);
 
-/** BRD §3 sidebar order — Dashboards/Workflows have no backing object metadata, so they stay
+/** Default sidebar order — Dashboards/Workflows have no backing object metadata, so they stay
  * hardcoded UI (not customizable) rather than modeled as nav items. */
 const DEFAULT_SIDEBAR_OBJECT_ORDER = ['company', 'person', 'opportunity', 'task', 'note'];
 
@@ -17,7 +17,7 @@ async function resolveMemberId(userId: string, workspaceId: string): Promise<str
   return member.id;
 }
 
-/** Twenty parity: every real object (standard or custom) only appears in the sidebar as an explicit
+/** Every real object (standard or custom) only appears in the sidebar as an explicit
  * navigation_menu_item — there's no separate "Favorites" bucket. New members get the 5 standard
  * objects seeded once (lazily, on first read), matching this project's synthesize-on-read pattern
  * (e.g. `page-layout.service.ts#getPageLayout`) rather than a provisioning-time write. */

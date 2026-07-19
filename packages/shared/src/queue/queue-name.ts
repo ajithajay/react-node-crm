@@ -1,4 +1,4 @@
-/** Queue names shared by producers (api) and consumers (worker) — solution-approach.md §7. */
+/** Queue names shared by producers (api) and consumers (worker). */
 export const QueueName = {
   EMAIL: 'email',
   WEBHOOK_DELIVERY: 'webhook-delivery',

@@ -1,8 +1,8 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Creates every control-plane table in the `core` schema (solution-approach.md §4.2).
- * Per-workspace data-plane tables are created dynamically by the metadata→DDL engine (§4.4),
+ * Creates every control-plane table in the `core` schema.
+ * Per-workspace data-plane tables are created dynamically by the metadata→DDL engine,
  * never by a TypeORM migration.
  */
 export class InitialCoreSchema1700000000000 implements MigrationInterface {

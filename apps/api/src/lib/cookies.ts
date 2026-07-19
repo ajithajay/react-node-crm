@@ -4,7 +4,7 @@ import { parseDurationMs } from './duration.js';
 
 export const REFRESH_COOKIE_NAME = 'saasly_refresh';
 
-/** Shared across app.<base> and every <sub>.<base> — solution-approach.md §6. */
+/** Shared across app.<base> and every <sub>.<base>. */
 export function refreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,

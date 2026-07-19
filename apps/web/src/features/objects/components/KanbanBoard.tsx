@@ -14,10 +14,10 @@ const NO_VALUE = '__no_value__';
 const BOARD_PAGE_SIZE = 200;
 
 /**
- * BRD: "Kanban view (grouped by a Select field)". Columns = the group-by field's configured options
+ * Kanban view, grouped by a Select field. Columns = the group-by field's configured options
  * (plus a "No value" column), cards = the label-identifier chip. Drag-and-drop uses plain HTML5 DnD
  * (no dnd-kit/similar library) — enough for single-card column moves; reordering within a column and
- * multi-select drag aren't supported, a deliberate v1 scope cut (see task-list.md).
+ * multi-select drag aren't supported, a deliberate v1 scope cut.
  */
 export function KanbanBoard({
   objectNamePlural,

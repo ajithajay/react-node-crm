@@ -62,7 +62,7 @@ function operandsForType(type: string): { value: string; label: string; noValue?
 const ROOT_GROUP = 'root';
 
 /**
- * The condition builder — a flat `stepFilters` + `stepFilterGroups` model (mirrors Twenty), joined by
+ * The condition builder — a flat `stepFilters` + `stepFilterGroups` model, joined by
  * ids, with one level of nesting and AND/OR per group. Both sides of a rule go through the same
  * step→field picker (`VariablePickerPopover`): `steps` sources the LEFT (field-to-compare) side,
  * `sources` the RIGHT (value/variable) side — usually the same array, except e.g. Search records

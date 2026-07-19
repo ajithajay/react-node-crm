@@ -22,7 +22,7 @@ import { makeTempId, useLayoutCustomization } from '@/features/layout-customizat
 
 const COLOR_NAMES = Object.keys(TAG_COLORS);
 
-/** Right-side panel for an existing item: Customize (color) + Organize (move/folder/remove). Twenty parity. */
+/** Right-side panel for an existing item: Customize (color) + Organize (move/folder/remove). */
 function ItemEditPanel({
   item,
   items,
@@ -281,8 +281,8 @@ function AddItemPanel({ onClose, onAdd }: { onClose: () => void; onAdd: (input: 
 }
 
 /**
- * Unified sidebar item list (Twenty parity — no separate "Favorites" bucket; every real object,
- * standard or custom, is an explicit `navigation_menu_item`, seeded by default for new members).
+ * Unified sidebar item list — no separate "Favorites" bucket; every real object,
+ * standard or custom, is an explicit `navigation_menu_item`, seeded by default for new members.
  * Read-only outside layout-customization mode; inside it, clicking an item opens its edit panel and
  * a trailing "+ Add menu item" row is shown.
  */

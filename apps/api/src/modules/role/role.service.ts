@@ -159,7 +159,7 @@ export async function deleteRole(workspaceId: string, roleId: string, actorUserI
     throw new ConflictError('Choose a different default role before deleting this one');
   }
 
-  // Rebind affected members to the workspace's default role (BRD §8) before deleting.
+  // Rebind affected members to the workspace's default role before deleting.
   if (workspace.defaultRoleId) {
     await memberRepo().update({ workspaceId, roleId }, { roleId: workspace.defaultRoleId });
   }
@@ -205,7 +205,7 @@ export async function updateSettingsPermissions(
 
 // ---- Object-level permissions ----
 //
-// Twenty's model, replicated here: each of the four booleans is tri-state (null = inherit the
+// Each of the four booleans is tri-state (null = inherit the
 // role's blanket `canXAllObjectRecords` flag; true/false = an explicit per-object override).
 // `hasOverride` is true once any of the four is non-null.
 
@@ -222,7 +222,7 @@ export interface ObjectPermissionSummary {
 }
 
 /**
- * Objects a role can be granted permission on — mirrors Twenty's `objectMetadataItemsThatCanHavePermission`.
+ * Objects a role can be granted permission on.
  * `isSystem` here just marks a standard, seeded-at-workspace-creation object (Company, Person, ...),
  * not an internal/hidden one — those are still assignable, so only `isActive` gates the list.
  */

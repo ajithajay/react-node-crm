@@ -6,7 +6,7 @@ import { RecordTableWidgetView } from './RecordTableWidgetView';
 import { RichTextWidgetView } from './RichTextWidgetView';
 import { WidgetEmptyState } from './WidgetStates';
 
-/** The top-level widget-type switch (Twenty parity — `WidgetContentRenderer.tsx`). */
+/** The top-level widget-type switch. */
 export function WidgetRenderer({
   widget,
   editMode,

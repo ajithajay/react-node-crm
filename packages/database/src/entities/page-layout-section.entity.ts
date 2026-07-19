@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 /**
- * A named field section on an object's record page (Twenty's page-layout / field-widget-group).
+ * A named field section on an object's record page.
  * Ordered per object; `fieldMetadataIds` lists which fields render in the section, in order. Fields
  * not in any section fall into an implicit trailing bucket at render time. Kept as its own subsystem
  * (not a label on `field_metadata`) so grouping/ordering is independent of the field itself.

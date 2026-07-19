@@ -8,7 +8,7 @@ import { DASHBOARD_GRID_COLUMNS, DASHBOARD_GRID_MARGIN, DASHBOARD_GRID_ROW_HEIGH
 const GridLayout = GridLayoutImport;
 
 /** Extra empty rows always kept clickable below the lowest occupied widget, so there's always room
- * to drag-select a new widget's area even when the grid is otherwise short (Twenty parity). */
+ * to drag-select a new widget's area even when the grid is otherwise short. */
 const EXTRA_EMPTY_ROWS = 6;
 const MIN_TOTAL_ROWS = 10;
 
@@ -49,7 +49,7 @@ export function DashboardGrid({
   editMode: boolean;
   onLayoutChange: (positions: Map<string, GridPosition>) => void;
   /** Called when the user clicks (or drags a rectangle over) empty grid space to place a new widget
-   * there (Twenty parity — "grid selection before creating a widget"). A plain click reports a 1×1
+   * there. A plain click reports a 1×1
    * `GridPosition`; the caller should apply the widget type's own default size in that case and only
    * honor the exact drawn rectangle when the user actually dragged across more than one cell. */
   onAreaSelected: (position: GridPosition) => void;

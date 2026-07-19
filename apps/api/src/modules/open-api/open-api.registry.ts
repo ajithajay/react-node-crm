@@ -40,7 +40,7 @@ function setupSecurity(registry: OpenAPIRegistry): { auth: Record<string, string
   return { auth: [{ [bearerAuth.name]: [] }] };
 }
 
-/** Core API — identity, workspace, members/roles, keys/webhooks (Twenty's "core" REST surface). */
+/** Core API — identity, workspace, members/roles, keys/webhooks REST surface. */
 function registerCoreRoutes(registry: OpenAPIRegistry): void {
   const { auth } = setupSecurity(registry);
 
@@ -267,7 +267,7 @@ function registerCoreRoutes(registry: OpenAPIRegistry): void {
   });
 }
 
-/** Metadata API — objects/fields/relations/indexes data-model management (Twenty's "metadata" REST surface). */
+/** Metadata API — objects/fields/relations/indexes data-model management REST surface. */
 function registerMetadataRoutes(registry: OpenAPIRegistry): void {
   const { auth } = setupSecurity(registry);
 
@@ -689,8 +689,8 @@ function registerV1Routes(registry: OpenAPIRegistry): void {
 
   // ---- Records (generic per-object CRUD) ----
   // Object names are dynamic per workspace, so this documents the one generic shape rather than a
-  // route per object (same limitation Twenty's own dynamic object routes have) — includes standard
-  // objects like companies/people plus seeded ones like tasks/notes.
+  // route per object — includes standard objects like companies/people plus seeded ones like
+  // tasks/notes.
   const objectParam = z.object({ objectNamePlural: z.string().openapi({ example: 'companies' }) });
   const objectIdParams = objectParam.extend({ id: z.string().uuid() });
   const recordBody = z.record(z.string(), z.unknown()).openapi('RecordInput');

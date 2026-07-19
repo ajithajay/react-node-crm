@@ -13,7 +13,7 @@ import { decodeRecord, encodeRecordInput } from './record-codec.js';
  * System-authority record CRUD for workflow actions. Uses the workspace datasource + dynamic entity
  * (no permission checks — workflows run as the system) and does NOT cascade downstream webhooks /
  * timeline / other workflows' record-event triggers (a deliberate v1 choice: avoids recursive
- * trigger loops; documented in task-list.md).
+ * trigger loops).
  */
 
 async function resolveObject(workspaceId: string, objectName: string): Promise<ObjectMetadataEntity> {

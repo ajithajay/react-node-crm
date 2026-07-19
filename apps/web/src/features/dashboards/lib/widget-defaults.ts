@@ -5,8 +5,8 @@ export const DASHBOARD_GRID_COLUMNS = 12;
 export const DASHBOARD_GRID_ROW_HEIGHT = 32;
 export const DASHBOARD_GRID_MARGIN = 12;
 
-/** Default grid size (columns × rows) per widget type, and per graph sub-type for GRAPH widgets —
- * mirrors Twenty's `GraphWidgetSizes`/`WidgetSizes` constants, scaled to our 12-column grid. */
+/** Default grid size (columns × rows) per widget type, and per graph sub-type for GRAPH widgets,
+ * scaled to our 12-column grid. */
 export const WIDGET_DEFAULT_SIZE: Record<DashboardWidgetType, { w: number; h: number }> = {
   GRAPH: { w: 6, h: 6 },
   IFRAME: { w: 6, h: 6 },
@@ -36,7 +36,7 @@ export const GRAPH_TYPE_ICONS: Record<GraphType, typeof PieChart> = {
 };
 
 /** The sidebar's quick chart-type switcher splits BAR_CHART into its two `layout` variants as
- * distinct icon buttons (Twenty parity) even though both persist as `configurationType: BAR_CHART`
+ * distinct icon buttons even though both persist as `configurationType: BAR_CHART`
  * + a different `layout` value. */
 export interface ChartQuickType {
   key: string;

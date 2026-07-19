@@ -2,9 +2,9 @@ import { FieldMetadataType } from '@saasly/shared';
 import { OPTION_COLORS } from '@/features/settings/pages/data-model/field-config';
 
 /**
- * Pastel background / saturated text pairs, matching Twenty's Tag component's visual language
+ * Pastel background / saturated text pairs, following a tag component's visual language
  * (light pill background, darker saturated text of the same hue) — approximated per our existing
- * OPTION_COLORS palette rather than Twenty's exact token names, since our color vocabulary differs.
+ * OPTION_COLORS palette, since our color vocabulary differs from any reference token names.
  */
 export const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   blue: { bg: '#EEF1FD', text: '#4159C0' },
@@ -51,5 +51,5 @@ export const FIELD_TYPE_ICON: Record<string, string> = {
   [FieldMetadataType.UUID]: 'Fingerprint',
 };
 
-/** Twenty's 32px table row height and matching header/cell paddings (ThemeCommon.ts `table`). */
+/** 32px table row height and matching header/cell paddings. */
 export const TABLE_ROW_HEIGHT = 32;

@@ -9,7 +9,7 @@ export function getIcon(name: string): LucideIcon {
 /**
  * Every icon lucide-react ships, deduped (the package double-exports each icon under both its
  * short name and a `*Icon`-suffixed alias) — lets the icon picker search the full library instead
- * of a small curated list, matching Twenty's icon picker.
+ * of a small curated list.
  */
 export const ALL_ICON_NAMES: string[] = Object.keys(LucideIcons)
   .filter((name) => {

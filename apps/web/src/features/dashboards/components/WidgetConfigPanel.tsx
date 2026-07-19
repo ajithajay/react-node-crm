@@ -43,7 +43,7 @@ interface PickerItem {
 }
 
 /** The panel's single-level drill-down destinations. Selecting a row pushes one of these; a header
- * back-chevron always returns to the root row list (Twenty's own nesting rarely goes deeper than
+ * back-chevron always returns to the root row list (nesting rarely goes deeper than
  * one level for these settings, so a flat stack — not a full navigation stack — keeps this tractable). */
 type SubView =
   | { kind: 'objectPicker'; title: string; items: PickerItem[]; selectedId: string | null; onSelect: (id: string) => void }
@@ -152,10 +152,10 @@ function PickerList({
   );
 }
 
-/** A right-side, always-visible configuration panel (not a modal Sheet) with Twenty's actual
- * drill-down interaction: most rows show a value preview + chevron and open a full-width sub-view
- * (a searchable/plain list, the filter builder, a color grid, or a text field) rather than an inline
- * select. Toggles and the two range inputs stay inline (no chevron), matching the reference UI. */
+/** A right-side, always-visible configuration panel (not a modal Sheet): most rows show a value
+ * preview + chevron and open a full-width sub-view (a searchable/plain list, the filter builder, a
+ * color grid, or a text field) rather than an inline select. Toggles and the two range inputs stay
+ * inline (no chevron). */
 export function WidgetConfigPanel({
   widget,
   onClose,

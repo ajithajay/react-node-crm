@@ -17,7 +17,7 @@ export function evaluateConditions(
 
   const roots = groups.filter((g) => !g.parentStepFilterGroupId);
   const rootIds = roots.length > 0 ? roots.map((g) => g.id) : ['root'];
-  // AND across root groups (Twenty normally has exactly one root).
+  // AND across root groups (there is normally exactly one root).
   return rootIds.every((id) => evaluateGroup(id, filters, groups));
 }
 

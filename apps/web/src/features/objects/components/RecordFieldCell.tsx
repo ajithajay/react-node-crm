@@ -119,7 +119,7 @@ function normalizeDraft(field: DataModelField, draft: unknown): unknown {
 }
 
 /**
- * A self-saving inline field cell (Twenty parity): click the value → editor opens in a popover →
+ * A self-saving inline field cell: click the value → editor opens in a popover →
  * closing commits a single `updateOne` for just this field (skipped if unchanged), invalid input
  * (e.g. a bad URL) blocks the commit and keeps the editor open. No page-level Save button.
  */

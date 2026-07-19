@@ -1,10 +1,10 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 /**
- * A widget within a page-layout tab (Twenty's `pageLayoutWidget`). FIELDS renders the object's
+ * A widget within a page-layout tab. FIELDS renders the object's
  * field groups (`page_layout_sections` pointing back at this widget); TIMELINE/NOTES/TASKS/FILES
- * render the record's activity relations and carry no extra config (parity with Twenty, whose
- * timeline/notes/tasks/files widget configs are empty). GRAPH/IFRAME/RECORD_TABLE/
+ * render the record's activity relations and carry no extra config (their
+ * timeline/notes/tasks/files widget configs are always empty). GRAPH/IFRAME/RECORD_TABLE/
  * STANDALONE_RICH_TEXT (Phase 7 Dashboards) read `objectMetadataId` (the source object, nullable —
  * IFRAME/STANDALONE_RICH_TEXT have none) and use the `grid_*` columns for their dashboard-grid
  * position/size instead of the record-page `position` float.

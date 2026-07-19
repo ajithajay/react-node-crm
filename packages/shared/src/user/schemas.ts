@@ -18,7 +18,7 @@ export const deleteAccountRequestSchema = z.object({
 });
 export type DeleteAccountRequest = z.infer<typeof deleteAccountRequestSchema>;
 
-/** Settings → Experience (BRD §6). No language/locale — excluded per BRD. */
+/** Settings → Experience. No language/locale support. */
 export const ColorSchemeValue = z.enum(['LIGHT', 'DARK', 'SYSTEM']);
 export type ColorSchemeValue = z.infer<typeof ColorSchemeValue>;
 

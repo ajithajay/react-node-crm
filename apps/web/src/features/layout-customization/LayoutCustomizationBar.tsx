@@ -2,7 +2,7 @@ import { Paintbrush } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLayoutCustomization } from './LayoutCustomizationContext';
 
-/** Global overlay shown while sidebar/record-page customization is active (Twenty parity). */
+/** Global overlay shown while sidebar/record-page customization is active. */
 export function LayoutCustomizationBar() {
   const { isActive, isDirty, isSaving, pageLayout, save, cancel } = useLayoutCustomization();
   if (!isActive) return null;

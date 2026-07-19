@@ -119,7 +119,7 @@ function assertWritable(field: FieldMetadataEntity, restrictedForWrite: Readonly
  * Encodes a friendly camelCase JSON body into entity property values ready for
  * `repository.create()`/`.save()`. Only keys present in `body` are touched (partial-update safe).
  * ACTOR fields are never client-writable (system-managed — see record.service.ts) and
- * reverse RELATION fields are read-only in this v1 (see task-list.md). MORPH_RELATION fields
+ * reverse RELATION fields are read-only in this v1. MORPH_RELATION fields
  * accept `${key}Type`/`${key}Id` (e.g. `targetType`/`targetId`) written together.
  */
 export function encodeRecordInput(

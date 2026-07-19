@@ -150,10 +150,10 @@ function Chip({ children, onRemove }: { children: React.ReactNode; onRemove: () 
 }
 
 /**
- * View picker + filter/sort bar, matching Twenty's ViewBar layout: a 39px row (view name + filter/sort
+ * View picker + filter/sort bar: a 39px row (view name + filter/sort
  * icon buttons) above a chips row summarizing active filters/sort/search — each chip removable, a "+"
- * opens the full editor in a popover rather than Twenty's per-condition inline dropdown (a reasonable
- * simplification — see task-list.md).
+ * opens the full editor in a popover rather than a per-condition inline dropdown (a reasonable
+ * simplification).
  */
 /** Fields eligible as table columns at all — excludes MORPH_RELATION and reverse (ONE_TO_MANY) RELATION,
  * which have no table cell (see record-field-codec.ts) and are shown as relation widgets instead. */

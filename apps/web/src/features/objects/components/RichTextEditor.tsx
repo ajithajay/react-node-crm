@@ -10,8 +10,8 @@ export interface RichTextValue {
 }
 
 /**
- * BlockNote rich-text editor for RICH_TEXT fields (task/note bodies), matching Twenty's `bodyV2`
- * editor. Persists the block JSON under `blocknote` plus a lossy `markdown` rendering (mirrors our
+ * BlockNote rich-text editor for RICH_TEXT fields (task/note bodies).
+ * Persists the block JSON under `blocknote` plus a lossy `markdown` rendering (mirrors our
  * RICH_TEXT column mapping: `<name>_blocknote jsonb` + `<name>_markdown text`).
  */
 export function RichTextEditor({

@@ -1,4 +1,4 @@
-/** JWT token kinds (solution-approach.md §6). Each is signed with a per-type derived secret. */
+/** JWT token kinds. Each is signed with a per-type derived secret. */
 export const TokenType = {
   ACCESS: 'ACCESS',
   REFRESH: 'REFRESH',

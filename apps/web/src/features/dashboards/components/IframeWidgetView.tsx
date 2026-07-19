@@ -1,7 +1,7 @@
 import type { DashboardWidgetConfiguration } from '@/lib/api-client';
 import { WidgetEmptyState } from './WidgetStates';
 
-/** Only http(s) URLs render — mirrors Twenty's `getSafeUrl` guard against `javascript:`/`data:` etc. */
+/** Only http(s) URLs render — guards against `javascript:`/`data:` etc. */
 function safeUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {

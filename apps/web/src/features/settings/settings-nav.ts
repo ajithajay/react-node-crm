@@ -3,7 +3,7 @@ export interface SettingsNavGroup {
   items: { label: string; path: string }[];
 }
 
-/** Settings shell groups (solution-approach.md §6-7). "Other" is empty in v1 — nothing there is in scope. */
+/** Settings shell groups. "Other" is empty in v1 — nothing there is in scope. */
 export const SETTINGS_NAV: SettingsNavGroup[] = [
   {
     label: 'User',

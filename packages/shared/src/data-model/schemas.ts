@@ -18,7 +18,7 @@ export const updateObjectRequestSchema = z.object({
 });
 export type UpdateObjectRequest = z.infer<typeof updateObjectRequestSchema>;
 
-/** Record label (title) + record image identifier fields — Twenty's object "Options" card. */
+/** Record label (title) + record image identifier fields — an object's "Options" card. */
 export const setObjectIdentifiersRequestSchema = z.object({
   labelIdentifierFieldMetadataId: z.string().uuid().nullable(),
   imageIdentifierFieldMetadataId: z.string().uuid().nullable(),
@@ -134,7 +134,7 @@ export const createIndexRequestSchema = z
   });
 export type CreateIndexRequest = z.infer<typeof createIndexRequestSchema>;
 
-/** Record-page field sections (Twenty parity) — bulk-replace, ordered by array position. */
+/** Record-page field sections — bulk-replace, ordered by array position. */
 export const setSectionsRequestSchema = z.array(
   z.object({
     label: z.string().trim().min(1).max(100),

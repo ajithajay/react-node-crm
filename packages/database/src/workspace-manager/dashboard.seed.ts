@@ -21,8 +21,7 @@ interface WidgetSeed {
 }
 
 /**
- * Seeds "My First Dashboard" on workspace provisioning (Twenty parity — see
- * `compute-my-first-dashboard-widgets.util.ts` in the reference clone), demonstrating every Phase 7
+ * Seeds "My First Dashboard" on workspace provisioning, demonstrating every Phase 7
  * widget type over the Opportunity/Company objects: a rich-text welcome, all four GRAPH sub-types
  * (pie/bar/line/aggregate), an IFRAME, and a RECORD_TABLE ("View") widget.
  *

@@ -6,7 +6,7 @@ const directionValues = Object.values(ViewSortDirection) as [string, ...string[]
 
 /**
  * A single filter condition, `{ field, operand, value }`. v1 supports a flat list of conditions
- * ANDed together — nested AND/OR groups (BRD §4 "advanced filters") are deferred; see task-list.md.
+ * ANDed together — nested AND/OR groups ("advanced filters") are deferred.
  */
 export const recordFilterConditionSchema = z.object({
   field: z.string().min(1),
