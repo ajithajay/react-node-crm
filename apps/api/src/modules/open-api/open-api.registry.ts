@@ -23,7 +23,7 @@ import {
 
 extendZodWithOpenApi(z);
 
-export type OpenApiSchemaName = 'core' | 'metadata';
+export type OpenApiSchemaName = 'core' | 'metadata' | 'v1';
 
 const idParam = z.object({ id: z.string().uuid() });
 const fieldParams = z.object({ id: z.string().uuid(), fieldId: z.string().uuid() });
@@ -410,10 +410,85 @@ function registerMetadataRoutes(registry: OpenAPIRegistry): void {
   });
 }
 
+/**
+ * External REST API (v1) — generic per-workspace object CRUD (`/api/v1/{objectNamePlural}`).
+ * Object names are dynamic per workspace, so this documents the one generic shape rather than a
+ * route per object (same limitation Twenty's own dynamic object routes have). Uses a distinct
+ * `apiKeyAuth` security scheme (not `bearerAuth`) so the spec communicates that only API-key
+ * bearer tokens work here — session tokens are rejected by `apiKeyGuard`.
+ */
+function registerV1Routes(registry: OpenAPIRegistry): void {
+  const apiKeyAuth = registry.registerComponent('securitySchemes', 'apiKeyAuth', {
+    type: 'http',
+    scheme: 'bearer',
+    description: 'API key created under Settings → API & Webhooks. Session tokens are not accepted here.',
+  });
+  const auth = [{ [apiKeyAuth.name]: [] }];
+
+  const objectParam = z.object({ objectNamePlural: z.string().openapi({ example: 'companies' }) });
+  const objectIdParams = objectParam.extend({ id: z.string().uuid() });
+  const recordBody = z.record(z.string(), z.unknown()).openapi('RecordInput');
+  const listQuery = z.object({
+    page: z.string().optional(),
+    pageSize: z.string().optional(),
+    search: z.string().optional(),
+    sortField: z.string().optional(),
+    sortDirection: z.enum(['ASC', 'DESC']).optional(),
+    filter: z.string().optional(),
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/{objectNamePlural}',
+    tags: ['Records'],
+    summary: 'List records for an object (e.g. companies, people)',
+    security: auth,
+    request: { params: objectParam, query: listQuery },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/{objectNamePlural}/{id}',
+    tags: ['Records'],
+    summary: 'Get a record by id',
+    security: auth,
+    request: { params: objectIdParams },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/{objectNamePlural}',
+    tags: ['Records'],
+    summary: 'Create a record',
+    security: auth,
+    request: { params: objectParam, body: jsonBody(recordBody) },
+    responses: { 201: ok('Created') },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/{objectNamePlural}/{id}',
+    tags: ['Records'],
+    summary: 'Update a record',
+    security: auth,
+    request: { params: objectIdParams, body: jsonBody(recordBody) },
+    responses: { 200: ok() },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/{objectNamePlural}/{id}',
+    tags: ['Records'],
+    summary: 'Delete a record',
+    security: auth,
+    request: { params: objectIdParams },
+    responses: { 200: ok() },
+  });
+}
+
 /** Fresh registry per request — the generator consumes definitions, so we don't share one globally. */
 export function buildRegistry(schema: OpenApiSchemaName): OpenAPIRegistry {
   const registry = new OpenAPIRegistry();
   if (schema === 'metadata') registerMetadataRoutes(registry);
+  else if (schema === 'v1') registerV1Routes(registry);
   else registerCoreRoutes(registry);
   return registry;
 }

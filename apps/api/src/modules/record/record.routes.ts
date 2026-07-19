@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { PermissionFlagType, recordListQuerySchema } from '@saasly/shared';
-import { authGuard, restAuthGuard } from '../../middleware/auth-guard.js';
+import { authGuard, apiKeyGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { permissionGuard } from '../../middleware/permission-guard.js';
 import { validate } from '../../middleware/validate.js';
@@ -37,14 +37,28 @@ recordRouter.post(
   recordController.importCsv,
 );
 
-recordRouter.get(
-  '/:objectNamePlural',
-  restAuthGuard,
-  workspaceGuard,
-  validate({ query: recordListQuerySchema }),
-  recordController.index,
-);
-recordRouter.get('/:objectNamePlural/:id', restAuthGuard, workspaceGuard, recordController.show);
-recordRouter.post('/:objectNamePlural', restAuthGuard, workspaceGuard, recordController.create);
-recordRouter.patch('/:objectNamePlural/:id', restAuthGuard, workspaceGuard, recordController.update);
-recordRouter.delete('/:objectNamePlural/:id', restAuthGuard, workspaceGuard, recordController.destroy);
+/**
+ * Shared CRUD route table for both the internal (session, `/rest`) and external (API-key only,
+ * `/api/v1`) surfaces — the controller/service layer already resolves the acting `Principal` from
+ * either `req.user` or `req.apiKey`, so only the guard differs between the two mounts.
+ */
+function buildRecordCrudRouter(guard: RequestHandler): Router {
+  const router = Router();
+  router.get(
+    '/:objectNamePlural',
+    guard,
+    workspaceGuard,
+    validate({ query: recordListQuerySchema }),
+    recordController.index,
+  );
+  router.get('/:objectNamePlural/:id', guard, workspaceGuard, recordController.show);
+  router.post('/:objectNamePlural', guard, workspaceGuard, recordController.create);
+  router.patch('/:objectNamePlural/:id', guard, workspaceGuard, recordController.update);
+  router.delete('/:objectNamePlural/:id', guard, workspaceGuard, recordController.destroy);
+  return router;
+}
+
+recordRouter.use(buildRecordCrudRouter(authGuard));
+
+/** External REST API (v1) — API-key auth only, mounted separately at `/api/v1` (see app.ts). */
+export const recordApiV1Router: Router = buildRecordCrudRouter(apiKeyGuard);

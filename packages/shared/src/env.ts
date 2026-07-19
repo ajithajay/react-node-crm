@@ -49,6 +49,9 @@ export const serverEnvSchema = z.object({
     .transform((v) => v === 'true'),
   WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   WEBHOOK_RETRY_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
+
+  // --- Public REST API (/api/v1) ---
+  PUBLIC_API_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

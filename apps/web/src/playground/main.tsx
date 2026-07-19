@@ -10,12 +10,18 @@ import '@scalar/api-reference-react/style.css';
  * Vite entry that imports NONE of the app's Tailwind CSS — Scalar ships its own full Tailwind v4
  * build, and two Tailwind preflights in one document collide (the app's global element resets leak
  * into Scalar's zero-specificity `:where(.scalar-app)` resets and break its layout). An iframe gives
- * Scalar a pristine document so it renders exactly as intended. The access token + API base URL are
- * handed in over postMessage (same-origin) rather than the URL, so the token never lands in history.
+ * Scalar a pristine document so it renders exactly as intended. Tokens + API base URL are handed in
+ * over postMessage (same-origin) rather than the URL, so they never land in history.
+ *
+ * Two distinct tokens: `sessionToken` always fetches the OpenAPI *document* itself (`/open-api/:schema`
+ * is session-gated regardless of which schema is being viewed), while `testToken` is what Scalar's
+ * try-it-out sends when actually calling the documented endpoints — for `core`/`metadata` that's the
+ * same session token, but for `v1` it's an API key (the only credential `/api/v1` accepts).
  */
 interface PlaygroundConfig {
   schema: string;
-  token: string;
+  sessionToken: string;
+  testToken: string;
   apiBaseUrl: string;
 }
 
@@ -29,7 +35,12 @@ function Playground() {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string } & Partial<PlaygroundConfig>;
       if (data?.type === 'playground-config' && data.schema && data.apiBaseUrl) {
-        setConfig({ schema: data.schema, token: data.token ?? '', apiBaseUrl: data.apiBaseUrl });
+        setConfig({
+          schema: data.schema,
+          sessionToken: data.sessionToken ?? '',
+          testToken: data.testToken ?? '',
+          apiBaseUrl: data.apiBaseUrl,
+        });
       }
     }
     window.addEventListener('message', onMessage);
@@ -40,7 +51,7 @@ function Playground() {
   useEffect(() => {
     if (!config) return;
     void fetch(`${config.apiBaseUrl}/open-api/${config.schema}`, {
-      headers: { Authorization: `Bearer ${config.token}` },
+      headers: { Authorization: `Bearer ${config.sessionToken}` },
       credentials: 'include',
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Spec fetch failed (${res.status})`))))
@@ -51,6 +62,8 @@ function Playground() {
   if (error) return <div style={{ padding: 16, fontFamily: 'sans-serif' }}>{error}</div>;
   if (!config || !spec) return <div style={{ padding: 16, fontFamily: 'sans-serif' }}>Loading…</div>;
 
+  const securityScheme = config.schema === 'v1' ? 'apiKeyAuth' : 'bearerAuth';
+
   return (
     <ApiReferenceReact
       configuration={{
@@ -58,8 +71,8 @@ function Playground() {
         baseServerURL: config.apiBaseUrl,
         hideClientButton: true,
         authentication: {
-          preferredSecurityScheme: 'bearerAuth',
-          securitySchemes: { bearerAuth: { token: config.token } },
+          preferredSecurityScheme: securityScheme,
+          securitySchemes: { [securityScheme]: { token: config.testToken } },
         },
       }}
     />

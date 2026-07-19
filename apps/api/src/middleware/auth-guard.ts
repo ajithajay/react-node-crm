@@ -9,10 +9,10 @@ export function authGuard(req: Request, _res: Response, next: NextFunction): voi
   next();
 }
 
-/** Allows either a logged-in user or an API-key bearer token — used by the generic /rest API (gap E3). */
-export function restAuthGuard(req: Request, _res: Response, next: NextFunction): void {
-  if (!req.user && !req.apiKey) {
-    next(new UnauthorizedError());
+/** Requires an API-key bearer token specifically — used by the external /api/v1 REST surface. */
+export function apiKeyGuard(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.apiKey) {
+    next(new UnauthorizedError('API key required'));
     return;
   }
   next();
