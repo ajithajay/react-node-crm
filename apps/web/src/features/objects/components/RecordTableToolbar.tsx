@@ -232,12 +232,7 @@ export function RecordTableToolbar({
         <div className="flex items-center gap-1">
           <Select value={activeViewId} onValueChange={(id) => id && onSelectView(id)}>
             <SelectTrigger className="h-7 w-auto gap-1 border-0 px-1.5 text-sm font-medium shadow-none">
-              <SelectValue placeholder={activeView?.name ?? 'View'}>
-                <span className="inline-flex items-center gap-1">
-                  {activeView?.name}
-                  <ChevronDown className="size-3.5 text-muted-foreground" />
-                </span>
-              </SelectValue>
+              <SelectValue placeholder={activeView?.name ?? 'View'}>{activeView?.name}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {views.map((v) => (
@@ -264,6 +259,13 @@ export function RecordTableToolbar({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onDuplicateView}>
                 <Copy className="size-3.5" /> Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDeleteView || activeView?.isDefault}
+                onClick={onDeleteView}
+              >
+                <Trash2 className="size-3.5" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

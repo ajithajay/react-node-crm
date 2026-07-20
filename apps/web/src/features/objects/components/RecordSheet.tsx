@@ -266,7 +266,7 @@ export function RecordSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col sm:max-w-xl">
+      <SheetContent className="flex w-full flex-col sm:max-w-3xl">
         <SheetHeader className="flex-row items-center justify-between gap-3 border-b pr-10">
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex min-w-0 items-center gap-2">
@@ -280,6 +280,7 @@ export function RecordSheet({
                     const key = friendlyFieldKey(labelIdentifierField);
                     setValues((prev) => ({ ...prev, [key]: v }));
                   }}
+                  autoFocus={mode === 'create'}
                 />
               ) : (
                 <span className="text-sm font-medium">{mode === 'create' ? `New ${objectLabel}` : `Edit ${objectLabel}`}</span>

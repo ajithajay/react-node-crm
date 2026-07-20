@@ -182,13 +182,15 @@ export function RecordNameHeader({
   value,
   onChange,
   size = 'md',
+  autoFocus = false,
 }: {
   field: DataModelField;
   value: unknown;
   onChange: (value: unknown) => void;
   size?: 'md' | 'lg';
+  autoFocus?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(autoFocus);
   const [draft, setDraft] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
 

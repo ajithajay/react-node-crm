@@ -10,6 +10,7 @@ import {
 import { workflowApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkflowEditor } from '../hooks/use-workflow-editor';
@@ -35,10 +36,16 @@ export function WorkflowBuilderPage() {
     parentId: '',
   });
 
+  const [editingName, setEditingName] = useState<string | null>(null);
+
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['workflow', id] });
     void queryClient.invalidateQueries({ queryKey: ['workflows'] });
   };
+  const renameMutation = useMutation({
+    mutationFn: (name: string) => workflowApi.update(id!, name),
+    onSuccess: invalidate,
+  });
   const activateMutation = useMutation({ mutationFn: () => workflowApi.activate(id!), onSuccess: invalidate });
   const deactivateMutation = useMutation({ mutationFn: () => workflowApi.deactivate(id!), onSuccess: invalidate });
   const newVersionMutation = useMutation({ mutationFn: () => editor.createDraft() });
@@ -90,7 +97,30 @@ export function WorkflowBuilderPage() {
           <Button variant="ghost" size="icon-xs" onClick={() => navigate('/workflows')} aria-label="Back">
             <ArrowLeft className="size-4" />
           </Button>
-          <h1 className="text-lg font-semibold">{workflow.name}</h1>
+          {editingName !== null ? (
+            <Input
+              autoFocus
+              value={editingName}
+              className="h-8 w-56 text-lg font-semibold"
+              onChange={(e) => setEditingName(e.target.value)}
+              onBlur={() => {
+                const name = editingName.trim();
+                if (name && name !== workflow.name) renameMutation.mutate(name);
+                setEditingName(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+                if (e.key === 'Escape') setEditingName(null);
+              }}
+            />
+          ) : (
+            <h1
+              className="cursor-text text-lg font-semibold hover:underline"
+              onClick={() => setEditingName(workflow.name)}
+            >
+              {workflow.name}
+            </h1>
+          )}
           <span className="flex gap-1">
             {workflow.statuses.map((status) => (
               <Badge key={status} variant={workflowStatusVariant(status)}>
@@ -154,9 +184,20 @@ export function WorkflowBuilderPage() {
           )}
 
           {!hasDraftVersion && !hasActiveVersion && (
-            <Button size="sm" onClick={() => newVersionMutation.mutate()} disabled={newVersionMutation.isPending}>
-              New Version
-            </Button>
+            <>
+              {/* Deactivated, unedited — re-enable the same version directly, no new draft needed. */}
+              <Button size="sm" onClick={() => activateMutation.mutate()} disabled={activateMutation.isPending}>
+                <Play className="size-4" /> Activate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => newVersionMutation.mutate()}
+                disabled={newVersionMutation.isPending}
+              >
+                New Version
+              </Button>
+            </>
           )}
         </div>
       </div>

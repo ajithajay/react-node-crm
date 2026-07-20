@@ -335,7 +335,13 @@ export async function activateWorkflow(
 
   const versions = await versionRepo().findBy({ workflowId });
   const draft = versions.find((v) => v.status === WorkflowVersionStatus.DRAFT);
-  const target = draft ?? versions.find((v) => v.status === WorkflowVersionStatus.ACTIVE);
+  const active = versions.find((v) => v.status === WorkflowVersionStatus.ACTIVE);
+  // No draft/active? This is a simple re-enable of a deactivated workflow (no edits pending) — reuse
+  // its most-recently-deactivated version rather than forcing the user through "New Version" first.
+  const mostRecentlyDeactivated = versions
+    .filter((v) => v.status === WorkflowVersionStatus.DEACTIVATED)
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+  const target = draft ?? active ?? mostRecentlyDeactivated;
   if (!target) throw new ConflictError('No draft version to activate');
   if (!target.trigger) throw new ConflictError('Add a trigger before activating this workflow');
 
