@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { UpdateWorkspaceRequest, SetDefaultRoleRequest } from '@saasly/shared';
+import type { UpdateWorkspaceRequest, SetDefaultRoleRequest, UpdateWorkspaceSecurityRequest } from '@saasly/shared';
 import { AppError } from '../../lib/errors.js';
 import { actorUserId, principalOf } from '../../lib/principal.js';
 import * as workspaceService from './workspace.service.js';
@@ -40,6 +40,18 @@ export async function setDefaultRole(
 ): Promise<void> {
   await workspaceService.setDefaultRole(req.workspaceId!, req.user!.id, req.body.roleId);
   res.status(200).json({ ok: true });
+}
+
+export async function updateSecurity(
+  req: Request<unknown, unknown, UpdateWorkspaceSecurityRequest>,
+  res: Response,
+): Promise<void> {
+  const result = await workspaceService.updateWorkspaceSecurity(
+    req.workspaceId!,
+    actorUserId(principalOf(req)),
+    req.body,
+  );
+  res.status(200).json(result);
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {

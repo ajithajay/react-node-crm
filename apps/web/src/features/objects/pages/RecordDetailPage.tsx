@@ -24,6 +24,8 @@ import { RecordJunctionWidget } from '../components/RecordJunctionWidget';
 import { RecordRelationWidget } from '../components/RecordRelationWidget';
 import { RecordTargetsWidget } from '../components/RecordTargetsWidget';
 import { RecordTimelineWidget } from '../components/RecordTimelineWidget';
+import { RecordEmailsWidget } from '../components/RecordEmailsWidget';
+import { RecordCalendarWidget } from '../components/RecordCalendarWidget';
 import { WidgetEditPanel } from '../components/record-layout-editor/WidgetEditPanel';
 import { TabEditPanel } from '../components/record-layout-editor/TabEditPanel';
 import { AddWidgetPanel } from '../components/record-layout-editor/AddWidgetPanel';
@@ -33,7 +35,7 @@ import { RunWorkflowActions } from '@/features/workflows/components/RunWorkflowA
 
 /** Activity widgets are singletons (one Timeline/Notes/Tasks/Files per layout); FIELDS and FIELD can
  * both be added any number of times — multiple "Fields group" widgets are allowed. */
-const SINGLETON_WIDGET_TYPES: PageLayoutWidgetType[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES'];
+const SINGLETON_WIDGET_TYPES: PageLayoutWidgetType[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES', 'EMAILS', 'CALENDAR'];
 
 /** Task/Note's own junction → the "Relations" widget resolving which Company/Person/Opportunity
  * they're about, replacing the raw junction reverse-relation
@@ -134,6 +136,10 @@ function ActivityWidget({
       );
     case 'FILES':
       return <RecordAttachmentsWidget sourceObjectNameSingular={objectNameSingular} sourceRecordId={recordId} />;
+    case 'EMAILS':
+      return <RecordEmailsWidget objectNameSingular={objectNameSingular} recordId={recordId} />;
+    case 'CALENDAR':
+      return <RecordCalendarWidget objectNameSingular={objectNameSingular} recordId={recordId} />;
     default:
       return null;
   }

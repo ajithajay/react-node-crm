@@ -44,6 +44,21 @@ services:
       MP_MAX_MESSAGES: 5000
       MP_DATABASE: /data/mailpit.db
 
+  # IMAP/SMTP test mailbox server for the "Connected Accounts" email-sync feature (dev only).
+  # Auth is disabled: any username/password logs in and mailboxes are auto-created on first use.
+  # Start:  docker compose -f docker/docker-compose.yml up -d greenmail
+  # Stop:   docker compose -f docker/docker-compose.yml stop greenmail
+  greenmail:
+    image: greenmail/standalone:2.1.0
+    restart: unless-stopped
+    ports:
+      - "${GREENMAIL_SMTP_PORT:-3025}:3025"  # SMTP  (plaintext — turn TLS OFF in the connect form)
+      - "${GREENMAIL_IMAP_PORT:-3143}:3143"  # IMAP  (plaintext — turn TLS OFF in the connect form)
+      - "${GREENMAIL_IMAPS_PORT:-3993}:3993" # IMAPS (self-signed TLS)
+      - "${GREENMAIL_API_PORT:-8080}:8080"   # REST API to inspect mailboxes
+    environment:
+      GREENMAIL_OPTS: "-Dgreenmail.setup.test.all -Dgreenmail.auth.disabled -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.verbose"
+
   # S3-compatible object storage for logos / avatars / attachments
   minio:
     image: minio/minio:latest

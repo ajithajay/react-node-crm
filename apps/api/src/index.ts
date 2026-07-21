@@ -8,6 +8,7 @@ import { env } from './lib/config.js';
 import { logger } from './lib/logger.js';
 import { dataSource } from './lib/db.js';
 import { createApp } from './app.js';
+import { rearmAllChannelCrons } from './modules/connected-account/connected-account.service.js';
 
 async function main(): Promise<void> {
   await dataSource.initialize();
@@ -16,6 +17,8 @@ async function main(): Promise<void> {
   await backfillSearchVectorColumn(dataSource);
   await backfillDuplicateCriteria(dataSource);
   logger.info('core datasource ready (schema: core)');
+
+  await rearmAllChannelCrons().catch((err) => logger.error({ err }, 'failed to re-arm channel sync crons'));
 
   const app = createApp();
   app.listen(env.API_PORT, () => {

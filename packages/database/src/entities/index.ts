@@ -33,6 +33,10 @@ import { WorkflowEntity } from './workflow.entity.js';
 import { WorkflowVersionEntity } from './workflow-version.entity.js';
 import { WorkflowRunEntity } from './workflow-run.entity.js';
 import { WorkflowAutomatedTriggerEntity } from './workflow-automated-trigger.entity.js';
+import { ConnectedAccountEntity } from './connected-account.entity.js';
+import { MessageChannelEntity } from './message-channel.entity.js';
+import { CalendarChannelEntity } from './calendar-channel.entity.js';
+import { MessageFolderEntity } from './message-folder.entity.js';
 
 export * from './user.entity.js';
 export * from './workspace.entity.js';
@@ -57,6 +61,10 @@ export * from './workflow.entity.js';
 export * from './workflow-version.entity.js';
 export * from './workflow-run.entity.js';
 export * from './workflow-automated-trigger.entity.js';
+export * from './connected-account.entity.js';
+export * from './message-channel.entity.js';
+export * from './calendar-channel.entity.js';
+export * from './message-folder.entity.js';
 
 /** Every core-schema entity, registered on the core DataSource. */
 export const CORE_ENTITIES = [
@@ -95,4 +103,8 @@ export const CORE_ENTITIES = [
   WorkflowVersionEntity,
   WorkflowRunEntity,
   WorkflowAutomatedTriggerEntity,
+  ConnectedAccountEntity,
+  MessageChannelEntity,
+  CalendarChannelEntity,
+  MessageFolderEntity,
 ];

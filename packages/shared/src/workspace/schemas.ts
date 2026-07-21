@@ -17,3 +17,9 @@ export const setDefaultRoleRequestSchema = z.object({
   roleId: z.string().uuid(),
 });
 export type SetDefaultRoleRequest = z.infer<typeof setDefaultRoleRequestSchema>;
+
+/** Workspace-wide messaging/security setting: sync emails between colleagues on the same domain. */
+export const updateWorkspaceSecurityRequestSchema = z.object({
+  syncInternalEmails: z.boolean(),
+});
+export type UpdateWorkspaceSecurityRequest = z.infer<typeof updateWorkspaceSecurityRequestSchema>;

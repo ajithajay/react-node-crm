@@ -5,6 +5,7 @@ import { InitialCoreSchema1700000000000 } from './migrations/1700000000000-Initi
 import { MembershipColorSchemeDefaultLight1700000000001 } from './migrations/1700000000001-MembershipColorSchemeDefaultLight.js';
 import { RowLevelPermissions1700000000002 } from './migrations/1700000000002-RowLevelPermissions.js';
 import { DuplicateCriteria1700000000003 } from './migrations/1700000000003-DuplicateCriteria.js';
+import { ConnectedAccountsAndMessaging1700000000004 } from './migrations/1700000000004-ConnectedAccountsAndMessaging.js';
 
 /** Shared control-plane schema (identity, tenancy, metadata). Per-workspace schemas: see workspace-schema/. */
 export const CORE_SCHEMA = 'core';
@@ -24,6 +25,7 @@ export function createCoreDataSource(databaseUrl: string): DataSource {
       MembershipColorSchemeDefaultLight1700000000001,
       RowLevelPermissions1700000000002,
       DuplicateCriteria1700000000003,
+      ConnectedAccountsAndMessaging1700000000004,
     ],
     migrationsTableName: '_migrations',
     synchronize: false,

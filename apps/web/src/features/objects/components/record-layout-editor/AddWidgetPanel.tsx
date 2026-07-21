@@ -13,6 +13,8 @@ const WIDGET_TYPE_LABELS: Record<PageLayoutWidgetType, string> = {
   NOTES: 'Notes',
   TASKS: 'Tasks',
   FILES: 'Files',
+  EMAILS: 'Emails',
+  CALENDAR: 'Calendar',
 };
 
 const DISPLAY_MODE_LABELS: Record<FieldDisplayMode, string> = {

@@ -35,6 +35,17 @@ import type {
   ManualTriggerAvailability,
   UpdateWorkflowVersionRequest,
   MergeRecordsRequest,
+  ConnectedAccountSummary,
+  CreateImapSmtpAccountRequest,
+  UpdateImapSmtpAccountRequest,
+  UpdateMessageChannelRequest,
+  UpdateCalendarChannelRequest,
+  UpdateMessageFoldersRequest,
+  ThreadPreviewDto,
+  ThreadDetailDto,
+  TimelineObjectSingular,
+  SendMessageRequest,
+  CalendarEventDto,
 } from '@saasly/shared';
 export type {
   PageLayoutDto as PageLayout,
@@ -219,6 +230,7 @@ export interface CurrentWorkspace {
   logoUrl: string | null;
   defaultRoleId: string | null;
   editableProfileFields: string[];
+  syncInternalEmails: boolean;
 }
 
 export interface Member {
@@ -275,6 +287,9 @@ export const workspaceApi = {
   removeLogo: () => del<{ ok: true }>('/workspace/logo'),
 
   setDefaultRole: (roleId: string) => patch<{ ok: true }>('/workspace/default-role', { roleId }),
+
+  updateSecurity: (input: { syncInternalEmails: boolean }) =>
+    patch<CurrentWorkspace>('/workspace/security', input),
 
   remove: () => del<{ ok: true }>('/workspace'),
 };
@@ -639,6 +654,61 @@ export const webhookApi = {
 
 export const openApiApi = {
   getSpec: (schema: 'core' | 'metadata') => get<Record<string, unknown>>(`/open-api/${schema}`),
+};
+
+export type ConnectedAccount = ConnectedAccountSummary;
+
+export const connectedAccountApi = {
+  list: () => get<ConnectedAccount[]>('/connected-accounts'),
+
+  get: (id: string) => get<ConnectedAccount>(`/connected-accounts/${id}`),
+
+  remove: (id: string) => del<{ ok: true }>(`/connected-accounts/${id}`),
+
+  createImapSmtp: (input: CreateImapSmtpAccountRequest) =>
+    post<ConnectedAccount>('/connected-accounts/imap-smtp', input),
+
+  updateImapSmtp: (id: string, input: UpdateImapSmtpAccountRequest) =>
+    patch<ConnectedAccount>(`/connected-accounts/${id}/imap-smtp`, input),
+
+  updateMessageChannel: (id: string, input: UpdateMessageChannelRequest) =>
+    patch<{ ok: true }>(`/connected-accounts/message-channels/${id}`, input),
+
+  updateMessageFolders: (id: string, input: UpdateMessageFoldersRequest) =>
+    patch<{ ok: true }>(`/connected-accounts/message-channels/${id}/folders`, input),
+
+  syncMessageChannel: (id: string) => post<{ ok: true }>(`/connected-accounts/message-channels/${id}/sync`),
+
+  updateCalendarChannel: (id: string, input: UpdateCalendarChannelRequest) =>
+    patch<{ ok: true }>(`/connected-accounts/calendar-channels/${id}`, input),
+
+  syncCalendarChannel: (id: string) => post<{ ok: true }>(`/connected-accounts/calendar-channels/${id}/sync`),
+
+  /** Returns the Google OAuth consent URL to redirect the browser to. */
+  googleInit: () => get<{ url: string }>('/oauth/google/init'),
+};
+
+export type EmailThreadPreview = ThreadPreviewDto;
+export type EmailThreadDetail = ThreadDetailDto;
+
+export const messagingApi = {
+  listThreads: (objectNameSingular: TimelineObjectSingular, recordId: string, page = 1) =>
+    get<{ threads: ThreadPreviewDto[]; total: number }>(
+      `/messaging/threads?objectNameSingular=${objectNameSingular}&recordId=${recordId}&page=${page}`,
+    ),
+
+  getThread: (threadId: string) => get<ThreadDetailDto>(`/messaging/threads/${threadId}`),
+
+  send: (input: SendMessageRequest) => post<{ ok: true }>('/messaging/send', input),
+};
+
+export type CalendarEvent = CalendarEventDto;
+
+export const calendarApi = {
+  listEvents: (objectNameSingular: TimelineObjectSingular, recordId: string) =>
+    get<{ events: CalendarEventDto[] }>(
+      `/calendar/events?objectNameSingular=${objectNameSingular}&recordId=${recordId}`,
+    ),
 };
 
 // ---- Generic record CRUD (Phase 6) ----

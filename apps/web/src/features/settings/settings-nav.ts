@@ -18,6 +18,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       { label: 'General', path: '/settings/general' },
       { label: 'Layout', path: '/settings/layout' },
       { label: 'Members', path: '/settings/members' },
+      { label: 'Accounts', path: '/settings/accounts' },
       { label: 'API & Webhooks', path: '/settings/api' },
       { label: 'Data Model', path: '/settings/objects' },
     ],

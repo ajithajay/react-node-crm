@@ -3,7 +3,7 @@ import { FieldMetadataType } from '@saasly/shared';
 import { FieldMetadataEntity } from '../entities/field-metadata.entity.js';
 import { ObjectMetadataEntity } from '../entities/object-metadata.entity.js';
 import { WorkspaceEntity } from '../entities/workspace.entity.js';
-import { WorkspaceSchemaManager, searchVectorIndexName } from '../ddl/workspace-schema-manager.js';
+import { WorkspaceSchemaManager } from '../ddl/workspace-schema-manager.js';
 import { assertSafeIdentifier, quoteIdent } from '../ddl/identifier.util.js';
 import { WORKSPACE_SCHEMA_NAME_REGEX } from '../workspace-schema/schema-name.util.js';
 
@@ -64,14 +64,7 @@ export async function backfillSearchVectorColumn(coreDataSource: DataSource): Pr
         sqlType: 'tsvector',
         isNullable: true,
       });
-      await WorkspaceSchemaManager.createIndex(
-        queryRunner,
-        schemaName,
-        object.namePlural,
-        searchVectorIndexName(object.namePlural),
-        ['search_vector'],
-        { indexType: 'GIN' },
-      );
+      await WorkspaceSchemaManager.ensureSearchVectorIndex(queryRunner, schemaName, object.namePlural);
 
       const columnNames = (fieldsByObjectId.get(object.id) ?? []).flatMap(searchableColumnNames);
       if (columnNames.length === 0) continue;

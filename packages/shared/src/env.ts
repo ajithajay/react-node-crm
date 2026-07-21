@@ -52,6 +52,35 @@ export const serverEnvSchema = z.object({
 
   // --- Public REST API (/api/v1) ---
   PUBLIC_API_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
+
+  // --- Connected accounts: email + calendar sync ---
+  MESSAGING_SYNC_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
+  CALENDAR_SYNC_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
+  /** Cron pattern for the list-fetch phase (discover message/event ids). */
+  MESSAGING_LIST_FETCH_CRON: z.string().default('*/5 * * * *'),
+  /** Cron pattern for the import phase (fetch bodies for staged ids). */
+  MESSAGING_IMPORT_CRON: z.string().default('* * * * *'),
+  /** Max messages imported per channel per import tick (Gmail API ~400/min limit). */
+  MESSAGING_IMPORT_MAX_PER_MIN: z.coerce.number().int().positive().default(400),
+  /**
+   * When false (default), outbound connections to private/loopback IPs are blocked (SSRF guard).
+   * Set to 'true' to allow IMAP/SMTP/CalDAV servers on a trusted private network.
+   */
+  OUTBOUND_HTTP_SAFE_MODE_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
+
+  // --- Google OAuth (Gmail + Google Calendar) — optional; sync stays dormant until set ---
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

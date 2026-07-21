@@ -32,15 +32,27 @@ const ACTIVITY_PLUMBING_SINGULARS = new Set([
   'timeline_activity',
   'attachment',
   'workspace_member',
+  // Messaging & calendar objects: viewable as records but drive the Emails/Calendar widgets,
+  // so they don't get their own Timeline/Notes/Tasks/Files tabs.
+  'message',
+  'message_thread',
+  'message_participant',
+  'message_channel_message_association',
+  'calendar_event',
+  'calendar_event_participant',
+  'calendar_channel_event_association',
 ]);
 
-const ACTIVITY_WIDGET_DEFS: Record<'TIMELINE' | 'NOTES' | 'TASKS' | 'FILES', { type: PageLayoutWidgetType; title: string; icon: string }> = {
+type ActivityWidgetKey = 'TIMELINE' | 'NOTES' | 'TASKS' | 'FILES' | 'EMAILS' | 'CALENDAR';
+const ACTIVITY_WIDGET_DEFS: Record<ActivityWidgetKey, { type: PageLayoutWidgetType; title: string; icon: string }> = {
   TIMELINE: { type: PageLayoutWidgetType.TIMELINE, title: 'Timeline', icon: 'Clock' },
   NOTES: { type: PageLayoutWidgetType.NOTES, title: 'Notes', icon: 'StickyNote' },
   TASKS: { type: PageLayoutWidgetType.TASKS, title: 'Tasks', icon: 'CheckSquare' },
   FILES: { type: PageLayoutWidgetType.FILES, title: 'Files', icon: 'Paperclip' },
+  EMAILS: { type: PageLayoutWidgetType.EMAILS, title: 'Emails', icon: 'Mail' },
+  CALENDAR: { type: PageLayoutWidgetType.CALENDAR, title: 'Calendar', icon: 'CalendarClock' },
 };
-const DEFAULT_ACTIVITY_WIDGET_TYPES: ('TIMELINE' | 'NOTES' | 'TASKS' | 'FILES')[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES'];
+const DEFAULT_ACTIVITY_WIDGET_TYPES: ActivityWidgetKey[] = ['TIMELINE', 'NOTES', 'TASKS', 'FILES'];
 
 const DEFAULT_FIELDS_WIDGET_CONFIG = { showMoreFieldsButton: false, autoVisibleNewFields: true };
 

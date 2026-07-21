@@ -58,6 +58,22 @@ export const WorkspaceSchemaManager = {
     `);
   },
 
+  /**
+   * Create the `search_vector` GIN index for a table (idempotent). Mirrors `createTable`'s inline
+   * creation: the index name is *derived* (`<table>_search_vector_idx`) and only bound by Postgres's
+   * 63-char identifier limit, so — unlike the generic `createIndex` — it is NOT run through the
+   * stricter 40-char user-identifier check (long standard tables like
+   * `message_channel_message_associations` would otherwise fail).
+   */
+  async ensureSearchVectorIndex(runner: QueryRunner, schemaName: string, tableName: string): Promise<void> {
+    assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
+    assertSafeIdentifier(tableName);
+    await runner.query(`
+      CREATE INDEX IF NOT EXISTS ${quoteIdent(searchVectorIndexName(tableName))}
+      ON ${quoteIdent(schemaName)}.${quoteIdent(tableName)} USING gin ("search_vector");
+    `);
+  },
+
   async dropTable(runner: QueryRunner, schemaName: string, tableName: string): Promise<void> {
     assertSafeIdentifier(schemaName, WORKSPACE_SCHEMA_NAME_REGEX);
     assertSafeIdentifier(tableName);

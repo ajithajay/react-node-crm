@@ -3,7 +3,7 @@ import { z } from 'zod';
 /** Widget types on a record page (reduced to our built surfaces). FIELDS renders a
  * group of the object's fields; FIELD renders a single field with a chosen display mode; the rest
  * render the record's activity relations and carry no config. */
-export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'FIELD', 'TIMELINE', 'NOTES', 'TASKS', 'FILES'] as const;
+export const PAGE_LAYOUT_WIDGET_TYPES = ['FIELDS', 'FIELD', 'TIMELINE', 'NOTES', 'TASKS', 'FILES', 'EMAILS', 'CALENDAR'] as const;
 export type PageLayoutWidgetType = (typeof PAGE_LAYOUT_WIDGET_TYPES)[number];
 
 /** How a single FIELD widget renders its value — Field / Card / Table, plus our

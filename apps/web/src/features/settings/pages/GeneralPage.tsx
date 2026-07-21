@@ -277,6 +277,11 @@ function SecurityTab() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['workspace'] }),
   });
 
+  const setSyncInternalEmails = useMutation({
+    mutationFn: (syncInternalEmails: boolean) => workspaceApi.updateSecurity({ syncInternalEmails }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['workspace'] }),
+  });
+
   if (!workspace) return null;
 
   return (
@@ -330,6 +335,28 @@ function SecurityTab() {
               </label>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Email sync</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <label className="flex items-start gap-3 text-sm">
+            <Checkbox
+              checked={workspace.syncInternalEmails}
+              onCheckedChange={(c) => setSyncInternalEmails.mutate(c === true)}
+              disabled={setSyncInternalEmails.isPending}
+            />
+            <span>
+              <span className="font-medium">Sync internal emails</span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                By default, emails where every participant shares your workspace domain are not synced, to protect
+                privacy. Enable this to include internal emails workspace-wide (useful for shared-domain organizations).
+              </span>
+            </span>
+          </label>
         </CardContent>
       </Card>
     </div>

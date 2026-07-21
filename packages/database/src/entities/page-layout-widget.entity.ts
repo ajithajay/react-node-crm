@@ -16,6 +16,8 @@ export const PageLayoutWidgetType = {
   NOTES: 'NOTES',
   TASKS: 'TASKS',
   FILES: 'FILES',
+  EMAILS: 'EMAILS',
+  CALENDAR: 'CALENDAR',
   GRAPH: 'GRAPH',
   IFRAME: 'IFRAME',
   RECORD_TABLE: 'RECORD_TABLE',

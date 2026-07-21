@@ -1,5 +1,5 @@
 import { RoleEntity, WorkspaceEntity, dropWorkspaceSchema } from '@saasly/database';
-import type { UpdateWorkspaceRequest } from '@saasly/shared';
+import type { UpdateWorkspaceRequest, UpdateWorkspaceSecurityRequest } from '@saasly/shared';
 import { dataSource } from '../../lib/db.js';
 import { ConflictError, NotFoundError } from '../../lib/errors.js';
 import { checkSubdomainAvailability } from '../auth/auth.service.js';
@@ -16,6 +16,7 @@ export interface CurrentWorkspaceResponse {
   logoUrl: string | null;
   defaultRoleId: string | null;
   editableProfileFields: string[];
+  syncInternalEmails: boolean;
 }
 
 function toResponse(workspace: WorkspaceEntity): CurrentWorkspaceResponse {
@@ -27,7 +28,22 @@ function toResponse(workspace: WorkspaceEntity): CurrentWorkspaceResponse {
     logoUrl: workspace.logoUrl,
     defaultRoleId: workspace.defaultRoleId,
     editableProfileFields: workspace.editableProfileFields ?? [],
+    syncInternalEmails: workspace.syncInternalEmails,
   };
+}
+
+export async function updateWorkspaceSecurity(
+  workspaceId: string,
+  actorUserId: string | null,
+  input: UpdateWorkspaceSecurityRequest,
+): Promise<CurrentWorkspaceResponse> {
+  const workspace = await workspaceRepo().findOneByOrFail({ id: workspaceId });
+  workspace.syncInternalEmails = input.syncInternalEmails;
+  await workspaceRepo().save(workspace);
+  await record(workspaceId, actorUserId, 'workspace.updated', {
+    syncInternalEmails: workspace.syncInternalEmails,
+  });
+  return toResponse(workspace);
 }
 
 export async function getCurrentWorkspace(workspaceId: string): Promise<CurrentWorkspaceResponse> {

@@ -15,6 +15,11 @@ import { DataModelListPage } from '@/features/settings/pages/data-model/DataMode
 import { DataModelVisualizePage } from '@/features/settings/pages/data-model/DataModelVisualizePage';
 import { ObjectDetailPage } from '@/features/settings/pages/data-model/ObjectDetailPage';
 import { ApiSettingsPage } from '@/features/settings/pages/ApiSettingsPage';
+import { AccountsPage } from '@/features/settings/pages/accounts/AccountsPage';
+import { NewAccountPage } from '@/features/settings/pages/accounts/NewAccountPage';
+import { NewImapAccountPage } from '@/features/settings/pages/accounts/NewImapAccountPage';
+import { EditImapAccountPage } from '@/features/settings/pages/accounts/EditImapAccountPage';
+import { AccountDetailPage } from '@/features/settings/pages/accounts/AccountDetailPage';
 import { RestPlaygroundPage } from '@/features/settings/pages/RestPlaygroundPage';
 import { ObjectRecordsPage } from '@/features/objects/pages/ObjectRecordsPage';
 import { RecordDetailPage } from '@/features/objects/pages/RecordDetailPage';
@@ -88,6 +93,11 @@ export function WorkspaceHostRoutes() {
             <Route path="roles/:id/object/:objectMetadataId" element={<RoleObjectPermissionPage />} />
             <Route path="roles/:id" element={<RoleDetailPage />} />
             <Route path="api" element={<ApiSettingsPage />} />
+            <Route path="accounts" element={<AccountsPage />} />
+            <Route path="accounts/new" element={<NewAccountPage />} />
+            <Route path="accounts/new/imap" element={<NewImapAccountPage />} />
+            <Route path="accounts/:id" element={<AccountDetailPage />} />
+            <Route path="accounts/:id/edit" element={<EditImapAccountPage />} />
             <Route path="objects" element={<DataModelListPage />} />
             <Route path="objects/visualize" element={<DataModelVisualizePage />} />
             <Route path="objects/:id" element={<ObjectDetailPage />} />

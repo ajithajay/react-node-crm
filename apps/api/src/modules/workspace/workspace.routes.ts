@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { updateWorkspaceRequestSchema, setDefaultRoleRequestSchema, PermissionFlagType } from '@saasly/shared';
+import {
+  updateWorkspaceRequestSchema,
+  setDefaultRoleRequestSchema,
+  updateWorkspaceSecurityRequestSchema,
+  PermissionFlagType,
+} from '@saasly/shared';
 import { authGuard, apiKeyGuard } from '../../middleware/auth-guard.js';
 import { workspaceGuard } from '../../middleware/workspace-guard.js';
 import { permissionGuard } from '../../middleware/permission-guard.js';
@@ -37,6 +42,14 @@ workspaceRouter.patch(
   requireWorkspacePermission,
   validate({ body: setDefaultRoleRequestSchema }),
   workspaceController.setDefaultRole,
+);
+workspaceRouter.patch(
+  '/security',
+  authGuard,
+  workspaceGuard,
+  requireWorkspacePermission,
+  validate({ body: updateWorkspaceSecurityRequestSchema }),
+  workspaceController.updateSecurity,
 );
 workspaceRouter.delete('/', authGuard, workspaceGuard, requireWorkspacePermission, workspaceController.remove);
 
